@@ -1,0 +1,49 @@
+.landing-page {
+  min-height: 100vh;
+  display: flex;
+}
+
+.landing-intro {
+  flex: 1;
+  background: linear-gradient(135deg, #7C6FA8, #A98FD9);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px;
+}
+
+.landing-intro h1 {
+  font-size: 40px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.landing-tagline {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+.landing-desc {
+  font-size: 14px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.landing-login {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #F7F4FC;
+}
+
+@media (max-width: 768px) {
+  .landing-page {
+    flex-direction: column;
+  }
+  .landing-intro {
+    padding: 40px 24px;
+  }
+}
