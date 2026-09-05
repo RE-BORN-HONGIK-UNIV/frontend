@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
+import Step1FeedbackCoach from '../components/Step1FeedbackCoach';
 
 const AXES = [
   { key: 'stability',  label: '음성 안정성',   desc: '음성 떨림·에너지 변동 안정도' },
@@ -477,12 +478,17 @@ export default function VoiceStage() {
 </div>
                       </div>
 
-        <p style={{ fontSize: 13, lineHeight: 1.8, color: '#1a1a1a', margin: '14px 0 0', paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
-          <strong>{bestAxis.label}</strong>이 {best[1]}점으로 가장 우수했고, <strong>{worstAxis.label}</strong>은 {worst[1]}점으로 보완이 필요합니다.
-          {overall >= 75
-            ? ' 전체적으로 안정적인 발화 역량을 보여주고 있어 다음 단계로 진행해볼 만합니다.'
-            : ' 안전한 공간에서 천천히 반복 연습하면 충분히 개선될 수 있습니다.'}
-        </p>
+        <Step1FeedbackCoach
+          result={result}
+          fallback={(
+            <>
+              <strong>{bestAxis.label}</strong>이 {best[1]}점으로 가장 우수했고, <strong>{worstAxis.label}</strong>은 {worst[1]}점으로 보완이 필요합니다.
+              {overall >= 75
+                ? ' 전체적으로 안정적인 발화 역량을 보여주고 있어 다음 단계로 진행해볼 만합니다.'
+                : ' 안전한 공간에서 천천히 반복 연습하면 충분히 개선될 수 있습니다.'}
+            </>
+          )}
+        />
 
         <div style={{ background: '#F5F8FF', border: '1px solid #C9DBFF', borderRadius: 10, padding: '12px 14px', marginTop: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#3B5BDB', marginBottom: 4 }}>💡 다음 훈련 제안</div>
