@@ -7,6 +7,23 @@ import { daysSince, localProgress } from '@/features/progress/localProgress';
 
 type Status = 'done' | 'available' | 'locked';
 
+const ENCOURAGEMENTS = [
+  '작은 한 걸음도 충분히 의미 있어요.',
+  '오늘 목소리를 낸 것만으로도 큰 용기예요.',
+  '완벽하지 않아도 괜찮아요, 계속하는 것만으로 충분해요.',
+  '어제보다 한 뼘 더 편안해진 나를 응원해요.',
+  '조급해하지 않아도 돼요. 당신의 속도가 정답이에요.',
+  '지금 다시 시작할 용기를 낸 당신에게 박수를 보내요.',
+];
+
+/** Same quote all day, changes daily. */
+function todaysEncouragement(): string {
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86_400_000,
+  );
+  return ENCOURAGEMENTS[dayOfYear % ENCOURAGEMENTS.length];
+}
+
 function StageIcon({ id }: { id: number }) {
   const common = {
     width: 26,
@@ -69,7 +86,6 @@ function ProgressRing({ pct }: { pct: number }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const name = auth.name || '회원';
-  const email = auth.email;
   const s1 = localProgress.stage1();
 
   const [streak, setStreak] = useState(1);
@@ -96,10 +112,10 @@ export default function Dashboard() {
     {
       id: 2,
       title: '표정 분석',
-      subtitle: '멀티모달 인터랙션',
+      subtitle: '페이스 터치',
       desc: '시선 처리와 표정을 분석해 비언어적 소통 능력을 교정합니다.',
       path: '/face',
-      status: 'locked',
+      status: 'available',
     },
     {
       id: 3,
@@ -122,10 +138,6 @@ export default function Dashboard() {
       window.location.reload();
     }
   };
-  const handleLogout = () => {
-    auth.signOut();
-    navigate('/login');
-  };
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
@@ -138,8 +150,15 @@ export default function Dashboard() {
             AI 기반 디지털 재활 솔루션
           </Badge>
         }
-        title={`${name} 님의 재활 훈련`}
-        subtitle="3단계로 차근차근, 나만의 속도로."
+        title={`안녕하세요, ${name} 님 🌱`}
+        subtitle="오늘도 당신의 속도로, 천천히 나아가요"
+        rightExtra={
+          <Box style={{ background: '#ffffff', borderRadius: 999, padding: '6px 14px' }}>
+            <Text fz={12} fw={600} c="var(--rb-primary-strong)">
+              🔥 {streak}일 연속 방문 중
+            </Text>
+          </Box>
+        }
       />
 
       <Box style={{ maxWidth: 1120, margin: '0 auto', padding: '20px 16px 0' }}>
@@ -151,10 +170,10 @@ export default function Dashboard() {
                 {firstVisit ? (
                   <Stack gap={6}>
                     <Text fz={18} fw={700}>
-                      환영해요, {name} 님 🌱
+                      첫 훈련을 시작해볼까요?
                     </Text>
                     <Text fz={13} c="var(--rb-ink-soft)">
-                      첫 훈련을 시작해보세요. 천천히, 당신의 속도로 진행하면 돼요.
+                      아주 짧게 말해도 괜찮아요. 준비되면 시작해보세요.
                     </Text>
                   </Stack>
                 ) : (
@@ -223,7 +242,7 @@ export default function Dashboard() {
                 </Box>
               </Paper>
 
-              <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mt={6}>
+              <Text fz={17} fw={700} c="var(--rb-primary-strong)" mt={10}>
                 훈련 단계
               </Text>
 
@@ -317,46 +336,6 @@ export default function Dashboard() {
           <Grid.Col span={{ base: 12, md: 4 }}>
             <Stack gap={16}>
               <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
-                <Group gap={12} mb={14}>
-                  <Box
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      background: 'var(--rb-primary-tint)',
-                      color: 'var(--rb-primary-strong)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {name.charAt(0)}
-                  </Box>
-                  <Box>
-                    <Text fz={15} fw={700}>
-                      {name} 님
-                    </Text>
-                    <Text fz={12} c="var(--rb-ink-faint)">
-                      {email || '이메일 미등록'}
-                    </Text>
-                  </Box>
-                </Group>
-                <Button variant="light" color="gray" size="xs" fullWidth onClick={handleLogout}>
-                  로그아웃
-                </Button>
-              </Paper>
-
-              <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
-                <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mb={8}>
-                  연속 방문
-                </Text>
-                <Text fz={15} fw={700}>
-                  🔥 {streak}일 연속 방문 중
-                </Text>
-              </Paper>
-
-              <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
                 <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mb={8}>
                   최근 활동
                 </Text>
@@ -364,6 +343,15 @@ export default function Dashboard() {
                   {s1.done
                     ? `${gap && gap > 0 ? `${gap}일 전 · ` : ''}1단계 종합 ${s1.score}점`
                     : '아직 완료한 훈련이 없어요. 첫 훈련을 시작하면 여기에 기록이 쌓여요.'}
+                </Text>
+              </Paper>
+
+              <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-primary-tint)', borderColor: 'var(--rb-line)' }}>
+                <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mb={8}>
+                  오늘의 응원
+                </Text>
+                <Text fz={14} c="var(--rb-ink)" fw={500} style={{ lineHeight: 1.6 }}>
+                  🌱 {todaysEncouragement()}
                 </Text>
               </Paper>
             </Stack>

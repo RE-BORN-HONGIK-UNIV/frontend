@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Anchor, Box, Button, Group, SimpleGrid, Stack } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { RebornWordmark } from '@/components/RebornWordmark';
+import { Reveal } from '@/components/Reveal';
 import { SectionBadge } from '@/components/SectionBadge';
 
 const MAXW = 1120;
@@ -250,57 +251,61 @@ function Steps() {
       }}
     >
       <Stack style={panel} gap={32}>
-        <Stack align="center" gap={16} ta="center">
-          <SectionBadge>여정</SectionBadge>
-          <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em' }}>
-            세 단계로, 나만의 속도로
-          </h2>
-          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)', maxWidth: 520 }}>
-            한 번에 다 하지 않아도 괜찮아요. 준비되는 만큼, 다음 단계로.
-          </p>
-        </Stack>
+        <Reveal>
+          <Stack align="center" gap={16} ta="center">
+            <SectionBadge>여정</SectionBadge>
+            <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em' }}>
+              세 단계로, 나만의 속도로
+            </h2>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)', maxWidth: 520 }}>
+              한 번에 다 하지 않아도 괜찮아요. 준비되는 만큼, 다음 단계로.
+            </p>
+          </Stack>
+        </Reveal>
 
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={20}>
-          {STEPS.map((s) => (
-            <Stack key={s.tag} gap={14} style={card}>
-              <Group justify="space-between">
-                <span
-                  style={{
-                    padding: '4px 11px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: '0.04em',
-                    background: s.deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
-                    color: s.deep ? 'var(--rb-primary-deep)' : 'var(--rb-primary-strong)',
-                  }}
-                >
-                  {s.tag}
-                </span>
-                {s.soon && (
+          {STEPS.map((s, i) => (
+            <Reveal key={s.tag} delay={i * 90}>
+              <Stack gap={14} style={card}>
+                <Group justify="space-between">
                   <span
                     style={{
-                      padding: '4px 10px',
+                      padding: '4px 11px',
                       borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: 'var(--rb-bg)',
-                      color: 'var(--rb-ink-faint)',
-                      border: '1px solid var(--rb-line)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      background: s.deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
+                      color: s.deep ? 'var(--rb-primary-deep)' : 'var(--rb-primary-strong)',
                     }}
                   >
-                    준비 중
+                    {s.tag}
                   </span>
-                )}
-              </Group>
-              <IconTile deep={s.deep}>
-                <StepIcon kind={s.icon} />
-              </IconTile>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{s.title}</h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-                {s.desc}
-              </p>
-            </Stack>
+                  {s.soon && (
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: 'var(--rb-bg)',
+                        color: 'var(--rb-ink-faint)',
+                        border: '1px solid var(--rb-line)',
+                      }}
+                    >
+                      준비 중
+                    </span>
+                  )}
+                </Group>
+                <IconTile deep={s.deep}>
+                  <StepIcon kind={s.icon} />
+                </IconTile>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{s.title}</h3>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
+                  {s.desc}
+                </p>
+              </Stack>
+            </Reveal>
           ))}
         </SimpleGrid>
       </Stack>
@@ -333,33 +338,37 @@ function Why() {
   return (
     <Box component="section" id="why" style={{ padding: '96px 24px', background: 'var(--rb-bg)' }}>
       <Stack style={panel} gap={36}>
-        <Stack align="center" gap={16} ta="center">
-          <SectionBadge>왜 Re-born</SectionBadge>
-          <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em' }}>
-            혼자여도, 괜찮아요
-          </h2>
-        </Stack>
+        <Reveal>
+          <Stack align="center" gap={16} ta="center">
+            <SectionBadge>왜 Re-born</SectionBadge>
+            <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em' }}>
+              혼자여도, 괜찮아요
+            </h2>
+          </Stack>
+        </Reveal>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={28}>
-          {WHY.map((w) => (
-            <Stack key={w.title} align="center" ta="center" gap={12}>
-              <Box
-                style={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: w.deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
-                }}
-              >
-                <WhyIcon kind={w.icon} />
-              </Box>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{w.title}</h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-                {w.desc}
-              </p>
-            </Stack>
+          {WHY.map((w, i) => (
+            <Reveal key={w.title} delay={i * 90}>
+              <Stack align="center" ta="center" gap={12}>
+                <Box
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: w.deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
+                  }}
+                >
+                  <WhyIcon kind={w.icon} />
+                </Box>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{w.title}</h3>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
+                  {w.desc}
+                </p>
+              </Stack>
+            </Reveal>
           ))}
         </SimpleGrid>
       </Stack>
@@ -375,35 +384,37 @@ function Facts() {
   ];
   return (
     <Box component="section" style={{ padding: '0 24px 96px', background: 'var(--rb-bg)' }}>
-      <Group
-        justify="space-around"
-        wrap="wrap"
-        gap={24}
-        style={{
-          maxWidth: MAXW,
-          margin: '0 auto',
-          background: 'var(--rb-primary-tint)',
-          border: '1px solid var(--rb-line)',
-          borderRadius: 24,
-          padding: 40,
-        }}
-      >
-        {items.map(([n, label]) => (
-          <Stack key={label} align="center" gap={4}>
-            <span
-              style={{
-                fontFamily: 'var(--rb-font-display)',
-                fontSize: 40,
-                fontWeight: 600,
-                color: 'var(--rb-primary-strong)',
-              }}
-            >
-              {n}
-            </span>
-            <span style={{ fontSize: 13, color: 'var(--rb-ink-soft)' }}>{label}</span>
-          </Stack>
-        ))}
-      </Group>
+      <Reveal>
+        <Group
+          justify="space-around"
+          wrap="wrap"
+          gap={24}
+          style={{
+            maxWidth: MAXW,
+            margin: '0 auto',
+            background: 'var(--rb-primary-tint)',
+            border: '1px solid var(--rb-line)',
+            borderRadius: 24,
+            padding: 40,
+          }}
+        >
+          {items.map(([n, label]) => (
+            <Stack key={label} align="center" gap={4}>
+              <span
+                style={{
+                  fontFamily: 'var(--rb-font-display)',
+                  fontSize: 40,
+                  fontWeight: 600,
+                  color: 'var(--rb-primary-strong)',
+                }}
+              >
+                {n}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--rb-ink-soft)' }}>{label}</span>
+            </Stack>
+          ))}
+        </Group>
+      </Reveal>
     </Box>
   );
 }
@@ -420,25 +431,27 @@ function FinalCta() {
         background: 'var(--rb-surface-tint)',
       }}
     >
-      <Stack align="center" gap={16} style={{ maxWidth: 520, margin: '0 auto' }}>
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: 'var(--rb-font-display)',
-            fontWeight: 600,
-            fontSize: 32,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          지금, 첫 걸음을 떼보세요
-        </h2>
-        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-          회원가입하면 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
-        </p>
-        <Button component={Link} to="/signup" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
-          무료로 시작하기
-        </Button>
-      </Stack>
+      <Reveal>
+        <Stack align="center" gap={16} style={{ maxWidth: 520, margin: '0 auto' }}>
+          <h2
+            style={{
+              margin: 0,
+              fontFamily: 'var(--rb-font-display)',
+              fontWeight: 600,
+              fontSize: 32,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            지금, 첫 걸음을 떼보세요
+          </h2>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
+            회원가입하면 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
+          </p>
+          <Button component={Link} to="/signup" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+            무료로 시작하기
+          </Button>
+        </Stack>
+      </Reveal>
     </Box>
   );
 }

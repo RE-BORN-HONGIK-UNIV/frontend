@@ -19,9 +19,9 @@ export const theme = createTheme({
   primaryShade: { light: 6, dark: 8 },
   colors: { brand },
 
-  fontFamily: "'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif",
+  fontFamily: "'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif",
   headings: {
-    fontFamily: "'Noto Sans KR', system-ui, sans-serif",
+    fontFamily: "'Pretendard', 'Noto Sans KR', system-ui, sans-serif",
     fontWeight: '700',
   },
 

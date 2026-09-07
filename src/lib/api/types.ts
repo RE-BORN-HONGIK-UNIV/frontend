@@ -34,6 +34,31 @@ export interface FeedbackResponse {
   source: 'llm' | 'template';
 }
 
+/** POST /analyze/gaze-blink — Step 2 (표정·시선) 분석 결과. */
+export interface GazeBlinkResult {
+  blink: {
+    rate_per_min: number;
+    status: string;
+    score: number;
+    events: { start: number; end: number }[];
+  };
+  gaze: {
+    avg_fixation_sec: number;
+    score: number;
+    segments: { type: 'fixation' | 'aversion'; start: number; end: number }[];
+  };
+  expression: {
+    smile_score: number;
+    tension_score: number;
+    score: number;
+    status: string;
+    smile_ratio: number;
+    tension_ratio: number;
+    frame_count: number;
+    segments: { type: 'smile' | 'tension' | 'neutral'; start: number; end: number }[];
+  };
+}
+
 export interface LoginResponse {
   token: string;
   name: string;

@@ -5,6 +5,7 @@ import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import VoiceStage from '@/pages/VoiceStage';
+import FaceStage from '@/pages/FaceStage';
 import Dashboard from '@/pages/Dashboard';
 import { NotFound } from '@/pages/stubs';
 
@@ -28,6 +29,14 @@ export const router = createBrowserRouter([
         element: (
           <PrivateRoute>
             <VoiceStage />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: '/face',
+        element: (
+          <PrivateRoute>
+            <FaceStage />
           </PrivateRoute>
         ),
       },

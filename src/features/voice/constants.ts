@@ -37,9 +37,4 @@ export const GUIDE_ITEMS = [
   { title: '반복 연습', desc: '여러 번 녹음해서 변화를 확인해보세요.' },
 ];
 
-/** 75+ 양호(green) · 55+ 보통(amber) · 그 미만 보완(red) — status colour, not brand */
-export function scoreColor(v: number): string {
-  if (v >= 75) return '#1e8a57';
-  if (v >= 55) return '#b07a00';
-  return '#a32d2d';
-}
+export { scoreColor } from '@/lib/scoreColor';

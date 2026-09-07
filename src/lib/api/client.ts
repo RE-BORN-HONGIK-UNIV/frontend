@@ -1,6 +1,7 @@
 import type {
   AnalyzeResult,
   FeedbackResponse,
+  GazeBlinkResult,
   LoginResponse,
   SignupPayload,
 } from './types';
@@ -61,4 +62,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(result),
     }),
+
+  analyzeGazeBlink: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request<GazeBlinkResult>('/analyze/gaze-blink', { method: 'POST', body: fd });
+  },
 };

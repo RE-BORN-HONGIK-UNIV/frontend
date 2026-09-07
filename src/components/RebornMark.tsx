@@ -28,15 +28,15 @@ export function RebornMark({
     >
       <path
         className={animate ? 'rb-ring' : undefined}
-        d="M21 7.3 A 10 10 0 1 1 25.4 19.4"
+        d="M6.6 7.3 A 10 10 0 1 1 11 19.4"
         stroke={ringStroke}
         strokeWidth={3}
         strokeLinecap="round"
         opacity={tone === 'white' ? 0.7 : 1}
       />
-      <circle className={animate ? 'rb-dot' : undefined} cx={25.8} cy={11.8} r={4.7} fill={dotFill} />
+      <circle className={animate ? 'rb-dot' : undefined} cx={11.4} cy={11.8} r={4.7} fill={dotFill} />
       <defs>
-        <linearGradient id={gid} x1="21" y1="7" x2="30" y2="17" gradientUnits="userSpaceOnUse">
+        <linearGradient id={gid} x1="6.6" y1="7" x2="15.6" y2="17" gradientUnits="userSpaceOnUse">
           <stop stopColor="#2C543B" />
           <stop offset="1" stopColor="#8AC79B" />
         </linearGradient>

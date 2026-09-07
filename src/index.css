@@ -19,6 +19,9 @@
   --rb-primary-deep-tint: #d3e2d7;
 
   --rb-grad: linear-gradient(105deg, var(--rb-primary-deep) 0%, var(--rb-primary-light) 100%);
+  /* lighter left→right wash, used for page-header backgrounds (kept separate from --rb-grad
+     so the logo wordmark elsewhere stays at full saturation) */
+  --rb-header-grad: linear-gradient(105deg, var(--rb-primary) 0%, #a3d2b3 100%);
   --rb-font-display: 'Spectral', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 }
 
@@ -36,7 +39,7 @@ body {
   margin: 0;
   background: var(--rb-bg);
   color: var(--rb-ink);
-  font-family: 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+  font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
