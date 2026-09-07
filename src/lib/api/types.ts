@@ -41,11 +41,15 @@ export interface GazeBlinkResult {
     status: string;
     score: number;
     events: { start: number; end: number }[];
+    /** 깜빡임 순간만 이어붙인 짧은 mp4 (data URL), 만들 구간이 없으면 null */
+    highlight: string | null;
   };
   gaze: {
     avg_fixation_sec: number;
     score: number;
     segments: { type: 'fixation' | 'aversion'; start: number; end: number }[];
+    /** 시선을 피한 순간만 이어붙인 짧은 mp4 (data URL), 없으면 null */
+    highlight: string | null;
   };
   expression: {
     smile_score: number;
@@ -56,6 +60,8 @@ export interface GazeBlinkResult {
     tension_ratio: number;
     frame_count: number;
     segments: { type: 'smile' | 'tension' | 'neutral'; start: number; end: number }[];
+    /** 미소·긴장 순간만 이어붙인 짧은 mp4 (data URL), 없으면 null */
+    highlight: string | null;
   };
 }
 

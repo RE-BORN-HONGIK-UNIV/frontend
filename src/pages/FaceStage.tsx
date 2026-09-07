@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Anchor,
@@ -7,7 +7,6 @@ import {
   Group,
   Loader,
   Paper,
-  ScrollArea,
   SegmentedControl,
   SimpleGrid,
   Stack,
@@ -48,68 +47,22 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** 업로드한 파일을 서버에 다시 저장하지 않고, 브라우저 안에서만 재생하기 위한 임시 URL. */
-function useObjectUrl(file: File | null) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!file) {
-      setUrl(null);
-      return;
-    }
-    const u = URL.createObjectURL(file);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
-  }, [file]);
-  return url;
-}
-
-interface TimelineItem {
-  label: string;
-  start: number;
-  end: number;
-}
-
-function toTimelineItems(result: GazeBlinkResult, key: MetricKey): TimelineItem[] {
-  if (key === 'blink') {
-    return result.blink.events.map((e, i) => ({ label: `깜빡임 ${i + 1}`, start: e.start, end: e.end }));
-  }
-  if (key === 'gaze') {
-    return result.gaze.segments
-      .filter((s) => s.end - s.start >= 0.5) // 너무 짧은 조각은 다시보기 목록에서 생략
-      .map((s) => ({ label: s.type === 'fixation' ? '● 시선 고정' : '○ 시선 이탈', start: s.start, end: s.end }));
-  }
-  return result.expression.segments
-    .filter((s) => s.type !== 'neutral' && s.end - s.start >= 0.5)
-    .map((s) => ({ label: s.type === 'smile' ? '😊 미소' : '😟 긴장', start: s.start, end: s.end }));
-}
-
 /* ── result view ─────────────────────────────────────────── */
 
 function ResultView({
   result,
-  file,
   previous,
   onReset,
 }: {
   result: GazeBlinkResult;
-  file: File | null;
   previous: Stage2Entry | null;
   onReset: () => void;
 }) {
   const [tab, setTab] = useState<MetricKey>('blink');
-  const videoUrl = useObjectUrl(file);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   const metrics = useMemo(() => extractMetrics(result), [result]);
   const comparisonText = COMPARISON_BUILDERS[tab](metrics, previous);
-  const items = useMemo(() => toTimelineItems(result, tab), [result, tab]);
-
-  const seekTo = (t: number) => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = t;
-    v.play().catch(() => {});
-  };
+  const highlight = result[tab].highlight;
 
   return (
     <Stack gap={20}>
@@ -136,41 +89,28 @@ function ResultView({
           {METRIC_TABS.find((m) => m.key === tab)?.desc}
         </Text>
 
-        {videoUrl && (
-          <video ref={videoRef} src={videoUrl} controls style={{ width: '100%', borderRadius: 10, marginTop: 12, background: '#000' }} />
+        {highlight ? (
+          <video key={tab} src={highlight} controls style={{ width: '100%', borderRadius: 10, marginTop: 12, background: '#000' }} />
+        ) : (
+          <Box
+            style={{
+              marginTop: 12,
+              padding: '28px 16px',
+              borderRadius: 10,
+              background: 'var(--rb-bg)',
+              border: '1px dashed var(--rb-line-strong)',
+              textAlign: 'center',
+            }}
+          >
+            <Text fz={13} c="var(--rb-ink-faint)">
+              이번 영상에서는 따로 짚어서 보여드릴 순간이 없었어요.
+            </Text>
+          </Box>
         )}
 
         <Text fz={14} mt={12} style={{ lineHeight: 1.7 }}>
           {comparisonText}
         </Text>
-
-        <Text fz={12} c="var(--rb-ink-faint)" mt={14} mb={6}>
-          {items.length > 0 ? '순간을 눌러 그 장면을 다시 볼 수 있어요' : '이번 영상에서는 특별히 짚을 순간이 없었어요'}
-        </Text>
-        <ScrollArea.Autosize mah={180}>
-          <Stack gap={6}>
-            {items.map((item, i) => (
-              <Anchor
-                key={i}
-                onClick={() => seekTo(item.start)}
-                underline="never"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  background: 'var(--rb-bg)',
-                  color: 'var(--rb-ink)',
-                }}
-              >
-                <Text fz={13}>{item.label}</Text>
-                <Text fz={12} c="var(--rb-ink-faint)" ff="monospace">
-                  {item.start.toFixed(1)}s
-                </Text>
-              </Anchor>
-            ))}
-          </Stack>
-        </ScrollArea.Autosize>
       </Panel>
     </Stack>
   );
@@ -206,7 +146,7 @@ export default function FaceStage() {
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {result ? (
-          <ResultView result={result} file={file} previous={previous} onReset={reset} />
+          <ResultView result={result} previous={previous} onReset={reset} />
         ) : (
           <Stack gap={20}>
             <SectionLabel>분석 전 체크리스트</SectionLabel>
