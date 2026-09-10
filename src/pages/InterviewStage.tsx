@@ -3,7 +3,7 @@ import { Alert, Anchor, Box, Button, Group, Loader, Stack, Text } from '@mantine
 import { PageHeader } from '@/components/PageHeader';
 import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import { useRecorder } from '@/features/interview/useRecorder';
-import { uploadAnswer } from '@/features/interview/api';
+import { uploadAnswer, getNextQuestion } from '@/features/interview/api';
 import { getAnxietyScore, getTier, QUESTION_BANK, type TierInfo } from '@/features/interview/difficulty';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
 
@@ -147,15 +147,10 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
   const { isRecording, start, stop } = useRecorder(stream);
   const [phase, setPhase] = useState<'asking' | 'recording' | 'uploading' | 'done'>('asking');
 
-  useEffect(() => {
-    // 면접관이 질문을 "말하는" 동안 대기했다가 녹화 시작
-    // TODO: 실제 TTS 붙이면 <audio> onEnded 이벤트로 이 setTimeout 교체
-    const timer = setTimeout(() => {
-      setPhase('recording');
-      start();
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, [start]);
+  const handleAskingEnded = () => {
+    setPhase('recording');
+    start();
+  };
 
   const handleFinish = async () => {
     const blob = await stop();
@@ -168,7 +163,7 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
 
   return (
     <Stack align="center" gap={20} ta="center" style={{ paddingTop: 40 }}>
-      <InterviewerAvatar />
+      <InterviewerAvatar onEnded={handleAskingEnded} />
 
       <Stack gap={6}>
         <Text fz={12} c="var(--rb-ink-faint)">
@@ -219,33 +214,57 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
   );
 }
 
+const TOTAL_QUESTIONS = 3;
+
 /* ── 본 질문 화면 ─────────────────────────────────────────── */
 function QuestionView({
   stream,
-  questions,
+  tier,
   onAllDone,
 }: {
   stream: MediaStream | null;
-  questions: string[];
+  tier: TierInfo['tier'];
   onAllDone: () => void;
 }) {
   const [index, setIndex] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
   const { isRecording, start, stop } = useRecorder(stream);
-  const [phase, setPhase] = useState<'asking' | 'recording' | 'uploading'>('asking');
+  const [phase, setPhase] = useState<'loading' | 'asking' | 'recording' | 'uploading'>('loading');
 
-  // 질문이 바뀔 때마다: 면접관이 질문을 "말하는" 시간 대기 → 녹화 시작
-  // TODO: 실제 TTS 붙이면 <audio> onEnded 이벤트로 이 setTimeout 교체
+  // 질문이 바뀔 때마다: 백엔드(Claude API)에서 다음 질문을 받아옴
   useEffect(() => {
-    setPhase('asking');
-    const timer = setTimeout(() => {
-      setPhase('recording');
-      start();
-    }, 2200);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    setPhase('loading');
+
+    getNextQuestion(tier, askedQuestions)
+      .then(({ question }) => {
+        if (cancelled) return;
+        setCurrentQuestion(question);
+        setAskedQuestions((prev) => [...prev, question]);
+        setPhase('asking');
+      })
+      .catch(() => {
+        // 백엔드 연결 실패 시 고정 질문 리스트로 폴백 — 화면 흐름은 항상 유지
+        if (cancelled) return;
+        const fallback = QUESTION_BANK[tier][index % QUESTION_BANK[tier].length];
+        setCurrentQuestion(fallback);
+        setAskedQuestions((prev) => [...prev, fallback]);
+        setPhase('asking');
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  const isLast = index === questions.length - 1;
+  const handleAskingEnded = () => {
+    setPhase('recording');
+    start();
+  };
+
+  const isLast = index === TOTAL_QUESTIONS - 1;
 
   const handleFinish = async () => {
     const blob = await stop();
@@ -262,16 +281,38 @@ function QuestionView({
 
   return (
     <Stack align="center" gap={20} ta="center" style={{ paddingTop: 40 }}>
-      <InterviewerAvatar />
+      {phase === 'loading' ? (
+        <Box
+          style={{
+            width: 320,
+            height: 240,
+            borderRadius: 16,
+            border: '1px solid var(--rb-line-strong)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Loader size="sm" color="brand" />
+        </Box>
+      ) : (
+        <InterviewerAvatar key={index} onEnded={handleAskingEnded} />
+      )}
 
       <Stack gap={6}>
         <Text fz={12} c="var(--rb-ink-faint)">
-          질문 {index + 1} / {questions.length}
+          질문 {index + 1} / {TOTAL_QUESTIONS}
         </Text>
-        <Text fz={17} fw={600} style={{ maxWidth: 360 }}>
-          {questions[index]}
+        <Text fz={17} fw={600} style={{ maxWidth: 360, minHeight: 26 }}>
+          {phase === 'loading' ? '' : currentQuestion}
         </Text>
       </Stack>
+
+      {phase === 'loading' && (
+        <Text fz={12} c="var(--rb-ink-faint)">
+          질문을 준비하고 있어요…
+        </Text>
+      )}
 
       {phase === 'asking' && (
         <Text fz={12} c="var(--rb-ink-faint)">
@@ -305,7 +346,6 @@ function QuestionView({
       >
         {isLast ? '답변 완료하고 마치기' : '답변 완료'}
       </Button>
-      {/* 버튼은 asking 단계에서 자동으로 비활성 상태를 유지함 */}
 
       <Anchor fz={12} c="var(--rb-ink-faint)">
         잠깐 쉬기
@@ -364,7 +404,7 @@ export default function InterviewStage() {
         {step === 'question' && tier && (
           <QuestionView
             stream={media.stream}
-            questions={QUESTION_BANK[tier.tier]}
+            tier={tier.tier}
             onAllDone={() => setStep('result')}
           />
         )}
