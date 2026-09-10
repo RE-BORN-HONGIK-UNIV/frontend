@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { uploadAnswer } from '@/features/interview/api';
+import { getAnxietyScore, getTier, QUESTION_BANK, type TierInfo } from '@/features/interview/difficulty';
 
 type Step = 'intro' | 'test' | 'warmup' | 'question' | 'result';
 
@@ -140,6 +141,7 @@ function MediaTestViewInner({
   );
 }
 
+/* ── 예열 질문 화면 ───────────────────────────────────────── */
 function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: () => void }) {
   const { isRecording, start, stop } = useRecorder(stream);
   const [phase, setPhase] = useState<'recording' | 'uploading' | 'done'>('recording');
@@ -218,10 +220,128 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
   );
 }
 
+/* ── 본 질문 화면 ─────────────────────────────────────────── */
+function QuestionView({
+  stream,
+  questions,
+  onAllDone,
+}: {
+  stream: MediaStream | null;
+  questions: string[];
+  onAllDone: () => void;
+}) {
+  const [index, setIndex] = useState(0);
+  const { isRecording, start, stop } = useRecorder(stream);
+  const [phase, setPhase] = useState<'recording' | 'uploading'>('recording');
+
+  // 질문이 바뀔 때마다 새로 녹화 시작
+  useEffect(() => {
+    setPhase('recording');
+    start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  const isLast = index === questions.length - 1;
+
+  const handleFinish = async () => {
+    const blob = await stop();
+    if (!blob) return;
+    setPhase('uploading');
+    await uploadAnswer(blob);
+
+    if (isLast) {
+      onAllDone();
+    } else {
+      setIndex((i) => i + 1);
+    }
+  };
+
+  return (
+    <Stack align="center" gap={20} ta="center" style={{ paddingTop: 40 }}>
+      <Box
+        style={{
+          width: 96,
+          height: 96,
+          borderRadius: '50%',
+          background: 'var(--rb-surface)',
+          border: '1.5px dashed var(--rb-line-strong)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text fz={36}>🙂</Text>
+      </Box>
+
+      <Stack gap={6}>
+        <Text fz={12} c="var(--rb-ink-faint)">
+          질문 {index + 1} / {questions.length}
+        </Text>
+        <Text fz={17} fw={600} style={{ maxWidth: 360 }}>
+          {questions[index]}
+        </Text>
+      </Stack>
+
+      {phase === 'recording' && isRecording && (
+        <Group gap={6}>
+          <Box style={{ width: 8, height: 8, borderRadius: '50%', background: '#e03131' }} />
+          <Text fz={12} c="var(--rb-ink-soft)">
+            답변을 이어가세요
+          </Text>
+        </Group>
+      )}
+
+      {phase === 'uploading' && (
+        <Group gap={8}>
+          <Loader size="sm" color="brand" />
+          <Text fz={13} c="var(--rb-ink-soft)">
+            답변을 저장하는 중이에요…
+          </Text>
+        </Group>
+      )}
+
+      <Button
+        color="brand"
+        radius="md"
+        onClick={handleFinish}
+        disabled={phase !== 'recording'}
+      >
+        {isLast ? '답변 완료하고 마치기' : '답변 완료'}
+      </Button>
+
+      <Anchor fz={12} c="var(--rb-ink-faint)">
+        잠깐 쉬기
+      </Anchor>
+    </Stack>
+  );
+}
+
+/* ── 결과 화면 (임시) ─────────────────────────────────────── */
+function ResultView() {
+  return (
+    <Stack align="center" gap={10} ta="center" style={{ paddingTop: 60 }}>
+      <Text fz={17} fw={600}>
+        수고하셨어요!
+      </Text>
+      <Text fz={13} c="var(--rb-ink-soft)" style={{ maxWidth: 320, lineHeight: 1.6 }}>
+        오늘 연습한 내용을 정리하고 있어요. 결과 화면은 다음 단계에서 만들 예정이에요.
+      </Text>
+    </Stack>
+  );
+}
+
 /* ── 페이지 ──────────────────────────────────────────────── */
 export default function InterviewStage() {
   const [step, setStep] = useState<Step>('intro');
+  const [tier, setTier] = useState<TierInfo | null>(null);
   const media = useMediaPreview(); // intro 넘어가면서부터 계속 살아있게 최상위에서 관리
+
+  const handleWarmupDone = async () => {
+    // TODO: Stage1/2 연동 전까지는 mock 점수. 연동되면 getAnxietyScore() 내부만 교체하면 됨.
+    const score = await getAnxietyScore();
+    setTier(getTier(score));
+    setStep('question');
+  };
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
@@ -240,14 +360,18 @@ export default function InterviewStage() {
         )}
 
         {step === 'warmup' && (
-          <WarmupView stream={media.stream} onDone={() => setStep('question')} />
+          <WarmupView stream={media.stream} onDone={handleWarmupDone} />
         )}
 
-        {step === 'question' && (
-          <Text ta="center" c="var(--rb-ink-soft)" mt={40}>
-            (다음 단계: 본 질문 화면 — 아직 구현 전)
-          </Text>
+        {step === 'question' && tier && (
+          <QuestionView
+            stream={media.stream}
+            questions={QUESTION_BANK[tier.tier]}
+            onAllDone={() => setStep('result')}
+          />
         )}
+
+        {step === 'result' && <ResultView />}
       </Box>
     </Box>
   );
