@@ -5,6 +5,7 @@ import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { uploadAnswer } from '@/features/interview/api';
 import { getAnxietyScore, getTier, QUESTION_BANK, type TierInfo } from '@/features/interview/difficulty';
+import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
 
 type Step = 'intro' | 'test' | 'warmup' | 'question' | 'result';
 
@@ -144,10 +145,16 @@ function MediaTestViewInner({
 /* ── 예열 질문 화면 ───────────────────────────────────────── */
 function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: () => void }) {
   const { isRecording, start, stop } = useRecorder(stream);
-  const [phase, setPhase] = useState<'recording' | 'uploading' | 'done'>('recording');
+  const [phase, setPhase] = useState<'asking' | 'recording' | 'uploading' | 'done'>('asking');
 
   useEffect(() => {
-    start(); // 화면 뜨자마자 자동 녹화 시작
+    // 면접관이 질문을 "말하는" 동안 대기했다가 녹화 시작
+    // TODO: 실제 TTS 붙이면 <audio> onEnded 이벤트로 이 setTimeout 교체
+    const timer = setTimeout(() => {
+      setPhase('recording');
+      start();
+    }, 2200);
+    return () => clearTimeout(timer);
   }, [start]);
 
   const handleFinish = async () => {
@@ -161,21 +168,7 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
 
   return (
     <Stack align="center" gap={20} ta="center" style={{ paddingTop: 40 }}>
-      {/* 아바타 자리 - 면접관 역할, 셀프뷰는 여기선 숨김 */}
-      <Box
-        style={{
-          width: 96,
-          height: 96,
-          borderRadius: '50%',
-          background: 'var(--rb-surface)',
-          border: '1.5px dashed var(--rb-line-strong)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text fz={36}>🙂</Text>
-      </Box>
+      <InterviewerAvatar />
 
       <Stack gap={6}>
         <Text fz={12} c="var(--rb-ink-faint)">
@@ -202,6 +195,12 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
             답변을 저장하는 중이에요…
           </Text>
         </Group>
+      )}
+
+      {phase === 'asking' && (
+        <Text fz={12} c="var(--rb-ink-faint)">
+          질문을 듣고 있어요…
+        </Text>
       )}
 
       <Button
@@ -232,12 +231,17 @@ function QuestionView({
 }) {
   const [index, setIndex] = useState(0);
   const { isRecording, start, stop } = useRecorder(stream);
-  const [phase, setPhase] = useState<'recording' | 'uploading'>('recording');
+  const [phase, setPhase] = useState<'asking' | 'recording' | 'uploading'>('asking');
 
-  // 질문이 바뀔 때마다 새로 녹화 시작
+  // 질문이 바뀔 때마다: 면접관이 질문을 "말하는" 시간 대기 → 녹화 시작
+  // TODO: 실제 TTS 붙이면 <audio> onEnded 이벤트로 이 setTimeout 교체
   useEffect(() => {
-    setPhase('recording');
-    start();
+    setPhase('asking');
+    const timer = setTimeout(() => {
+      setPhase('recording');
+      start();
+    }, 2200);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
@@ -258,20 +262,7 @@ function QuestionView({
 
   return (
     <Stack align="center" gap={20} ta="center" style={{ paddingTop: 40 }}>
-      <Box
-        style={{
-          width: 96,
-          height: 96,
-          borderRadius: '50%',
-          background: 'var(--rb-surface)',
-          border: '1.5px dashed var(--rb-line-strong)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text fz={36}>🙂</Text>
-      </Box>
+      <InterviewerAvatar />
 
       <Stack gap={6}>
         <Text fz={12} c="var(--rb-ink-faint)">
@@ -281,6 +272,12 @@ function QuestionView({
           {questions[index]}
         </Text>
       </Stack>
+
+      {phase === 'asking' && (
+        <Text fz={12} c="var(--rb-ink-faint)">
+          질문을 듣고 있어요…
+        </Text>
+      )}
 
       {phase === 'recording' && isRecording && (
         <Group gap={6}>
@@ -308,6 +305,7 @@ function QuestionView({
       >
         {isLast ? '답변 완료하고 마치기' : '답변 완료'}
       </Button>
+      {/* 버튼은 asking 단계에서 자동으로 비활성 상태를 유지함 */}
 
       <Anchor fz={12} c="var(--rb-ink-faint)">
         잠깐 쉬기
