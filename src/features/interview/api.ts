@@ -29,6 +29,25 @@ export async function getNextQuestion(
   return res.json();
 }
 
+/**
+ * 질문 텍스트를 TTS 음성(mp3)으로 변환해서, 재생 가능한 object URL로 반환.
+ * 실패하면 null (컴포넌트 쪽에서 null이면 바로 다음 단계로 넘어가게 처리되어 있음).
+ */
+export async function getSpeechAudioUrl(text: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/interview/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
 // 지금은 백엔드 엔드포인트가 없어서 가짜로 동작함.
 // 나중에 실제 API 완성되면 이 함수 내부만 fetch로 교체하면 됨.
 export async function uploadAnswer(blob: Blob): Promise<{ ok: true }> {

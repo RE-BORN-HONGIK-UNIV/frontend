@@ -4,35 +4,46 @@ import { Box, Text } from '@mantine/core';
 interface InterviewerAvatarProps {
   width?: number;
   height?: number;
+  audioUrl?: string | null;
   onEnded?: () => void;
 }
 
 /**
- * 면접관 아바타 — 화상면접 창처럼 네모난 프레임 안에서
- * talking.mp4를 소리와 함께 재생 (loop 아님, 끝까지 재생 후 onEnded 호출).
+ * 면접관 아바타 — 화상면접 창 스타일.
+ * 영상(talking.mp4)은 TTS 음성(audioUrl)이 재생되는 동안에만 같이 움직이고,
+ * 음성이 끝나면 영상도 같이 멈춤. audioUrl 재생이 끝나면 onEnded 호출.
  *
- * 사용하는 쪽에서 key={질문index} 를 줘서 컴포넌트를 강제로 다시 마운트하면
- * 질문 바뀔 때마다 영상이 처음부터 다시 재생됨.
- *
- * TODO: 지금은 talking.mp4에 원래 녹음된 음성이 그대로 나옴 (질문 내용과 무관).
- * 나중에 API+TTS 연동하면 실제 질문 텍스트를 읽어주는 음성으로 교체 예정.
+ * audioUrl이 없으면(TTS 실패 등) 영상은 멈춘 채로 두고 즉시 onEnded 호출
+ * (화면이 멈추지 않도록).
  *
  * 필요한 파일 (public 폴더 기준):
  *   /interviewer/talking.mp4
  */
-export function InterviewerAvatar({ width = 320, height = 240, onEnded }: InterviewerAvatarProps) {
+export function InterviewerAvatar({ width = 320, height = 240, audioUrl, onEnded }: InterviewerAvatarProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.play().catch(() => {
-      // 소리 있는 자동재생이 브라우저 정책에 막힌 경우 — 무음으로라도 재생해서
-      // onEnded가 영원히 안 오는(화면이 멈추는) 사고를 막는다.
-      v.muted = true;
-      v.play().catch(() => {});
+    if (!audioUrl) {
+      // TTS 실패/없음 — 영상은 멈춘 채로 두고, 흐름만 이어지게
+      onEnded?.();
+      return;
+    }
+    audioRef.current?.play().catch(() => {
+      // 자동재생 막힌 경우에도 흐름은 이어지게
+      onEnded?.();
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUrl]);
+
+  const handleAudioPlay = () => {
+    videoRef.current?.play().catch(() => {});
+  };
+
+  const handleAudioEnded = () => {
+    videoRef.current?.pause(); // 질문 끝나면 영상도 같이 멈춤
+    onEnded?.();
+  };
 
   return (
     <Box
@@ -50,15 +61,19 @@ export function InterviewerAvatar({ width = 320, height = 240, onEnded }: Interv
       <video
         ref={videoRef}
         src="/interviewer/talking.mp4"
-        autoPlay
+        muted
+        loop
         playsInline
-        onEnded={onEnded}
         style={{
           width: '100%',
           height: '100%',
           objectFit: 'cover',
         }}
       />
+
+      {audioUrl && (
+        <audio ref={audioRef} src={audioUrl} onPlay={handleAudioPlay} onEnded={handleAudioEnded} />
+      )}
 
       <Box
         style={{

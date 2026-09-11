@@ -3,7 +3,7 @@ import { Alert, Anchor, Box, Button, Group, Loader, Stack, Text } from '@mantine
 import { PageHeader } from '@/components/PageHeader';
 import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import { useRecorder } from '@/features/interview/useRecorder';
-import { uploadAnswer, getNextQuestion } from '@/features/interview/api';
+import { uploadAnswer, getNextQuestion, getSpeechAudioUrl } from '@/features/interview/api';
 import { getAnxietyScore, getTier, QUESTION_BANK, type TierInfo } from '@/features/interview/difficulty';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
 
@@ -142,10 +142,20 @@ function MediaTestViewInner({
   );
 }
 
+const WARMUP_QUESTION = '오늘 컨디션은 어때요?';
+
 /* ── 예열 질문 화면 ───────────────────────────────────────── */
 function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: () => void }) {
   const { isRecording, start, stop } = useRecorder(stream);
-  const [phase, setPhase] = useState<'asking' | 'recording' | 'uploading' | 'done'>('asking');
+  const [phase, setPhase] = useState<'loading' | 'asking' | 'recording' | 'uploading' | 'done'>('loading');
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSpeechAudioUrl(WARMUP_QUESTION).then((url) => {
+      setAudioUrl(url);
+      setPhase('asking');
+    });
+  }, []);
 
   const handleAskingEnded = () => {
     setPhase('recording');
@@ -163,16 +173,44 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
 
   return (
     <Stack align="center" gap={20} ta="center" style={{ paddingTop: 40 }}>
-      <InterviewerAvatar onEnded={handleAskingEnded} />
+      {phase === 'loading' ? (
+        <Box
+          style={{
+            width: 320,
+            height: 240,
+            borderRadius: 16,
+            border: '1px solid var(--rb-line-strong)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Loader size="sm" color="brand" />
+        </Box>
+      ) : (
+        <InterviewerAvatar audioUrl={audioUrl} onEnded={handleAskingEnded} />
+      )}
 
       <Stack gap={6}>
         <Text fz={12} c="var(--rb-ink-faint)">
           예열 질문 · 점수에 포함되지 않아요
         </Text>
         <Text fz={17} fw={600}>
-          오늘 컨디션은 어때요?
+          {WARMUP_QUESTION}
         </Text>
       </Stack>
+
+      {phase === 'loading' && (
+        <Text fz={12} c="var(--rb-ink-faint)">
+          질문을 준비하고 있어요…
+        </Text>
+      )}
+
+      {phase === 'asking' && (
+        <Text fz={12} c="var(--rb-ink-faint)">
+          질문을 듣고 있어요…
+        </Text>
+      )}
 
       {phase === 'recording' && isRecording && (
         <Group gap={6}>
@@ -190,12 +228,6 @@ function WarmupView({ stream, onDone }: { stream: MediaStream | null; onDone: ()
             답변을 저장하는 중이에요…
           </Text>
         </Group>
-      )}
-
-      {phase === 'asking' && (
-        <Text fz={12} c="var(--rb-ink-faint)">
-          질문을 듣고 있어요…
-        </Text>
       )}
 
       <Button
@@ -228,29 +260,33 @@ function QuestionView({
 }) {
   const [index, setIndex] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
   const { isRecording, start, stop } = useRecorder(stream);
   const [phase, setPhase] = useState<'loading' | 'asking' | 'recording' | 'uploading'>('loading');
 
-  // 질문이 바뀔 때마다: 백엔드(Claude API)에서 다음 질문을 받아옴
+  // 질문이 바뀔 때마다: 백엔드(Claude API)에서 다음 질문 받아오고 → TTS 음성까지 받아옴
   useEffect(() => {
     let cancelled = false;
     setPhase('loading');
+    setAudioUrl(null);
+
+    const applyQuestion = async (question: string) => {
+      if (cancelled) return;
+      setCurrentQuestion(question);
+      setAskedQuestions((prev) => [...prev, question]);
+      const url = await getSpeechAudioUrl(question);
+      if (cancelled) return;
+      setAudioUrl(url);
+      setPhase('asking');
+    };
 
     getNextQuestion(tier, askedQuestions)
-      .then(({ question }) => {
-        if (cancelled) return;
-        setCurrentQuestion(question);
-        setAskedQuestions((prev) => [...prev, question]);
-        setPhase('asking');
-      })
+      .then(({ question }) => applyQuestion(question))
       .catch(() => {
         // 백엔드 연결 실패 시 고정 질문 리스트로 폴백 — 화면 흐름은 항상 유지
-        if (cancelled) return;
         const fallback = QUESTION_BANK[tier][index % QUESTION_BANK[tier].length];
-        setCurrentQuestion(fallback);
-        setAskedQuestions((prev) => [...prev, fallback]);
-        setPhase('asking');
+        applyQuestion(fallback);
       });
 
     return () => {
@@ -296,7 +332,7 @@ function QuestionView({
           <Loader size="sm" color="brand" />
         </Box>
       ) : (
-        <InterviewerAvatar key={index} onEnded={handleAskingEnded} />
+        <InterviewerAvatar key={index} audioUrl={audioUrl} onEnded={handleAskingEnded} />
       )}
 
       <Stack gap={6}>
