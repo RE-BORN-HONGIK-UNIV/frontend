@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Anchor,
@@ -19,7 +19,7 @@ import type { GazeBlinkResult } from '@/lib/api/types';
 import { COMPARISON_BUILDERS, extractMetrics } from '@/features/face/comparison';
 import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/constants';
 import { useAnalyzeGazeBlink } from '@/features/face/queries';
-import { localProgress, type Stage2Entry } from '@/features/progress/localProgress';
+import type { Stage2Entry } from '@/features/progress/localProgress';
 
 const MAXW = 720;
 
@@ -120,15 +120,9 @@ function ResultView({
 
 export default function FaceStage() {
   const [file, setFile] = useState<File | null>(null);
-  const [previous, setPrevious] = useState<Stage2Entry | null>(null);
   const analyze = useAnalyzeGazeBlink();
   const result = analyze.data ?? null;
-
-  useEffect(() => {
-    if (!result) return;
-    const { previous: prev } = localProgress.appendStage2Result(extractMetrics(result));
-    setPrevious(prev);
-  }, [result]);
+  const previous: Stage2Entry | null = result?.previous ?? null;
 
   const reset = () => {
     setFile(null);

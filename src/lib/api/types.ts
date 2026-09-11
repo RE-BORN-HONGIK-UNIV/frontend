@@ -63,6 +63,14 @@ export interface GazeBlinkResult {
     /** 미소·긴장 순간만 이어붙인 짧은 mp4 (data URL), 없으면 null */
     highlight: string | null;
   };
+  /** 로그인한 유저의 직전 2단계 기록 (서버 DB 조회) — 처음이면 null */
+  previous: {
+    at: string;
+    blinkRatePerMin: number;
+    avgFixationSec: number;
+    smileRatio: number;
+    tensionRatio: number;
+  } | null;
 }
 
 export interface LoginResponse {

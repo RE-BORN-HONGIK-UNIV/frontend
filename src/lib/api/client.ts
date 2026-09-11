@@ -1,3 +1,4 @@
+import { auth } from '@/lib/auth';
 import type {
   AnalyzeResult,
   FeedbackResponse,
@@ -25,6 +26,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}),
       ...init?.headers,
     },
   });
