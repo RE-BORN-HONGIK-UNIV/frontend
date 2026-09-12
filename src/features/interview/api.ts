@@ -12,14 +12,20 @@ export interface NextQuestionResponse {
  * Step3 · 다음 면접 질문을 백엔드(Claude API 연동)로부터 받아온다.
  * previousQuestions를 같이 보내면 같은 질문이 반복되지 않게 서버에서 걸러줌.
  */
+
 export async function getNextQuestion(
   tier: DifficultyTier,
   previousQuestions: string[],
+  previousAnswer?: string,
 ): Promise<NextQuestionResponse> {
   const res = await fetch(`${API_BASE_URL}/interview/next-question`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tier, previous_questions: previousQuestions }),
+    body: JSON.stringify({
+      tier,
+      previous_questions: previousQuestions,
+      previous_answer: previousAnswer,
+    }),
   });
 
   if (!res.ok) {
@@ -27,6 +33,26 @@ export async function getNextQuestion(
   }
 
   return res.json();
+}
+
+// 답변 영상을 STT로 텍스트 변환
+// 실패하거나 whisper 없으면 빈 문자열 반환 (꼬리질문 없이 그냥 진행되게)
+export async function transcribeAnswer(blob: Blob): Promise<string> {
+  try {
+    const formData = new FormData();
+    formData.append('file', blob, 'answer.webm');
+
+    const res = await fetch(`${API_BASE_URL}/interview/transcribe`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) return '';
+
+    const data = await res.json();
+    return data.text ?? '';
+  } catch {
+    return '';
+  }
 }
 
 /**
