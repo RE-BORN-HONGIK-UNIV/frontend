@@ -147,7 +147,7 @@ const WARMUP_QUESTION = '오늘 컨디션은 어때요?';
 /* ── 녹음 중 표시 (깜빡이는 점 + 실시간 마이크 음량 바) ───────────── */
 function RecordingIndicator({ stream, active }: { stream: MediaStream | null; active: boolean }) {
   const [level, setLevel] = useState(0);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!active || !stream) {
