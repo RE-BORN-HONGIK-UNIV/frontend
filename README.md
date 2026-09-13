@@ -40,9 +40,10 @@ src/
     auth/      로그인·회원가입 mutation
     voice/     1단계 음성 분석 — 상수, 폴백 피드백, 쿼리, 레이더 차트, Step1 LLM 코칭
     face/      2단계 표정·시선 분석 — 상수, 지표 비교 텍스트, 쿼리
+    interview/ 3단계 모의 면접 — 면접관 아바타, TTS/STT 연동, 난이도(tier) 로직, 카메라·마이크 녹화
     progress/  1단계 진행 상태 (localStorage). 2단계는 백엔드 DB(Stage2Result)로 이전됨 — backend/DB_DESIGN.md 참고
   lib/         api/{client,types}, auth.ts
-  pages/       Landing, Login, Signup, Dashboard, VoiceStage, FaceStage
+  pages/       Landing, Login, Signup, Dashboard, VoiceStage, FaceStage, InterviewStage
   theme.ts, index.css
 ```
 
@@ -52,7 +53,7 @@ src/
 - **Dashboard** `/dashboard` — 3단계 진행 현황 (인증 필요)
 - **VoiceStage** `/voice` — 1단계 음성 정밀 진단: 업로드 → `/analyze` → 오각형 레이더 + AI 코칭 (인증 필요)
 - **FaceStage** `/face` — 2단계 표정·시선 분석: 영상 업로드 → `/analyze/gaze-blink` → 깜빡임·시선·표정 지표 + 하이라이트 클립 + 지난 세션 대비 비교 (인증 필요)
-- 3단계(모의 면접)는 미구현 — 설계 논의 중
+- **InterviewStage** `/interview` — 3단계 모의 면접: 아바타 인사 → 카메라/마이크 예열 → 난이도별 질문(TTS) → 답변(STT) → 꼬리질문 → 대화 기록
 
 ## 환경변수
 
