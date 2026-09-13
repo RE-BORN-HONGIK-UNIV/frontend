@@ -4,7 +4,8 @@ const prefersReducedMotion =
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * Fades + slides children up into place once they scroll into view.
+ * Fades + slides children up into place whenever they scroll into view —
+ * replays every time (scroll away and back), not just on first mount.
  * Wrap any section/card with this instead of rendering it directly.
  */
 export function Reveal({
@@ -27,12 +28,7 @@ export function Reveal({
     if (!el) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
-      },
+      ([entry]) => setVisible(entry.isIntersecting),
       { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
     );
     observer.observe(el);

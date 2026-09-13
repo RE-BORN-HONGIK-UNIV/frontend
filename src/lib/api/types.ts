@@ -86,3 +86,27 @@ export interface SignupPayload {
   birthdate?: string;
   terms_agreed: boolean;
 }
+
+/** '이야기' 자유 게시판 — 목록에 쓰는 요약 shape. */
+export interface PostSummary {
+  id: number;
+  title: string;
+  content: string;
+  author: string;
+  created_at: string;
+  comment_count: number;
+  is_own: boolean;
+}
+
+export interface CommentItem {
+  id: number;
+  content: string;
+  author: string;
+  created_at: string;
+  is_own: boolean;
+}
+
+/** GET /community/posts/<id> — 상세 화면(댓글 포함). */
+export interface PostDetail extends PostSummary {
+  comments: CommentItem[];
+}
