@@ -65,6 +65,26 @@ a {
   }
 }
 
+/* ── 페이지 전환: 라우트 바뀔 때 새 화면이 살짝 아래서 페이드인 ── */
+@keyframes rbPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rb-page-enter {
+  animation: rbPageIn 320ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-page-enter {
+    animation: none;
+  }
+}
+
 /* ── logo entry animation: ring draws, then the dot glides in ── */
 @keyframes rbDraw {
   to {

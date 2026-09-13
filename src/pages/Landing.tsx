@@ -97,10 +97,7 @@ function Nav() {
     >
       <RebornWordmark size={21} animate={false} />
       <Group gap={32} visibleFrom="sm">
-        <Anchor href="#steps" c="var(--rb-ink-soft)" fz={14} underline="never">
-          3단계
-        </Anchor>
-        <Anchor href="#why" c="var(--rb-ink-soft)" fz={14} underline="never">
+        <Anchor component={Link} to="/community" c="var(--rb-ink-soft)" fz={14} underline="never">
           이야기
         </Anchor>
         <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
