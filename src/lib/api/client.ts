@@ -2,9 +2,12 @@ import { auth } from '@/lib/auth';
 import { mockApi } from './mock';
 import type {
   AnalyzeResult,
+  CommentItem,
   FeedbackResponse,
   GazeBlinkResult,
   LoginResponse,
+  PostDetail,
+  PostSummary,
   SignupPayload,
 } from './types';
 
@@ -82,4 +85,32 @@ export const api = {
     fd.append('file', file);
     return request<GazeBlinkResult>('/analyze/gaze-blink', { method: 'POST', body: fd });
   },
+
+  // ── '이야기' 자유 게시판 ──────────────────────────────────────
+  listPosts: () =>
+    USE_MOCK ? mockApi.listPosts() : request<{ posts: PostSummary[] }>('/community/posts'),
+
+  createPost: (title: string, content: string) =>
+    USE_MOCK
+      ? mockApi.createPost(title, content)
+      : request<PostSummary>('/community/posts', {
+          method: 'POST',
+          body: JSON.stringify({ title, content }),
+        }),
+
+  getPost: (id: number) =>
+    USE_MOCK ? mockApi.getPost(id) : request<PostDetail>(`/community/posts/${id}`),
+
+  deletePost: (id: number) =>
+    USE_MOCK
+      ? mockApi.deletePost(id)
+      : request<{ message: string }>(`/community/posts/${id}`, { method: 'DELETE' }),
+
+  createComment: (postId: number, content: string) =>
+    USE_MOCK
+      ? mockApi.createComment(postId, content)
+      : request<CommentItem>(`/community/posts/${postId}/comments`, {
+          method: 'POST',
+          body: JSON.stringify({ content }),
+        }),
 };

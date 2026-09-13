@@ -9,6 +9,8 @@ import FaceStage from '@/pages/FaceStage';
 import Dashboard from '@/pages/Dashboard';
 import { NotFound } from '@/pages/stubs';
 import InterviewStage from '@/pages/InterviewStage';
+import CommunityPage from '@/pages/CommunityPage';
+import CommunityPostPage from '@/pages/CommunityPostPage';
 
 export const router = createBrowserRouter([
   {
@@ -41,12 +43,24 @@ export const router = createBrowserRouter([
           </PrivateRoute>
         ),
       },
-            {
+      {
         path: '/interview',
+        element: <InterviewStage />,
+      },
+      {
+        path: '/community',
         element: (
-          
-            <InterviewStage />
-          
+          <PrivateRoute>
+            <CommunityPage />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: '/community/:id',
+        element: (
+          <PrivateRoute>
+            <CommunityPostPage />
+          </PrivateRoute>
         ),
       },
       { path: '*', element: <NotFound /> },
