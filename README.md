@@ -20,12 +20,15 @@ npm run dev        # http://localhost:3000 (백엔드로 /api·/analyze·/health
 ```
 
 백엔드(`../backend`, Flask :5000)를 함께 띄워야 로그인·분석이 동작합니다.
+백엔드는 `backend/.env.example`을 참고해 `.env`를 만들어야 실행됩니다 (DB 접속정보·SECRET_KEY 필수, 없으면 서버가 바로 종료됨).
 
 ```bash
 npm run build      # tsc --noEmit + vite build
 npm run lint
 npm run typecheck
 ```
+
+push/PR 시 GitHub Actions에서 위 세 개(lint·typecheck·build)를 자동으로 확인합니다 (`.github/workflows/ci.yml`).
 
 ## 구조
 
@@ -36,9 +39,11 @@ src/
   features/
     auth/      로그인·회원가입 mutation
     voice/     1단계 음성 분석 — 상수, 폴백 피드백, 쿼리, 레이더 차트, Step1 LLM 코칭
-    progress/  단계 진행 상태 (localStorage — 추후 백엔드 이전 예정)
+    face/      2단계 표정·시선 분석 — 상수, 지표 비교 텍스트, 쿼리
+    interview/ 3단계 모의 면접 — 면접관 아바타, TTS/STT 연동, 난이도(tier) 로직, 카메라·마이크 녹화
+    progress/  1단계 진행 상태 (localStorage). 2단계는 백엔드 DB(Stage2Result)로 이전됨 — backend/DB_DESIGN.md 참고
   lib/         api/{client,types}, auth.ts
-  pages/       Landing, Login, Signup, Dashboard, VoiceStage
+  pages/       Landing, Login, Signup, Dashboard, VoiceStage, FaceStage, InterviewStage
   theme.ts, index.css
 ```
 
@@ -47,7 +52,8 @@ src/
 - **Landing** `/` · **Login** `/login` · **Signup** `/signup`
 - **Dashboard** `/dashboard` — 3단계 진행 현황 (인증 필요)
 - **VoiceStage** `/voice` — 1단계 음성 정밀 진단: 업로드 → `/analyze` → 오각형 레이더 + AI 코칭 (인증 필요)
-- 2단계(표정·시선) / 3단계(모의 면접)는 미구현
+- **FaceStage** `/face` — 2단계 표정·시선 분석: 영상 업로드 → `/analyze/gaze-blink` → 깜빡임·시선·표정 지표 + 하이라이트 클립 + 지난 세션 대비 비교 (인증 필요)
+- **InterviewStage** `/interview` — 3단계 모의 면접: 아바타 인사 → 카메라/마이크 예열 → 난이도별 질문(TTS) → 답변(STT) → 꼬리질문 → 대화 기록
 
 ## 환경변수
 
