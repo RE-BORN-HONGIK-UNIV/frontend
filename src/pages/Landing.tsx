@@ -266,7 +266,7 @@ function Steps() {
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={20}>
           {STEPS.map((s, i) => (
             <Reveal key={s.tag} delay={i * 90}>
-              <Stack gap={14} style={card}>
+              <Stack gap={14} style={card} className="rb-card-hover">
                 <Group justify="space-between">
                   <span
                     style={{

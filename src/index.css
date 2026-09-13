@@ -48,6 +48,23 @@ a {
   text-decoration: none;
 }
 
+/* ── 카드 hover: 살짝 떠오르며 그림자 커짐 ── */
+.rb-card-hover {
+  transition: transform 180ms ease-out, box-shadow 180ms ease-out;
+}
+.rb-card-hover:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 4px 10px rgba(35, 40, 38, 0.06), 0 22px 40px -18px rgba(35, 40, 38, 0.28);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-card-hover {
+    transition: none;
+  }
+  .rb-card-hover:hover {
+    transform: none;
+  }
+}
+
 /* ── logo entry animation: ring draws, then the dot glides in ── */
 @keyframes rbDraw {
   to {
