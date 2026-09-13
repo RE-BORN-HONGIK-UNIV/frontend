@@ -67,7 +67,8 @@ function WriteModal({ opened, onClose }: { opened: boolean; onClose: () => void 
 }
 
 export default function CommunityPage() {
-  const { data, isLoading } = usePosts();
+  const { data, isLoading, isError } = usePosts();
+  const posts = data?.posts ?? [];
   const [writeOpen, setWriteOpen] = useState(false);
 
   return (
@@ -92,7 +93,15 @@ export default function CommunityPage() {
           </Group>
         )}
 
-        {!isLoading && data?.posts.length === 0 && (
+        {isError && (
+          <Stack align="center" py={60} gap={6}>
+            <Text fz={14} c="var(--rb-ink-soft)">
+              이야기를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+            </Text>
+          </Stack>
+        )}
+
+        {!isLoading && !isError && posts.length === 0 && (
           <Stack align="center" py={60} gap={6}>
             <Text fz={14} c="var(--rb-ink-soft)">
               아직 올라온 이야기가 없어요. 첫 이야기를 남겨보세요.
@@ -101,7 +110,7 @@ export default function CommunityPage() {
         )}
 
         <Stack gap={12}>
-          {data?.posts.map((p) => (
+          {posts.map((p) => (
             <Box
               key={p.id}
               component={Link}

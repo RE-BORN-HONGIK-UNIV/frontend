@@ -14,6 +14,7 @@ export default defineConfig({
       '/api': 'http://localhost:5000',
       '/analyze': 'http://localhost:5000',
       '/health': 'http://localhost:5000',
+      '/community/posts': 'http://localhost:5000',
     },
   },
 });
