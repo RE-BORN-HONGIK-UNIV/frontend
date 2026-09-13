@@ -22,6 +22,10 @@ npm run dev        # http://localhost:3000 (백엔드로 /api·/analyze·/health
 백엔드(`../backend`, Flask :5000)를 함께 띄워야 로그인·분석이 동작합니다.
 백엔드는 `backend/.env.example`을 참고해 `.env`를 만들어야 실행됩니다 (DB 접속정보·SECRET_KEY 필수, 없으면 서버가 바로 종료됨).
 
+백엔드 없이 프론트만 확인하고 싶으면 `.env.example`을 `.env`로 복사한 뒤 `VITE_USE_MOCK_API=true`로 바꾸세요.
+로그인·1단계 음성 분석·2단계 표정/시선 분석이 전부 가짜 응답(`lib/api/mock.ts`)으로 동작합니다
+(3단계 면접은 애초에 백엔드 없이도 화면 흐름을 확인할 수 있게 만들어져 있어요 — `features/interview/difficulty.ts`의 `getAnxietyScore`/`QUESTION_BANK` 참고).
+
 ```bash
 npm run build      # tsc --noEmit + vite build
 npm run lint
@@ -58,3 +62,4 @@ src/
 ## 환경변수
 
 - `VITE_API_BASE_URL` — 배포 빌드에서 백엔드 주소. 개발 시엔 비워두면 Vite 프록시가 처리.
+- `VITE_USE_MOCK_API` — `true`면 백엔드 없이 프론트만 실행 (위 "개발" 섹션 참고).
