@@ -8,6 +8,7 @@ import VoiceStage from '@/pages/VoiceStage';
 import FaceStage from '@/pages/FaceStage';
 import Dashboard from '@/pages/Dashboard';
 import { NotFound } from '@/pages/stubs';
+import InterviewStage from '@/pages/InterviewStage';
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +39,14 @@ export const router = createBrowserRouter([
           <PrivateRoute>
             <FaceStage />
           </PrivateRoute>
+        ),
+      },
+            {
+        path: '/interview',
+        element: (
+          
+            <InterviewStage />
+          
         ),
       },
       { path: '*', element: <NotFound /> },
