@@ -182,3 +182,119 @@ a {
     transform: none;
   }
 }
+
+/* ── LoadingBar 컴포넌트 — 사용자가 준 uiverse.io 스타일 로더를 브랜드
+   그린 톤으로 재배색. 클래스/keyframe 이름은 rb- 접두사로 충돌 방지. ── */
+.rb-loadingbar {
+  width: 80px;
+  height: 50px;
+  position: relative;
+}
+.rb-loadingbar-text {
+  position: absolute;
+  top: 0;
+  padding: 0;
+  margin: 0;
+  color: var(--rb-primary-strong);
+  animation: rbLoadingText 3.5s ease both infinite;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.rb-loadingbar-load {
+  background-color: var(--rb-primary);
+  border-radius: 50px;
+  display: block;
+  height: 16px;
+  width: 16px;
+  bottom: 0;
+  position: absolute;
+  transform: translateX(64px);
+  animation: rbLoadingBar 3.5s ease both infinite;
+}
+.rb-loadingbar-load::before {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  background-color: var(--rb-primary-light);
+  border-radius: inherit;
+  animation: rbLoadingBar2 3.5s ease both infinite;
+}
+@keyframes rbLoadingText {
+  0% {
+    letter-spacing: 1px;
+    transform: translateX(0px);
+  }
+  40% {
+    letter-spacing: 2px;
+    transform: translateX(26px);
+  }
+  80% {
+    letter-spacing: 1px;
+    transform: translateX(32px);
+  }
+  90% {
+    letter-spacing: 2px;
+    transform: translateX(0px);
+  }
+  100% {
+    letter-spacing: 1px;
+    transform: translateX(0px);
+  }
+}
+@keyframes rbLoadingBar {
+  0% {
+    width: 16px;
+    transform: translateX(0px);
+  }
+  40% {
+    width: 100%;
+    transform: translateX(0px);
+  }
+  80% {
+    width: 16px;
+    transform: translateX(64px);
+  }
+  90% {
+    width: 100%;
+    transform: translateX(0px);
+  }
+  100% {
+    width: 16px;
+    transform: translateX(0px);
+  }
+}
+@keyframes rbLoadingBar2 {
+  0% {
+    transform: translateX(0px);
+    width: 16px;
+  }
+  40% {
+    transform: translateX(0%);
+    width: 80%;
+  }
+  80% {
+    width: 100%;
+    transform: translateX(0px);
+  }
+  90% {
+    width: 80%;
+    transform: translateX(15px);
+  }
+  100% {
+    transform: translateX(0px);
+    width: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-loadingbar-text,
+  .rb-loadingbar-load,
+  .rb-loadingbar-load::before {
+    animation: none;
+  }
+  .rb-loadingbar-load {
+    width: 16px;
+    transform: translateX(32px);
+  }
+}

@@ -4,7 +4,7 @@ import {
   Box,
   Button,
   Group,
-  Loader,
+  LoadingBar,
   Modal,
   Stack,
   Text,
@@ -89,7 +89,7 @@ export default function CommunityPage() {
 
         {isLoading && (
           <Group justify="center" py={60}>
-            <Loader size="sm" color="brand" />
+            <LoadingBar />
           </Group>
         )}
 

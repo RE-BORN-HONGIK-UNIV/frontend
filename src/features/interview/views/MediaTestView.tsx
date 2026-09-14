@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Alert, Box, Button, Loader, Stack, Text } from '@/components/ui';
+import { Alert, Box, Button, LoadingBar, Stack, Text } from '@/components/ui';
 import type { useMediaPreview } from '@/features/interview/useMediaPreview';
 
 /** 카메라/마이크 테스트 화면. */
@@ -41,11 +41,8 @@ export function MediaTestView({
         }}
       >
         {status === 'requesting' && (
-          <Stack align="center" justify="center" style={{ height: '100%' }} gap={8}>
-            <Loader size="sm" color="brand" />
-            <Text fz={12} c="white">
-              카메라를 켜는 중이에요…
-            </Text>
+          <Stack align="center" justify="center" style={{ height: '100%' }}>
+            <LoadingBar label="카메라를 켜는 중" />
           </Stack>
         )}
         <video

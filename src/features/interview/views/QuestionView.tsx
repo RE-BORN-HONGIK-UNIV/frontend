@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Anchor, Box, Button, Group, Loader, Stack, Text } from '@/components/ui';
+import { Anchor, Box, Button, LoadingBar, Stack, Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { uploadAnswer, getNextQuestion, getSpeechAudioUrl, transcribeAnswer } from '@/features/interview/api';
 import { QUESTION_BANK, type TierInfo } from '@/features/interview/difficulty';
@@ -110,7 +110,7 @@ export function QuestionView({
               justifyContent: 'center',
             }}
           >
-            <Loader size="sm" color="brand" />
+            <LoadingBar label="준비 중" />
           </Box>
         ) : (
           <InterviewerAvatar key={index} audioUrl={audioUrl} onEnded={handleAskingEnded} />
@@ -159,14 +159,7 @@ export function QuestionView({
 
       <RecordingIndicator stream={stream} active={phase === 'recording' && isRecording} />
 
-      {phase === 'uploading' && (
-        <Group gap={8}>
-          <Loader size="sm" color="brand" />
-          <Text fz={13} c="var(--rb-ink-soft)">
-            답변을 정리하는 중이에요…
-          </Text>
-        </Group>
-      )}
+      {phase === 'uploading' && <LoadingBar label="답변을 정리하는 중" />}
 
       <Button
         color="brand"

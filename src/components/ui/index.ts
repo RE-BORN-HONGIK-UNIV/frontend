@@ -9,6 +9,7 @@ export { Paper } from './Paper';
 export { Alert } from './Alert';
 export { Badge } from './Badge';
 export { Loader } from './Loader';
+export { LoadingBar } from './LoadingBar';
 export { Grid } from './Grid';
 export { SimpleGrid } from './SimpleGrid';
 export { TextInput } from './TextInput';

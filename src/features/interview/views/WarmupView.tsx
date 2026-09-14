@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Anchor, Box, Button, Group, Loader, Stack, Text } from '@/components/ui';
+import { Anchor, Box, Button, LoadingBar, Stack, Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { uploadAnswer, getSpeechAudioUrl } from '@/features/interview/api';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
@@ -48,7 +48,7 @@ export function WarmupView({ stream, onDone }: { stream: MediaStream | null; onD
             justifyContent: 'center',
           }}
         >
-          <Loader size="sm" color="brand" />
+          <LoadingBar label="준비 중" />
         </Box>
       ) : (
         <InterviewerAvatar audioUrl={audioUrl} onEnded={handleAskingEnded} />
@@ -77,14 +77,7 @@ export function WarmupView({ stream, onDone }: { stream: MediaStream | null; onD
 
       <RecordingIndicator stream={stream} active={phase === 'recording' && isRecording} />
 
-      {phase === 'uploading' && (
-        <Group gap={8}>
-          <Loader size="sm" color="brand" />
-          <Text fz={13} c="var(--rb-ink-soft)">
-            답변을 저장하는 중이에요…
-          </Text>
-        </Group>
-      )}
+      {phase === 'uploading' && <LoadingBar label="답변을 저장하는 중" />}
 
       <Button
         color="brand"

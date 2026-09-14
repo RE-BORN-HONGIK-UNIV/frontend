@@ -6,7 +6,7 @@ import {
   Button,
   Dropzone,
   Group,
-  Loader,
+  LoadingBar,
   Paper,
   SegmentedControl,
   SimpleGrid,
@@ -195,12 +195,12 @@ export default function FaceStage() {
               )}
 
               {analyze.isPending && (
-                <Group mt={14} gap={10} justify="center">
-                  <Loader size="sm" color="brand" />
-                  <Text fz={13} c="var(--rb-ink-soft)">
-                    분석 중… (영상 길이에 따라 다소 시간이 걸려요)
+                <Stack align="center" gap={6} mt={14}>
+                  <LoadingBar label="분석 중" />
+                  <Text fz={12} c="var(--rb-ink-faint)">
+                    영상 길이에 따라 다소 시간이 걸려요
                   </Text>
-                </Group>
+                </Stack>
               )}
 
               {analyze.isError && (

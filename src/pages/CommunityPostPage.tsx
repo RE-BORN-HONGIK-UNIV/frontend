@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, Group, Loader, Stack, Text, Textarea } from '@/components/ui';
+import { Box, Button, Group, LoadingBar, Stack, Text, Textarea } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { usePost, useDeletePost, useCreateComment } from '@/features/community/queries';
 import { toast } from '@/lib/toast';
@@ -49,7 +49,7 @@ export default function CommunityPostPage() {
       <Box style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 0' }}>
         {isLoading && (
           <Group justify="center" py={60}>
-            <Loader size="sm" color="brand" />
+            <LoadingBar />
           </Group>
         )}
 

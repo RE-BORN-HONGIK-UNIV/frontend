@@ -6,7 +6,7 @@ import {
   Button,
   Dropzone,
   Group,
-  Loader,
+  LoadingBar,
   Paper,
   SimpleGrid,
   Stack,
@@ -307,12 +307,12 @@ export default function VoiceStage() {
               )}
 
               {analyze.isPending && (
-                <Group mt={14} gap={10} justify="center">
-                  <Loader size="sm" color="brand" />
-                  <Text fz={13} c="var(--rb-ink-soft)">
-                    분석 중… (음성 길이에 따라 30초~2분 정도 걸려요)
+                <Stack align="center" gap={6} mt={14}>
+                  <LoadingBar label="분석 중" />
+                  <Text fz={12} c="var(--rb-ink-faint)">
+                    음성 길이에 따라 30초~2분 정도 걸려요
                   </Text>
-                </Group>
+                </Stack>
               )}
 
               {analyze.isError && (
