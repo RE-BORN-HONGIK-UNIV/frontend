@@ -1,0 +1,15 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# react-router의 클라이언트 사이드 라우팅 — /login, /voice 같은 경로로
+# 직접 접속하거나 새로고침해도 index.html로 떨어지게 함(안 하면 404).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 백엔드 배포 전까지는 mock API로 프론트만 확인 가능하게. 백엔드 배포되면
+# Netlify 대시보드에서 이 값을 지우고 VITE_API_BASE_URL을 실제 주소로 설정.
+[build.environment]
+  VITE_USE_MOCK_API = "true"
