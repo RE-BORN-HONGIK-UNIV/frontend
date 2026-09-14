@@ -45,7 +45,11 @@ export const router = createBrowserRouter([
       },
       {
         path: '/interview',
-        element: <InterviewStage />,
+        element: (
+          <PrivateRoute>
+            <InterviewStage />
+          </PrivateRoute>
+        ),
       },
       {
         path: '/community',

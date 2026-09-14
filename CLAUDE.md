@@ -42,12 +42,9 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 
 ## 알려진 이슈 / 확인 필요
 
-- **`/interview` 라우트에 `PrivateRoute` 누락 확인됨** (`src/app/router.tsx:47-49`) —
-  `/dashboard`·`/voice`·`/face`·`/community`는 전부 `<PrivateRoute>`로 감싸져 있는데
-  `/interview`만 빠져 있어서 미인증 사용자도 3단계 면접 화면에 바로 접근 가능함.
-  의도된 예외인지(3단계는 백엔드 없이도 mock으로 흐름 확인 가능하게 설계됨 —
-  README "개발" 섹션 참고) 아니면 그냥 빠뜨린 건지 확인 후, 실제 배포 전엔
-  다른 라우트와 동일하게 `PrivateRoute`로 감싸는 게 안전.
+- ~~`/interview` 라우트에 `PrivateRoute` 누락~~ → 수정 완료 (`src/app/router.tsx`,
+  다른 라우트와 동일하게 `PrivateRoute`로 감쌈). `VITE_USE_MOCK_API=true`로 백엔드
+  없이 화면만 확인하는 흐름(README "개발" 섹션)은 인증 상태와 무관하게 그대로 동작.
 - 과거 버그·트러블슈팅 기록은 별도 레포 `re-born-hongik-univ/trouble-shooting`의
   `frontend/`에 있음 — 비슷한 증상(크래시, 프록시 누락 등) 다룰 땐 먼저 검색.
 
