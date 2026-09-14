@@ -1,8 +1,9 @@
-import { useId, type CSSProperties } from 'react';
+import { RebornMark } from './RebornMark';
 
 /**
- * "Re-b[o]rn" wordmark — the 'o' is the broken-ring symbol.
- * On mount (animate): the ring draws, then the dot glides into place.
+ * "Re-born" 워드마크 + 리본 심볼.
+ * 손글씨체(Caveat)로 쓴 "Re-born" 옆에 리본 마크를 나란히 배치 — Re-born과
+ * ribbon의 발음 유사성에서 착안한 구성(자세한 의미는 RebornMark 주석 참고).
  */
 export function RebornWordmark({
   size = 96,
@@ -14,66 +15,26 @@ export function RebornWordmark({
   /** true when placed on a filled brand background — renders in solid white */
   onGradient?: boolean;
 }) {
-  const gid = `rbw-${useId().replace(/[:]/g, '')}`;
-
-  const text: CSSProperties = onGradient
-    ? { color: '#ffffff' }
-    : {
-        background: 'var(--rb-grad)',
-        WebkitBackgroundClip: 'text',
-        backgroundClip: 'text',
-        color: 'transparent',
-      };
-
   return (
     <span
       style={{
-        fontFamily: 'var(--rb-font-display)',
-        fontWeight: 600,
-        fontSize: size,
-        lineHeight: 1,
-        letterSpacing: '-0.03em',
         display: 'inline-flex',
         alignItems: 'center',
+        gap: size * 0.06,
       }}
     >
-      <span style={text}>Re-b</span>
       <span
-        aria-hidden="true"
         style={{
-          display: 'inline-flex',
-          width: '0.64em',
-          height: '0.64em',
-          margin: '0 0.04em',
-          position: 'relative',
-          top: '0.055em',
+          fontFamily: 'var(--rb-font-logo)',
+          fontWeight: 700,
+          fontSize: size,
+          lineHeight: 1,
+          color: onGradient ? '#ffffff' : 'var(--rb-logo-ink)',
         }}
       >
-        <svg viewBox="0 0 32 32" width="100%" height="100%" fill="none">
-          <path
-            className={animate ? 'rb-ring' : undefined}
-            d="M6.6 7.3 A 10 10 0 1 1 11 19.4"
-            stroke={onGradient ? '#ffffff' : 'var(--rb-primary-deep)'}
-            strokeWidth={3}
-            strokeLinecap="round"
-            opacity={onGradient ? 0.7 : 1}
-          />
-          <circle
-            className={animate ? 'rb-dot' : undefined}
-            cx={11.4}
-            cy={11.8}
-            r={4.7}
-            fill={onGradient ? '#ffffff' : `url(#${gid})`}
-          />
-          <defs>
-            <linearGradient id={gid} x1="6.6" y1="7" x2="15.6" y2="17" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#2C543B" />
-              <stop offset="1" stopColor="#8AC79B" />
-            </linearGradient>
-          </defs>
-        </svg>
+        Re-born
       </span>
-      <span style={text}>rn</span>
+      <RebornMark size={size * 0.5} tone={onGradient ? 'white' : 'accent'} animate={animate} />
     </span>
   );
 }
