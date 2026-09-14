@@ -95,7 +95,7 @@ function Nav() {
         zIndex: 5,
       }}
     >
-      <RebornWordmark size={21} animate={false} />
+      <RebornWordmark size={36} animate={false} />
       <Group gap={32} visibleFrom="sm">
         <Anchor component={Link} to="/community" c="var(--rb-ink-soft)" fz={14} underline="never">
           이야기
@@ -130,7 +130,6 @@ function Hero() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        textAlign: 'center',
         padding: '120px 24px 92px',
         minHeight: 720,
       }}
@@ -163,8 +162,7 @@ function Hero() {
         />
       </Box>
 
-      <Stack align="center" gap={26} style={{ position: 'relative', maxWidth: 720 }}>
-        <SectionBadge>AI 발화 재활 트레이닝</SectionBadge>
+      <Stack align="flex-start" gap={26} style={{ position: 'relative', maxWidth: 720 }}>
         <RebornWordmark size={isMobile ? 60 : 96} />
         <Box fz={isMobile ? 17 : 20} c="var(--rb-ink-soft)" fw={500}>
           다시, 나의 목소리로.
