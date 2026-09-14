@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Anchor, Box, Button, Group, SimpleGrid, Stack } from '@/components/ui';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { RebornWordmark } from '@/components/RebornWordmark';
-import { RebornMark } from '@/components/RebornMark';
 import { Reveal } from '@/components/Reveal';
 import { SectionBadge } from '@/components/SectionBadge';
 
@@ -166,45 +165,7 @@ function Hero() {
 
       <Stack align="center" gap={26} style={{ position: 'relative', maxWidth: 720 }}>
         <SectionBadge>AI 발화 재활 트레이닝</SectionBadge>
-        <div
-          style={{
-            position: 'relative',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: isMobile ? '36px 0' : '54px 0',
-          }}
-        >
-          <div
-            className="rb-hero-ribbon"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: isMobile ? 190 : 270,
-              height: isMobile ? 190 : 270,
-              pointerEvents: 'none',
-              opacity: 0.85,
-              zIndex: 0,
-            }}
-          >
-            <RebornMark size={isMobile ? 190 : 270} tone="accent" animate />
-          </div>
-          <span
-            className="rb-hero-text"
-            style={{
-              position: 'relative',
-              zIndex: 1,
-              fontFamily: 'var(--rb-font-logo)',
-              fontWeight: 700,
-              fontSize: isMobile ? 60 : 96,
-              lineHeight: 1,
-              color: 'var(--rb-logo-ink)',
-            }}
-          >
-            Re-born
-          </span>
-        </div>
+        <RebornWordmark size={isMobile ? 60 : 96} />
         <Box fz={isMobile ? 17 : 20} c="var(--rb-ink-soft)" fw={500}>
           다시, 나의 목소리로.
         </Box>
