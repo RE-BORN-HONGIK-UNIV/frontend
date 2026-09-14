@@ -34,7 +34,7 @@ export function RebornWordmark({
       >
         Re-born
       </span>
-      <RebornMark size={size * 0.5} tone={onGradient ? 'white' : 'accent'} animate={animate} />
+      <RebornMark size={size * 0.62} tone={onGradient ? 'white' : 'accent'} animate={animate} />
     </span>
   );
 }
