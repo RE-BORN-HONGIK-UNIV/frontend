@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@mantine/core';
+import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
 import { daysSince, localProgress } from '@/features/progress/localProgress';

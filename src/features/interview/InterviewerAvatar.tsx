@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Box, Text } from '@mantine/core';
+import { Box, Text } from '@/components/ui';
 
 interface InterviewerAvatarProps {
   width?: number;

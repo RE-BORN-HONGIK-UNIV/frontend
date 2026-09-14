@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from '@mantine/form';
+import { useForm } from '@/lib/useForm';
 import {
   Alert,
   Anchor,
@@ -9,7 +9,7 @@ import {
   Stack,
   Text,
   TextInput,
-} from '@mantine/core';
+} from '@/components/ui';
 import { AuthShell } from '@/components/AuthShell';
 import { useSignup } from '@/features/auth/mutations';
 import { ApiError } from '@/lib/api/client';
@@ -28,11 +28,11 @@ export default function Signup() {
       terms: false,
     },
     validate: {
-      name: (v) => (v.trim() ? null : '이름을 입력해 주세요.'),
-      email: (v) => (/^\S+@\S+\.\S+$/.test(v) ? null : '올바른 이메일을 입력해 주세요.'),
-      password: (v) => (v.length >= 6 ? null : '비밀번호는 6자 이상이어야 해요.'),
+      name: (v) => ((v as string).trim() ? null : '이름을 입력해 주세요.'),
+      email: (v) => (/^\S+@\S+\.\S+$/.test(v as string) ? null : '올바른 이메일을 입력해 주세요.'),
+      password: (v) => ((v as string).length >= 6 ? null : '비밀번호는 6자 이상이어야 해요.'),
       birthdate: (v) =>
-        !v || /^\d{4}-\d{2}-\d{2}$/.test(v) ? null : 'YYYY-MM-DD 형식으로 입력해 주세요.',
+        !v || /^\d{4}-\d{2}-\d{2}$/.test(v as string) ? null : 'YYYY-MM-DD 형식으로 입력해 주세요.',
       terms: (v) => (v ? null : '이용약관에 동의해 주세요.'),
     },
   });
@@ -94,7 +94,6 @@ export default function Signup() {
           />
           <Checkbox
             label="이용약관 및 개인정보 처리방침에 동의합니다."
-            color="brand"
             {...form.getInputProps('terms', { type: 'checkbox' })}
           />
           <Button type="submit" color="brand" radius="md" loading={signup.isPending} fullWidth mt={4}>

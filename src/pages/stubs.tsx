@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Anchor, Box, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Box, Stack, Text, Title } from '@/components/ui';
 import { RebornWordmark } from '@/components/RebornWordmark';
 
 function Shell({ title, note }: { title: string; note: string }) {

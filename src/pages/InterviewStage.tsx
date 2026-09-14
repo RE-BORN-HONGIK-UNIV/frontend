@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box } from '@mantine/core';
+import { Box } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import { getAnxietyScore, getTier, type TierInfo } from '@/features/interview/difficulty';

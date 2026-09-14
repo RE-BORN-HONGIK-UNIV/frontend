@@ -1,4 +1,4 @@
-import { Text } from '@mantine/core';
+import { Text } from '@/components/ui';
 import type { AnalyzeResult } from '@/lib/api/types';
 import { useFeedback } from './queries';
 import { buildFallbackFeedback } from './feedback';

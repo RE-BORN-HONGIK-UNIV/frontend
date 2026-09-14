@@ -1,4 +1,4 @@
-import { Stack, Text } from '@mantine/core';
+import { Stack, Text } from '@/components/ui';
 
 /** 결과 화면 (임시). */
 export function ResultView() {

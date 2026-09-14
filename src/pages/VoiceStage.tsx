@@ -4,14 +4,14 @@ import {
   Anchor,
   Box,
   Button,
+  Dropzone,
   Group,
   Loader,
   Paper,
   SimpleGrid,
   Stack,
   Text,
-} from '@mantine/core';
-import { Dropzone } from '@mantine/dropzone';
+} from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { ApiError } from '@/lib/api/client';
 import type { AnalyzeResult } from '@/lib/api/types';

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useForm } from '@mantine/form';
-import { Alert, Anchor, Button, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
+import { useForm } from '@/lib/useForm';
+import { Alert, Anchor, Button, PasswordInput, Stack, Text, TextInput } from '@/components/ui';
 import { AuthShell } from '@/components/AuthShell';
 import { useLogin } from '@/features/auth/mutations';
 import { ApiError } from '@/lib/api/client';
@@ -16,8 +16,8 @@ export default function Login() {
   const form = useForm({
     initialValues: { email: '', password: '' },
     validate: {
-      email: (v) => (/^\S+@\S+\.\S+$/.test(v) ? null : '올바른 이메일을 입력해 주세요.'),
-      password: (v) => (v.length >= 1 ? null : '비밀번호를 입력해 주세요.'),
+      email: (v) => (/^\S+@\S+\.\S+$/.test(v as string) ? null : '올바른 이메일을 입력해 주세요.'),
+      password: (v) => ((v as string).length >= 1 ? null : '비밀번호를 입력해 주세요.'),
     },
   });
 

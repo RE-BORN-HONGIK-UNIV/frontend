@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Box, Paper, Stack, Text, Title } from '@mantine/core';
+import { Box, Paper, Stack, Text, Title } from '@/components/ui';
 import { RebornWordmark } from './RebornWordmark';
 
 export function AuthShell({

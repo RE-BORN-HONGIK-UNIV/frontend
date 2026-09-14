@@ -10,8 +10,8 @@ import {
   Text,
   Textarea,
   TextInput,
-} from '@mantine/core';
-import { useForm } from '@mantine/form';
+} from '@/components/ui';
+import { useForm } from '@/lib/useForm';
 import { PageHeader } from '@/components/PageHeader';
 import { usePosts, useCreatePost } from '@/features/community/queries';
 import { toast } from '@/lib/toast';
@@ -25,8 +25,8 @@ function WriteModal({ opened, onClose }: { opened: boolean; onClose: () => void 
   const form = useForm({
     initialValues: { title: '', content: '' },
     validate: {
-      title: (v) => (v.trim() ? null : '제목을 입력해주세요.'),
-      content: (v) => (v.trim() ? null : '내용을 입력해주세요.'),
+      title: (v) => ((v as string).trim() ? null : '제목을 입력해주세요.'),
+      content: (v) => ((v as string).trim() ? null : '내용을 입력해주세요.'),
     },
   });
 

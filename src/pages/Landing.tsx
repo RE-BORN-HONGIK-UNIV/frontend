@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Anchor, Box, Button, Group, SimpleGrid, Stack } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
+import { Anchor, Box, Button, Group, SimpleGrid, Stack } from '@/components/ui';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { RebornWordmark } from '@/components/RebornWordmark';
 import { Reveal } from '@/components/Reveal';
 import { SectionBadge } from '@/components/SectionBadge';

@@ -1,3 +1,47 @@
+@import 'tailwindcss';
+
+/* Tailwind 유틸리티(bg-primary, text-ink, font-display 등)가 --rb-* 토큰을
+   그대로 쓰도록 매핑. 토큰 값 자체는 :root에만 정의하고 여긴 이름만 연결. */
+@theme {
+  --color-bg: var(--rb-bg);
+  --color-surface: var(--rb-surface);
+  --color-surface-tint: var(--rb-surface-tint);
+
+  --color-ink: var(--rb-ink);
+  --color-ink-soft: var(--rb-ink-soft);
+  --color-ink-faint: var(--rb-ink-faint);
+
+  --color-line: var(--rb-line);
+  --color-line-strong: var(--rb-line-strong);
+
+  /* brand 스케일(옛 theme.ts의 MantineColorsTuple과 동일한 10단계) */
+  --color-primary-50: #edf6f0;
+  --color-primary-100: #dcede2;
+  --color-primary-200: #c2e0cc;
+  --color-primary-300: #a3d2b3;
+  --color-primary-400: #86c49b;
+  --color-primary-500: #6ab183;
+  --color-primary-600: var(--rb-primary);
+  --color-primary-700: var(--rb-primary-strong);
+  --color-primary-800: var(--rb-primary-deep);
+  --color-primary-900: #1e3d2b;
+  --color-primary: var(--rb-primary);
+  --color-primary-strong: var(--rb-primary-strong);
+  --color-primary-deep: var(--rb-primary-deep);
+  --color-primary-light: var(--rb-primary-light);
+  --color-primary-tint: var(--rb-primary-tint);
+  --color-primary-deep-tint: var(--rb-primary-deep-tint);
+
+  --font-sans: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+  --font-display: 'Spectral', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
+
 :root {
   /* ── Re-born design tokens (from the design canvas) ── */
   --rb-bg: #edf2ea;
@@ -46,6 +90,13 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ── 로딩 스피너(Loader 컴포넌트) ── */
+@keyframes rb-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── 카드 hover: 살짝 떠오르며 그림자 커짐 ── */

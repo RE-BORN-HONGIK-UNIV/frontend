@@ -6,9 +6,16 @@
 
 ## 스택 / 구조
 
-Vite 8(rolldown 기반) + React 19 + TypeScript + Mantine 8 + TanStack Query 5 +
+Vite 8(rolldown 기반) + React 19 + TypeScript + Tailwind CSS 4 + TanStack Query 5 +
 react-router-dom 7. 구조는 `README.md`의 "구조" 섹션 참고 (`src/features/*`가 단계별
 도메인 로직, `src/lib/api`가 백엔드 연동).
+
+**UI는 Mantine이 아니라 `src/components/ui/`의 자체 컴포넌트**(2026-09-14 전면
+교체). Box/Stack/Button/TextInput 등 이름과 props(fz/c/mt/gap/radius/color 등)는
+Mantine과 최대한 비슷하게 유지해서 마이그레이션 당시 JSX를 거의 안 바꿨음 — 새
+코드 짤 때도 이 이름/prop 관례를 따르면 일관성 유지됨. 자세한 내용과 기능
+재구현 목록(form/dropzone/toast/useMediaQuery)은 `README.md`의 "UI 컴포넌트"
+섹션 참고.
 
 ## 명령어
 

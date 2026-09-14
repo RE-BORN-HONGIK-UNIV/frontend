@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Box, Group, Stack, Text } from '@mantine/core';
+import { Box, Group, Stack, Text } from '@/components/ui';
 
 /** 녹음 중 표시 (깜빡이는 점 + 실시간 마이크 음량 바). */
 export function RecordingIndicator({ stream, active }: { stream: MediaStream | null; active: boolean }) {

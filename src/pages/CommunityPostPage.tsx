@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, Group, Loader, Stack, Text, Textarea } from '@mantine/core';
+import { Box, Button, Group, Loader, Stack, Text, Textarea } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { usePost, useDeletePost, useCreateComment } from '@/features/community/queries';
 import { toast } from '@/lib/toast';

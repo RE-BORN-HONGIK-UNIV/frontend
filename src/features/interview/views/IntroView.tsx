@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Text } from '@mantine/core';
+import { Box, Button, Stack, Text } from '@/components/ui';
 
 /** 면접 시작 전 인사 화면. */
 export function IntroView({ onStart }: { onStart: () => void }) {

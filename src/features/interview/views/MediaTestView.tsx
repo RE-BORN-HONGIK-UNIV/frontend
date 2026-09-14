@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Alert, Box, Button, Loader, Stack, Text } from '@mantine/core';
+import { Alert, Box, Button, Loader, Stack, Text } from '@/components/ui';
 import type { useMediaPreview } from '@/features/interview/useMediaPreview';
 
 /** 카메라/마이크 테스트 화면. */

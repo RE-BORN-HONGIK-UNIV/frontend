@@ -7,10 +7,10 @@
 | 영역 | 기술 |
 |---|---|
 | 빌드 | Vite 8 + TypeScript |
-| UI | Mantine 8 (`theme.ts` — 그린 brand 스케일, Spectral / Noto Sans KR) |
+| UI | Tailwind CSS 4 + 자체 경량 컴포넌트(`src/components/ui/`) — 2026-09-14 Mantine 전면 교체 |
 | 서버 상태 | TanStack Query 5 |
 | 라우팅 | react-router-dom 7 (`createBrowserRouter`, `PrivateRoute`) |
-| 디자인 토큰 | `src/index.css` `:root` 의 `--rb-*` 변수 |
+| 디자인 토큰 | `src/index.css` `:root`의 `--rb-*` 변수 + `@theme` 블록(Tailwind 유틸리티로 매핑) |
 
 ## 개발
 
@@ -41,6 +41,17 @@ push/PR 시 GitHub Actions에서 위 네 개(lint·typecheck·test·build)를 �
 
 `vitest.config.ts`를 `vite.config.ts`와 분리해둔 이유: vitest가 내부적으로 물고 있는 vite(rollup 기반)와 이 프로젝트의 vite(rolldown 기반, v8)의 Plugin 타입이 서로 안 맞아서 한 파일에 합치면 `tsc`가 타입 에러를 냄. 백엔드 쪽 계층별 테스트 설계(정확도 검증 하네스 포함)는 `backend/docs/TESTING.md` 참고.
 
+### UI 컴포넌트 (Mantine → Tailwind 전면 교체, 2026-09-14)
+
+`src/components/ui/`가 예전 `@mantine/core` 자리를 대체함 — Box/Stack/Group/Text/Button/TextInput 등
+이름과 자주 쓰던 props(fz/c/fw/mt/mb/p/gap/radius/color 등)를 그대로 유지해서, 기존 23개 파일의
+JSX를 거의 안 바꾸고 import만 교체하는 식으로 마이그레이션함. 그래서:
+
+- **UI를 고칠 때** 두 가지 방법이 있음: (1) `src/components/ui/*.tsx`를 고치면 전체 화면에 한 번에 반영됨(공통 스타일), (2) 각 페이지 파일에서 Tailwind 클래스를 직접 추가/수정하면 그 화면만 바뀜. 전면적인 톤 변경(색상/라운드 등)은 (1), 특정 화면만 손볼 땐 (2).
+- **기능 재구현한 것**: `@mantine/form` → `src/lib/useForm.ts`, `@mantine/notifications` → `src/components/ui/Toaster.tsx`(+ `lib/toast.ts`는 API 그대로), `@mantine/dropzone` → `src/components/ui/Dropzone.tsx`(HTML5 drag&drop), `@mantine/hooks`의 `useMediaQuery` → `src/lib/useMediaQuery.ts`.
+- **디자인 토큰**: `src/index.css`의 `@theme` 블록이 `--rb-*` 변수를 Tailwind 유틸리티(`bg-primary`, `text-ink` 등)로 노출함 — 새 컴포넌트 짤 때 Tailwind 클래스로 바로 쓸 수 있음.
+- Grid/SimpleGrid의 반응형 컬럼 수는 Tailwind가 클래스명을 소스 텍스트에서 정적으로 찾기 때문에, `col-span-8`처럼 리터럴 문자열로 미리 맵을 만들어둠(`Grid.tsx`/`SimpleGrid.tsx`) — 동적 템플릿 문자열(`col-span-${n}`)로 바꾸면 빌드에서 빠지니 주의.
+
 ## 구조
 
 ```
@@ -53,9 +64,10 @@ src/
     face/      2단계 표정·시선 분석 — 상수, 지표 비교 텍스트, 쿼리
     interview/ 3단계 모의 면접 — 면접관 아바타, TTS/STT 연동, 난이도(tier) 로직, 카메라·마이크 녹화
     progress/  1단계 진행 상태 (localStorage). 2단계는 백엔드 DB(Stage2Result)로 이전됨 — backend/DB_DESIGN.md 참고
-  lib/         api/{client,types}, auth.ts
+  lib/         api/{client,types}, auth.ts, useForm.ts, useMediaQuery.ts
   pages/       Landing, Login, Signup, Dashboard, VoiceStage, FaceStage, InterviewStage
-  theme.ts, index.css
+  components/ui/  Mantine 대체 경량 컴포넌트 (Box, Stack, Button, TextInput, Dropzone, Toaster 등)
+  index.css
 ```
 
 ## 화면

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Anchor, Box, Button, Group, Loader, Stack, Text } from '@mantine/core';
+import { Anchor, Box, Button, Group, Loader, Stack, Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { uploadAnswer, getSpeechAudioUrl } from '@/features/interview/api';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';

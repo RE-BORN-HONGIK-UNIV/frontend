@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Anchor, Box, Group, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Box, Group, Stack, Text, Title } from '@/components/ui';
 import { RebornWordmark } from './RebornWordmark';
 import { auth } from '@/lib/auth';
 
