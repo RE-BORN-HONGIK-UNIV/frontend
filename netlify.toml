@@ -9,7 +9,7 @@
   to = "/index.html"
   status = 200
 
-# 백엔드 배포 전까지는 mock API로 프론트만 확인 가능하게. 백엔드 배포되면
-# Netlify 대시보드에서 이 값을 지우고 VITE_API_BASE_URL을 실제 주소로 설정.
+# 백엔드가 Render 무료 티어(https://reborn-backend-vgsi.onrender.com)에 배포됨
+# (2026-09). mock API는 껐고 실제 백엔드를 바라보게 설정.
 [build.environment]
-  VITE_USE_MOCK_API = "true"
+  VITE_API_BASE_URL = "https://reborn-backend-vgsi.onrender.com"
