@@ -19,6 +19,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           rows={minRows}
+          className="rb-input"
           style={{
             ...inputBaseStyle,
             resize: 'vertical',

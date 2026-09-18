@@ -1,9 +1,28 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from '@/lib/useForm';
-import { Alert, Anchor, Button, PasswordInput, Stack, Text, TextInput } from '@/components/ui';
+import {
+  Alert,
+  Anchor,
+  Box,
+  Button,
+  Group,
+  IconGoogle,
+  IconKakao,
+  IconLock,
+  IconMail,
+  PasswordInput,
+  Stack,
+  Text,
+  TextInput,
+} from '@/components/ui';
 import { AuthShell } from '@/components/AuthShell';
 import { useLogin } from '@/features/auth/mutations';
 import { ApiError } from '@/lib/api/client';
+import { toast } from '@/lib/toast';
+
+// Signup.tsx와 동일한 이유로 스텁 — app.py에 OAuth 연동 생기면 교체
+const handleSocialLoginStub = (provider: string) => () =>
+  toast.info(`${provider} 로그인은 아직 준비 중이에요.`);
 
 type LocationState = { registered?: boolean; from?: string } | null;
 
@@ -32,7 +51,7 @@ export default function Login() {
       title="로그인"
       subtitle="다시 오신 걸 환영해요."
       footer={
-        <Text fz={13} c="var(--rb-ink-soft)">
+        <Text fz={17} c="var(--rb-ink-soft)">
           아직 계정이 없나요?{' '}
           <Anchor component={Link} to="/signup" c="var(--rb-primary-strong)" fw={600}>
             회원가입
@@ -54,6 +73,7 @@ export default function Login() {
           )}
           <TextInput
             label="이메일"
+            icon={<IconMail />}
             placeholder="you@example.com"
             type="email"
             autoComplete="email"
@@ -61,6 +81,7 @@ export default function Login() {
           />
           <PasswordInput
             label="비밀번호"
+            icon={<IconLock />}
             autoComplete="current-password"
             {...form.getInputProps('password')}
           />
@@ -69,6 +90,27 @@ export default function Login() {
           </Button>
         </Stack>
       </form>
+
+      <Stack gap={12} mt={20}>
+        <Group gap={8} align="center">
+          <Box style={{ flex: 1, height: 1, background: 'var(--rb-line)' }} />
+          <Text fz={12} c="var(--rb-ink-faint)">
+            또는
+          </Text>
+          <Box style={{ flex: 1, height: 1, background: 'var(--rb-line)' }} />
+        </Group>
+        <Button variant="default" fullWidth onClick={handleSocialLoginStub('구글')}>
+          <IconGoogle /> 구글로 계속하기
+        </Button>
+        <Button
+          variant="filled"
+          fullWidth
+          style={{ background: '#FEE500', color: '#191600' }}
+          onClick={handleSocialLoginStub('카카오')}
+        >
+          <IconKakao /> 카카오로 계속하기
+        </Button>
+      </Stack>
     </AuthShell>
   );
 }

@@ -1,4 +1,4 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef, useId, type ReactNode } from 'react';
 
 export const inputBaseStyle: React.CSSProperties = {
   width: '100%',
@@ -8,13 +8,12 @@ export const inputBaseStyle: React.CSSProperties = {
   fontFamily: 'inherit',
   color: 'var(--rb-ink)',
   background: 'var(--rb-surface)',
-  border: '1.5px solid var(--rb-line-strong)',
   borderRadius: 10,
   outline: 'none',
 };
 
 interface FieldWrapProps {
-  label?: string;
+  label?: ReactNode;
   description?: string;
   error?: string;
   htmlFor: string;
@@ -39,23 +38,48 @@ export function FieldWrap({ label, description, error, htmlFor, children }: Fiel
 }
 
 interface TextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label?: ReactNode;
   description?: string;
   error?: string;
+  /** 입력창 왼쪽 안에 넣을 작은 아이콘 (16px 기준) — 넣으면 자동으로 왼쪽 여백을 벌려줌 */
+  icon?: ReactNode;
 }
 
 export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
-  ({ label, description, error, style, id, ...rest }, ref) => {
+  ({ label, description, error, icon, style, id, ...rest }, ref) => {
     const autoId = useId();
     const inputId = id ?? autoId;
     return (
       <FieldWrap label={label} description={description} error={error} htmlFor={inputId}>
-        <input
-          ref={ref}
-          id={inputId}
-          style={{ ...inputBaseStyle, ...(error ? { borderColor: '#c0392b' } : {}), ...style }}
-          {...rest}
-        />
+        <div style={{ position: 'relative' }}>
+          {icon && (
+            <span
+              style={{
+                position: 'absolute',
+                left: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--rb-ink-faint)',
+                display: 'flex',
+                pointerEvents: 'none',
+              }}
+            >
+              {icon}
+            </span>
+          )}
+          <input
+            ref={ref}
+            id={inputId}
+            className="rb-input"
+            style={{
+              ...inputBaseStyle,
+              ...(icon ? { paddingLeft: 38 } : {}),
+              ...(error ? { borderColor: '#c0392b' } : {}),
+              ...style,
+            }}
+            {...rest}
+          />
+        </div>
       </FieldWrap>
     );
   },
