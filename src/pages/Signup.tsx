@@ -39,6 +39,15 @@ function formatBirthdateInput(raw: string) {
   return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)].filter(Boolean).join('-');
 }
 
+// 라벨 옆에 "(선택)"을 붙이되 본문(굵은 라벨)과 다른 연한 색을 유지하기 위한 헬퍼
+function OptionalLabel({ children }: { children: string }) {
+  return (
+    <>
+      {children} <span style={{ color: 'var(--rb-ink-soft)', fontWeight: 400 }}>(선택)</span>
+    </>
+  );
+}
+
 export default function Signup() {
   const navigate = useNavigate();
   const signup = useSignup();
@@ -121,11 +130,15 @@ export default function Signup() {
           />
           <Group gap={12} align="flex-start" style={{ width: '100%' }}>
             <Box style={{ flex: 1, minWidth: 0 }}>
-              <TextInput label="닉네임" icon={<IconAt />} description="선택" {...form.getInputProps('nickname')} />
+              <TextInput
+                label={<OptionalLabel>닉네임</OptionalLabel>}
+                icon={<IconAt />}
+                {...form.getInputProps('nickname')}
+              />
             </Box>
             <Box style={{ flex: 1, minWidth: 0 }}>
               <TextInput
-                label="생년월일"
+                label={<OptionalLabel>생년월일</OptionalLabel>}
                 icon={<IconCalendar />}
                 placeholder="2000-01-01"
                 inputMode="numeric"

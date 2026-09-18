@@ -13,7 +13,7 @@ export const inputBaseStyle: React.CSSProperties = {
 };
 
 interface FieldWrapProps {
-  label?: string;
+  label?: ReactNode;
   description?: string;
   error?: string;
   htmlFor: string;
@@ -38,7 +38,7 @@ export function FieldWrap({ label, description, error, htmlFor, children }: Fiel
 }
 
 interface TextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label?: ReactNode;
   description?: string;
   error?: string;
   /** 입력창 왼쪽 안에 넣을 작은 아이콘 (16px 기준) — 넣으면 자동으로 왼쪽 여백을 벌려줌 */
