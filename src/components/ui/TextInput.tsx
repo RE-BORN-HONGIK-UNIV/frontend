@@ -8,7 +8,6 @@ export const inputBaseStyle: React.CSSProperties = {
   fontFamily: 'inherit',
   color: 'var(--rb-ink)',
   background: 'var(--rb-surface)',
-  border: '1.5px solid var(--rb-line-strong)',
   borderRadius: 10,
   outline: 'none',
 };
@@ -53,6 +52,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
         <input
           ref={ref}
           id={inputId}
+          className="rb-input"
           style={{ ...inputBaseStyle, ...(error ? { borderColor: '#c0392b' } : {}), ...style }}
           {...rest}
         />

@@ -19,6 +19,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             ref={ref}
             id={inputId}
             type={visible ? 'text' : 'password'}
+            className="rb-input"
             style={{
               ...inputBaseStyle,
               paddingRight: 40,

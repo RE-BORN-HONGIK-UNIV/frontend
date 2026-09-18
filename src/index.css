@@ -124,6 +124,17 @@ a {
   }
 }
 
+/* ── 입력창 포커스 링: 클릭하면 테두리 색 바뀌고 은은한 그림자 생김 ── */
+.rb-input {
+  border: 1.5px solid var(--rb-line-strong);
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.rb-input:focus {
+  outline: none;
+  border-color: var(--rb-primary);
+  box-shadow: 0 0 0 3px var(--rb-primary-tint);
+}
+
 /* ── 페이지 전환: 라우트 바뀔 때 새 화면이 살짝 아래서 페이드인 ── */
 @keyframes rbPageIn {
   from {
