@@ -41,7 +41,7 @@ export default function Login() {
       }
     >
       <form onSubmit={submit} noValidate>
-        <Stack gap={16}>
+        <Stack gap={20}>
           {state?.registered && (
             <Alert color="brand" variant="light" p="xs" fz={13}>
               회원가입이 완료됐어요. 로그인해 주세요.
@@ -64,7 +64,7 @@ export default function Login() {
             autoComplete="current-password"
             {...form.getInputProps('password')}
           />
-          <Button type="submit" color="brand" radius="md" loading={login.isPending} fullWidth mt={4}>
+          <Button type="submit" color="brand" radius="md" loading={login.isPending} fullWidth mt={16}>
             로그인
           </Button>
         </Stack>

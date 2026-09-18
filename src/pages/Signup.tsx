@@ -65,7 +65,7 @@ export default function Signup() {
       }
     >
       <form onSubmit={submit} noValidate>
-        <Stack gap={16}>
+        <Stack gap={20}>
           {signup.isError && (
             <Alert color="red" variant="light" p="xs" fz={13}>
               {signup.error instanceof ApiError ? signup.error.message : '회원가입에 실패했어요.'}
@@ -96,7 +96,7 @@ export default function Signup() {
             label="이용약관 및 개인정보 처리방침에 동의합니다."
             {...form.getInputProps('terms', { type: 'checkbox' })}
           />
-          <Button type="submit" color="brand" radius="md" loading={signup.isPending} fullWidth mt={4}>
+          <Button type="submit" color="brand" radius="md" loading={signup.isPending} fullWidth mt={16}>
             가입하기
           </Button>
         </Stack>

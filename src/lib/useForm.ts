@@ -39,14 +39,19 @@ export function useForm<T extends Record<string, unknown>>({ initialValues, vali
     if (opts?.type === 'checkbox') {
       return {
         checked: Boolean(values[name]),
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          setValues((v) => ({ ...v, [name]: e.currentTarget.checked })),
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+          const checked = e.currentTarget.checked;
+          setValues((v) => ({ ...v, [name]: checked }));
+      },
       };
     }
     return {
       value: (values[name] ?? '') as string,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-        setValues((v) => ({ ...v, [name]: e.currentTarget.value })),
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => 
+        { 
+          const value = e.currentTarget.value;
+          setValues((v) => ({ ...v, [name]: value }));
+        },
       error: errors[name],
     };
   }
