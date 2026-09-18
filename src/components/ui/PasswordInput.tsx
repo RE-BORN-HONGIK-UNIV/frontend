@@ -1,5 +1,6 @@
 import { forwardRef, useId, useState, type ReactNode } from 'react';
 import { FieldWrap, inputBaseStyle } from './TextInput';
+import { IconEye, IconEyeOff } from './icons';
 
 interface PasswordInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label?: string;
@@ -58,11 +59,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
               background: 'transparent',
               color: 'var(--rb-ink-faint)',
               cursor: 'pointer',
-              fontSize: 13,
               padding: 4,
+              display: 'flex',
             }}
           >
-            {visible ? '숨기기' : '보기'}
+            {visible ? <IconEyeOff /> : <IconEye />}
           </button>
         </div>
       </FieldWrap>

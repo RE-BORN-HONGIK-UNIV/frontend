@@ -51,7 +51,7 @@ export default function Login() {
       title="로그인"
       subtitle="다시 오신 걸 환영해요."
       footer={
-        <Text fz={15} c="var(--rb-ink-soft)">
+        <Text fz={17} c="var(--rb-ink-soft)">
           아직 계정이 없나요?{' '}
           <Anchor component={Link} to="/signup" c="var(--rb-primary-strong)" fw={600}>
             회원가입

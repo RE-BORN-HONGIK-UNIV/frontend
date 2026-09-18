@@ -57,6 +57,25 @@ export function IconCalendar(props: IconProps) {
   );
 }
 
+export function IconEye(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconEyeOff(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="M6.6 6.6C4 8.3 2 12 2 12s3.6 7 10 7a10.6 10.6 0 0 0 4.4-.9M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
+
 /** 구글 4색 "G" 로고 — 웹에서 흔히 쓰는 표준 형태를 그대로 재현. */
 export function IconGoogle(props: IconProps) {
   return (
