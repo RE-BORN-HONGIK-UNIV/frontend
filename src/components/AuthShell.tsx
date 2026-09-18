@@ -26,7 +26,7 @@ export function AuthShell({
     >
       <Stack align="center" gap={24} style={{ width: '100%', maxWidth: 400 }}>
         <Link to="/">
-          <RebornWordmark size={30} animate={false} />
+          <RebornWordmark size={40} animate={false} />
         </Link>
 
         <Paper

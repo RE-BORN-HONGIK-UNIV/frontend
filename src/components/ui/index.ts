@@ -19,3 +19,4 @@ export { Checkbox } from './Checkbox';
 export { Modal } from './Modal';
 export { Dropzone } from './Dropzone';
 export { SegmentedControl } from './SegmentedControl';
+export { IconUser, IconMail, IconLock, IconAt, IconCalendar, IconGoogle, IconKakao } from './icons';
