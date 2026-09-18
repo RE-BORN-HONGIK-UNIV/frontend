@@ -127,7 +127,6 @@ export default function Signup() {
               <TextInput
                 label="생년월일"
                 icon={<IconCalendar />}
-                description="선택 · YYYY-MM-DD"
                 placeholder="2000-01-01"
                 inputMode="numeric"
                 maxLength={10}
