@@ -31,13 +31,13 @@ export function AuthShell({
 
         <Paper
           w="100%"
-          p={32}
+          p={36}
           radius="lg"
           withBorder
           style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}
         >
-          <Stack gap={20}>
-            <Stack gap={4}>
+          <Stack gap={24}>
+            <Stack gap={6}>
               <Title order={1} fz={22} fw={700}>
                 {title}
               </Title>
