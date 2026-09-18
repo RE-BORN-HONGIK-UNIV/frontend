@@ -81,33 +81,33 @@
 
 /* ── 다크모드: 토큰만 교체 — 컴포넌트들이 전부 var(--rb-*)로 색을 쓰고 있어서
    (Mantine-스타일 prop 관례, CLAUDE.md 참고) 여기 한 군데만 바꾸면 전체 화면에
-   자동 반영됨. 시스템 설정(prefers-color-scheme) 기준이고 수동 토글은 아직 없음. ── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+   자동 반영됨. data-theme은 useTheme()이 관리(localStorage에 저장한 사용자 선택 →
+   없으면 시스템 설정) — index.html의 인라인 스크립트가 첫 페인트 전에 미리 세팅해서
+   깜빡임(FOUC)을 막음. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-    --rb-bg: #12160f;
-    --rb-surface: #1b2118;
-    --rb-surface-tint: #212821;
+  --rb-bg: #12160f;
+  --rb-surface: #1b2118;
+  --rb-surface-tint: #212821;
 
-    --rb-ink: #e8ede5;
-    --rb-ink-soft: #a9b6a5;
-    --rb-ink-faint: #75847a;
+  --rb-ink: #e8ede5;
+  --rb-ink-soft: #a9b6a5;
+  --rb-ink-faint: #75847a;
 
-    --rb-line: #2a332a;
-    --rb-line-strong: #3b463b;
+  --rb-line: #2a332a;
+  --rb-line-strong: #3b463b;
 
-    /* 어두운 배경에서 충분한 대비를 내려고 primary 계열 전체를 밝게 재조정
-       (라이트 모드의 "strong=더 어둡게" 관계를 다크 모드에서는 뒤집어야 함) */
-    --rb-primary: #63a67d;
-    --rb-primary-strong: #8fc9a4;
-    --rb-primary-deep: #3f7a57;
-    --rb-primary-light: #a8d9b8;
-    --rb-primary-tint: #1e3326;
-    --rb-primary-deep-tint: #17281c;
+  /* 어두운 배경에서 충분한 대비를 내려고 primary 계열 전체를 밝게 재조정
+     (라이트 모드의 "strong=더 어둡게" 관계를 다크 모드에서는 뒤집어야 함) */
+  --rb-primary: #63a67d;
+  --rb-primary-strong: #8fc9a4;
+  --rb-primary-deep: #3f7a57;
+  --rb-primary-light: #a8d9b8;
+  --rb-primary-tint: #1e3326;
+  --rb-primary-deep-tint: #17281c;
 
-    --rb-logo-ink: #8fd6ac;
-  }
+  --rb-logo-ink: #8fd6ac;
 }
 
 * {

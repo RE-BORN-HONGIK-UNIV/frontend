@@ -29,4 +29,6 @@ export {
   IconEyeOff,
   IconGoogle,
   IconKakao,
+  IconSun,
+  IconMoon,
 } from './icons';
