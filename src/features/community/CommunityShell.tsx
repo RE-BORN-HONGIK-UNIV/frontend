@@ -31,7 +31,7 @@ export function CommunityShell({
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <Box style={{ background: 'var(--rb-surface)', borderBottom: '1px solid var(--rb-line)' }}>
-        <Group justify="space-between" style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 20px' }}>
+        <Group justify="space-between" style={{ maxWidth: 1160, margin: '0 auto', padding: '14px 24px' }}>
           <Link to="/dashboard">
             <RebornWordmark size={22} animate={false} />
           </Link>
@@ -48,7 +48,7 @@ export function CommunityShell({
         </Group>
       </Box>
 
-      <Box style={{ maxWidth: 1040, margin: '0 auto', padding: '28px 20px 0' }}>
+      <Box style={{ maxWidth: 1160, margin: '0 auto', padding: '28px 24px 0' }}>
         {back && (
           <Anchor component={Link} to={back} fz={13} c="var(--rb-ink-soft)" display="inline-block" mb={14}>
             ← 뒤로

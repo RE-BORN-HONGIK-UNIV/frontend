@@ -255,15 +255,39 @@ a {
 .rb-community-item-icon {
   display: flex;
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+.rb-community-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.rb-community-item[data-active='true'] .rb-community-item-icon {
+  color: var(--rb-primary);
 }
 .rb-community-item-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex-shrink: 0;
   font-size: 10.5px;
-  font-weight: 600;
-  color: var(--rb-ink-faint);
-  background: var(--rb-surface-tint);
+  font-weight: 700;
+  color: #9a7423;
+  background: #f7edd8;
   border-radius: 999px;
-  padding: 2px 7px;
+  padding: 2.5px 8px 2.5px 6px;
+}
+.rb-community-item-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d6a336;
+  flex-shrink: 0;
+}
+:root[data-theme='dark'] .rb-community-item-badge {
+  color: #e4c583;
+  background: #3a3220;
 }
 
 .rb-community-chip {

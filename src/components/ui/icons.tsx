@@ -96,7 +96,7 @@ export function IconMoon(props: IconProps) {
 export function IconChatBubble(props: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
-      <path d="M4 5h16v11H9l-4 4z" />
+      <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.6-.8L4 20l1-4.9a8.38 8.38 0 0 1-.8-3.6A8.38 8.38 0 0 1 12.7 3a8.5 8.5 0 0 1 8.3 8.5Z" />
     </svg>
   );
 }
@@ -104,9 +104,9 @@ export function IconChatBubble(props: IconProps) {
 export function IconBriefcase(props: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
-      <rect x="3" y="7" width="18" height="13" rx="2" />
-      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <path d="M3 12h18" />
+      <rect x="3" y="7.5" width="18" height="12" rx="2.5" />
+      <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" />
+      <path d="M3 12.5h18" />
     </svg>
   );
 }
@@ -114,8 +114,9 @@ export function IconBriefcase(props: IconProps) {
 export function IconMegaphone(props: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
-      <path d="M3 9v6h3l6 4V5L6 9H3Z" />
-      <path d="M15 9a3 3 0 0 1 0 6" />
+      <path d="M3 10.5v3a1 1 0 0 0 1 1h1.6l5.4 3.4V6.1L5.6 9.5H4a1 1 0 0 0-1 1Z" />
+      <path d="M14.5 9a3 3 0 0 1 0 6" />
+      <path d="M17.5 7a6 6 0 0 1 0 10" />
     </svg>
   );
 }
@@ -123,10 +124,10 @@ export function IconMegaphone(props: IconProps) {
 export function IconUsers(props: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6" />
-      <circle cx="17" cy="9" r="2.5" />
-      <path d="M15.5 14c2.4.3 4.5 2.3 4.5 6" />
+      <circle cx="9" cy="8.5" r="3" />
+      <path d="M3.5 19.5c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5" />
+      <circle cx="17" cy="9.5" r="2.3" />
+      <path d="M15.8 14.2c2.2.4 4 2.3 4 5.3" />
     </svg>
   );
 }
