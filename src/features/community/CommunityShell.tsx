@@ -60,33 +60,32 @@ export function CommunityShell({
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <Box style={{ background: 'var(--rb-surface)', borderBottom: '1px solid var(--rb-line)' }}>
         <Group justify="space-between" style={{ padding: '20px 40px' }}>
-          <Group gap={26}>
-            <Group gap={16}>
-              {!isMobile && (
-                <button
-                  type="button"
-                  onClick={toggleSidebar}
-                  aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
-                  aria-pressed={sidebarOpen}
-                  className="rb-icon-btn"
-                >
-                  <IconPanelLeft />
-                </button>
-              )}
-              <Link to="/">
-                <RebornWordmark size={36} animate={false} />
-              </Link>
-            </Group>
-            {/* Landing.tsx Nav()의 이야기/문의 네비를 그대로 가져옴 — 지금 있는
-             * 페이지('이야기')만 글자색을 브랜드 그린으로 바꿔서 활성 표시 */}
-            <Group gap={32}>
-              <Anchor component={Link} to="/community" c="var(--rb-primary-strong)" fz={14} fw={700} underline="never">
-                이야기
-              </Anchor>
-              <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
-                문의
-              </Anchor>
-            </Group>
+          <Group gap={16}>
+            {!isMobile && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+                aria-pressed={sidebarOpen}
+                className="rb-icon-btn"
+              >
+                <IconPanelLeft />
+              </button>
+            )}
+            <Link to="/">
+              <RebornWordmark size={36} animate={false} />
+            </Link>
+          </Group>
+          {/* Landing.tsx Nav()와 똑같이 로고/우측 사이의 독립된 flex 항목으로 둬서
+           * space-between이 가운데로 밀어주는 위치까지 맞춤 — 지금 있는 페이지
+           * ('이야기')만 글자색을 브랜드 그린으로 바꿔서 활성 표시 */}
+          <Group gap={32}>
+            <Anchor component={Link} to="/community" c="var(--rb-primary-strong)" fz={14} fw={700} underline="never">
+              이야기
+            </Anchor>
+            <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
+              문의
+            </Anchor>
           </Group>
           <Group gap={14}>
             <Text fz={14} c="var(--rb-ink-soft)">
