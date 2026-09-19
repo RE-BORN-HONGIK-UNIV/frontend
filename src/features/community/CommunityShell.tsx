@@ -59,9 +59,9 @@ export function CommunityShell({
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <Box style={{ background: 'var(--rb-surface)', borderBottom: '1px solid var(--rb-line)' }}>
-        <Group justify="space-between" style={{ padding: '14px 28px' }}>
-          <Group gap={22}>
-            <Group gap={14}>
+        <Group justify="space-between" style={{ padding: '20px 40px' }}>
+          <Group gap={26}>
+            <Group gap={16}>
               {!isMobile && (
                 <button
                   type="button"
@@ -74,7 +74,7 @@ export function CommunityShell({
                 </button>
               )}
               <Link to="/">
-                <RebornWordmark size={22} animate={false} />
+                <RebornWordmark size={36} animate={false} />
               </Link>
             </Group>
             {/* Landing.tsx Nav()의 이야기/문의 네비를 그대로 가져옴 — 지금 있는
@@ -89,11 +89,11 @@ export function CommunityShell({
             </Group>
           </Group>
           <Group gap={14}>
-            <Text fz={13} c="var(--rb-ink-soft)">
+            <Text fz={14} c="var(--rb-ink-soft)">
               {auth.name || '회원'}님
             </Text>
             <Anchor
-              fz={13}
+              fz={14}
               c="var(--rb-ink-soft)"
               onClick={() => {
                 auth.signOut();
