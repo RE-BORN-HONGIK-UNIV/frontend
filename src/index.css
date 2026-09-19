@@ -227,6 +227,28 @@ a {
   }
 }
 
+/* ── 작은 아이콘 버튼(사이드바 토글 등) ── */
+.rb-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rb-ink-soft);
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.rb-icon-btn:hover {
+  background: var(--rb-surface-tint);
+  color: var(--rb-ink);
+}
+.rb-icon-btn[aria-pressed='false'] {
+  color: var(--rb-ink-faint);
+}
+
 /* ── 이야기(커뮤니티) 카테고리 사이드바/칩 ── */
 .rb-community-item {
   display: flex;
@@ -313,6 +335,21 @@ a {
   font-weight: 600;
 }
 
+/* ── 사이드바 토글 시 등장 애니메이션 ── */
+@keyframes rbSidebarIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.rb-sidebar-enter {
+  animation: rbSidebarIn 200ms ease-out both;
+}
+
 /* ── 게시글 카드 순차 등장 ── */
 @keyframes rbCardIn {
   from {
@@ -332,8 +369,12 @@ a {
   .rb-community-chip {
     transition: none;
   }
-  .rb-community-card {
+  .rb-community-card,
+  .rb-sidebar-enter {
     animation: none;
+  }
+  .rb-icon-btn {
+    transition: none;
   }
 }
 

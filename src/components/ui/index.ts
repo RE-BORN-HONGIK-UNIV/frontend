@@ -35,4 +35,5 @@ export {
   IconBriefcase,
   IconMegaphone,
   IconUsers,
+  IconPanelLeft,
 } from './icons';

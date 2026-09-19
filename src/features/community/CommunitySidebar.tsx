@@ -33,7 +33,7 @@ export function CommunitySidebar({ variant }: { variant: 'sidebar' | 'chips' }) 
   }
 
   return (
-    <nav style={{ width: 232, flexShrink: 0 }}>
+    <nav className="rb-sidebar-enter" style={{ width: 232, flexShrink: 0 }}>
       <div
         style={{
           background: 'var(--rb-surface)',

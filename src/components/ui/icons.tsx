@@ -132,6 +132,15 @@ export function IconUsers(props: IconProps) {
   );
 }
 
+export function IconPanelLeft(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9.5 4v16" />
+    </svg>
+  );
+}
+
 /** 구글 4색 "G" 로고 — 웹에서 흔히 쓰는 표준 형태를 그대로 재현. */
 export function IconGoogle(props: IconProps) {
   return (
