@@ -227,6 +227,92 @@ a {
   }
 }
 
+/* ── 이야기(커뮤니티) 카테고리 사이드바/칩 ── */
+.rb-community-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--rb-ink-soft);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.rb-community-item:hover {
+  background: var(--rb-surface-tint);
+}
+.rb-community-item[data-active='true'] {
+  background: var(--rb-primary-tint);
+  color: var(--rb-primary-deep);
+  font-weight: 600;
+}
+.rb-community-item-icon {
+  display: flex;
+  flex-shrink: 0;
+}
+.rb-community-item-badge {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--rb-ink-faint);
+  background: var(--rb-surface-tint);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.rb-community-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-surface);
+  color: var(--rb-ink-soft);
+  font-size: 13px;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+}
+.rb-community-chip[data-active='true'] {
+  background: var(--rb-primary);
+  border-color: var(--rb-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── 게시글 카드 순차 등장 ── */
+@keyframes rbCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rb-community-card {
+  animation: rbCardIn 360ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-community-item,
+  .rb-community-chip {
+    transition: none;
+  }
+  .rb-community-card {
+    animation: none;
+  }
+}
+
 /* ── LoadingBar 컴포넌트 — 사용자가 준 uiverse.io 스타일 로더를 브랜드
    그린 톤으로 재배색. 클래스/keyframe 이름은 rb- 접두사로 충돌 방지. ── */
 .rb-loadingbar {

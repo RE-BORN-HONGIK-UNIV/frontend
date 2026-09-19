@@ -93,6 +93,44 @@ export function IconMoon(props: IconProps) {
   );
 }
 
+export function IconChatBubble(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M4 5h16v11H9l-4 4z" />
+    </svg>
+  );
+}
+
+export function IconBriefcase(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M3 12h18" />
+    </svg>
+  );
+}
+
+export function IconMegaphone(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M3 9v6h3l6 4V5L6 9H3Z" />
+      <path d="M15 9a3 3 0 0 1 0 6" />
+    </svg>
+  );
+}
+
+export function IconUsers(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15.5 14c2.4.3 4.5 2.3 4.5 6" />
+    </svg>
+  );
+}
+
 /** 구글 4색 "G" 로고 — 웹에서 흔히 쓰는 표준 형태를 그대로 재현. */
 export function IconGoogle(props: IconProps) {
   return (

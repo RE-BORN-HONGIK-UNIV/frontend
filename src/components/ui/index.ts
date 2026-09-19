@@ -31,4 +31,8 @@ export {
   IconKakao,
   IconSun,
   IconMoon,
+  IconChatBubble,
+  IconBriefcase,
+  IconMegaphone,
+  IconUsers,
 } from './icons';
