@@ -77,11 +77,16 @@ export function CommunityShell({
                 <RebornWordmark size={22} animate={false} />
               </Link>
             </Group>
-            {/* Landing.tsx의 상단 네비(이야기/문의)와 같은 자리 — 여긴 '이야기' 화면
-             * 안이라 항상 활성 상태로만 보여줌 */}
-            <Text fz={14} fw={700} c="var(--rb-primary-deep)" className="rb-nav-active-pill">
-              이야기
-            </Text>
+            {/* Landing.tsx Nav()의 이야기/문의 네비를 그대로 가져옴 — 지금 있는
+             * 페이지('이야기')만 글자색을 브랜드 그린으로 바꿔서 활성 표시 */}
+            <Group gap={32}>
+              <Anchor component={Link} to="/community" c="var(--rb-primary-strong)" fz={14} fw={700} underline="never">
+                이야기
+              </Anchor>
+              <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
+                문의
+              </Anchor>
+            </Group>
           </Group>
           <Group gap={14}>
             <Text fz={13} c="var(--rb-ink-soft)">

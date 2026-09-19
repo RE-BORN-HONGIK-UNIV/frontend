@@ -227,13 +227,6 @@ a {
   }
 }
 
-/* ── 상단 네비 활성 항목(Landing.tsx 상단 네비와 자리를 맞춘 '이야기' 탭) ── */
-.rb-nav-active-pill {
-  background: var(--rb-primary-tint);
-  border-radius: 999px;
-  padding: 6px 14px;
-}
-
 /* ── 작은 아이콘 버튼(사이드바 토글 등) ── */
 .rb-icon-btn {
   display: flex;
