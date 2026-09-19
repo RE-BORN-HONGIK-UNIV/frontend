@@ -34,15 +34,11 @@ function persistSidebarOpen(open: boolean) {
  * 사이드바는 접고 펼 수 있고, 그 상태는 localStorage에 저장해 다음 방문
  * 때도 유지됨. */
 export function CommunityShell({
-  back,
-  eyebrow,
   title,
   subtitle,
   headerRight,
   children,
 }: {
-  back?: string;
-  eyebrow?: string;
   title: ReactNode;
   subtitle?: string;
   headerRight?: ReactNode;
@@ -64,46 +60,48 @@ export function CommunityShell({
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <Box style={{ background: 'var(--rb-surface)', borderBottom: '1px solid var(--rb-line)' }}>
         <Group justify="space-between" style={{ padding: '14px 28px' }}>
-          <Group gap={14}>
-            {!isMobile && (
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
-                aria-pressed={sidebarOpen}
-                className="rb-icon-btn"
-              >
-                <IconPanelLeft />
-              </button>
-            )}
-            <Link to="/dashboard">
-              <RebornWordmark size={22} animate={false} />
-            </Link>
+          <Group gap={22}>
+            <Group gap={14}>
+              {!isMobile && (
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+                  aria-pressed={sidebarOpen}
+                  className="rb-icon-btn"
+                >
+                  <IconPanelLeft />
+                </button>
+              )}
+              <Link to="/dashboard">
+                <RebornWordmark size={22} animate={false} />
+              </Link>
+            </Group>
+            {/* Landing.tsx의 상단 네비(이야기/문의)와 같은 자리 — 여긴 '이야기' 화면
+             * 안이라 항상 활성 상태로만 보여줌 */}
+            <Text fz={14} fw={700} c="var(--rb-primary-deep)" className="rb-nav-active-pill">
+              이야기
+            </Text>
           </Group>
-          <Anchor
-            fz={13}
-            c="var(--rb-ink-soft)"
-            onClick={() => {
-              auth.signOut();
-              navigate('/login');
-            }}
-          >
-            로그아웃
-          </Anchor>
+          <Group gap={14}>
+            <Text fz={13} c="var(--rb-ink-soft)">
+              {auth.name || '회원'}님
+            </Text>
+            <Anchor
+              fz={13}
+              c="var(--rb-ink-soft)"
+              onClick={() => {
+                auth.signOut();
+                navigate('/login');
+              }}
+            >
+              로그아웃
+            </Anchor>
+          </Group>
         </Group>
       </Box>
 
       <Box style={{ padding: '28px 28px 0' }}>
-        {back && (
-          <Anchor component={Link} to={back} fz={13} c="var(--rb-ink-soft)" display="inline-block" mb={14}>
-            ← 뒤로
-          </Anchor>
-        )}
-        {eyebrow && (
-          <Text fz={13} fw={600} c="var(--rb-primary-strong)" mb={4} style={{ letterSpacing: '0.5px' }}>
-            {eyebrow}
-          </Text>
-        )}
         <Group justify="space-between" align="flex-start" gap={12} mb={subtitle ? 6 : 20}>
           <Title order={1} fz={24} fw={700}>
             {title}

@@ -73,8 +73,6 @@ export default function CommunityPage() {
 
   return (
     <CommunityShell
-      back="/dashboard"
-      eyebrow="이야기"
       title="자유롭게 이야기 나눠요"
       subtitle="고민, 오늘 있었던 일, 하고 싶은 말 — 뭐든 편하게 남겨주세요."
       headerRight={

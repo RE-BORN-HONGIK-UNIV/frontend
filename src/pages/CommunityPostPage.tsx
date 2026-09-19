@@ -43,7 +43,7 @@ export default function CommunityPostPage() {
   };
 
   return (
-    <CommunityShell back="/community" eyebrow="이야기" title={post?.title ?? '이야기'}>
+    <CommunityShell title={post?.title ?? '이야기'}>
       {isLoading && (
         <Group justify="center" py={60}>
           <LoadingBar />
