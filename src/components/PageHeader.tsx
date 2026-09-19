@@ -26,7 +26,7 @@ export function PageHeader({
     <Box style={{ background: 'var(--rb-header-grad)', padding: '28px 24px 26px', borderRadius: '0 0 24px 24px' }}>
       <Box style={{ maxWidth: 1120, margin: '0 auto' }}>
         <Group justify="space-between" align="flex-start">
-          <Link to={authed ? '/dashboard' : '/'}>
+          <Link to="/">
             <RebornWordmark size={26} animate={false} onGradient />
           </Link>
           {authed && (

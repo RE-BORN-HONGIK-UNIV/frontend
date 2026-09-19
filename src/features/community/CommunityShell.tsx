@@ -73,7 +73,7 @@ export function CommunityShell({
                   <IconPanelLeft />
                 </button>
               )}
-              <Link to="/dashboard">
+              <Link to="/">
                 <RebornWordmark size={22} animate={false} />
               </Link>
             </Group>
