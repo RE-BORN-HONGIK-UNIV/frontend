@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Button, Group, LoadingBar, Stack, Text, Textarea } from '@/components/ui';
-import { PageHeader } from '@/components/PageHeader';
+import { CommunityShell } from '@/features/community/CommunityShell';
 import { usePost, useDeletePost, useCreateComment } from '@/features/community/queries';
 import { toast } from '@/lib/toast';
 
@@ -43,19 +43,16 @@ export default function CommunityPostPage() {
   };
 
   return (
-    <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
-      <PageHeader back="/community" eyebrow="이야기" title={post?.title ?? '이야기'} />
+    <CommunityShell title={post?.title ?? '이야기'}>
+      {isLoading && (
+        <Group justify="center" py={60}>
+          <LoadingBar />
+        </Group>
+      )}
 
-      <Box style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 0' }}>
-        {isLoading && (
-          <Group justify="center" py={60}>
-            <LoadingBar />
-          </Group>
-        )}
-
-        {post && (
-          <>
-            <Box
+      {post && (
+        <>
+          <Box
               style={{
                 background: 'var(--rb-surface)',
                 borderRadius: 14,
@@ -138,7 +135,6 @@ export default function CommunityPostPage() {
             </Stack>
           </>
         )}
-      </Box>
-    </Box>
+    </CommunityShell>
   );
 }

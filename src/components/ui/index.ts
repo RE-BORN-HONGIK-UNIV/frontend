@@ -29,4 +29,11 @@ export {
   IconEyeOff,
   IconGoogle,
   IconKakao,
+  IconSun,
+  IconMoon,
+  IconChatBubble,
+  IconBriefcase,
+  IconMegaphone,
+  IconUsers,
+  IconPanelLeft,
 } from './icons';

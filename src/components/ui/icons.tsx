@@ -76,6 +76,71 @@ export function IconEyeOff(props: IconProps) {
   );
 }
 
+export function IconSun(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  );
+}
+
+export function IconMoon(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" />
+    </svg>
+  );
+}
+
+export function IconChatBubble(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.6-.8L4 20l1-4.9a8.38 8.38 0 0 1-.8-3.6A8.38 8.38 0 0 1 12.7 3a8.5 8.5 0 0 1 8.3 8.5Z" />
+    </svg>
+  );
+}
+
+export function IconBriefcase(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <rect x="3" y="7.5" width="18" height="12" rx="2.5" />
+      <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" />
+      <path d="M3 12.5h18" />
+    </svg>
+  );
+}
+
+export function IconMegaphone(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <path d="M3 10.5v3a1 1 0 0 0 1 1h1.6l5.4 3.4V6.1L5.6 9.5H4a1 1 0 0 0-1 1Z" />
+      <path d="M14.5 9a3 3 0 0 1 0 6" />
+      <path d="M17.5 7a6 6 0 0 1 0 10" />
+    </svg>
+  );
+}
+
+export function IconUsers(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <circle cx="9" cy="8.5" r="3" />
+      <path d="M3.5 19.5c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5" />
+      <circle cx="17" cy="9.5" r="2.3" />
+      <path d="M15.8 14.2c2.2.4 4 2.3 4 5.3" />
+    </svg>
+  );
+}
+
+export function IconPanelLeft(props: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" {...strokeProps} {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9.5 4v16" />
+    </svg>
+  );
+}
+
 /** 구글 4색 "G" 로고 — 웹에서 흔히 쓰는 표준 형태를 그대로 재현. */
 export function IconGoogle(props: IconProps) {
   return (

@@ -14,6 +14,25 @@
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
     />
     <title>Re-born · 발화 재활 트레이닝</title>
+    <script>
+      // React가 붙기 전에 테마부터 정해야 다크모드에서 화면이 잠깐 밝게 번쩍이지 않음
+      // (src/lib/theme.ts의 getInitialTheme/applyTheme과 같은 로직 — 모듈 로드를
+      // 기다릴 수 없어서 여기 인라인으로 중복)
+      (function () {
+        try {
+          var stored = localStorage.getItem('rb.theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          /* private mode 등 — 기본(라이트)으로 둠 */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
