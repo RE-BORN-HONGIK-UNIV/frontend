@@ -110,3 +110,15 @@ export interface CommentItem {
 export interface PostDetail extends PostSummary {
   comments: CommentItem[];
 }
+
+/** POST /api/stage1/calibrate — 점수엔 반영 안 됨, filler 임계값 보정용 기준값. */
+export interface CalibrationResult {
+  background_noise_rms: number;
+  background_peak_db: number;
+  background_zcr: number | null;
+  clipped_ratio: number;
+  is_clipping: boolean;
+  overall_peak_db: number;
+  personal_filler_zcr: number | null;
+  personal_breath_zcr: number | null;
+}

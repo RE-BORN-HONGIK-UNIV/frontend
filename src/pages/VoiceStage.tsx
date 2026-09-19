@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Anchor,
@@ -8,19 +8,21 @@ import {
   Group,
   LoadingBar,
   Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
 } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { ApiError } from '@/lib/api/client';
-import type { AnalyzeResult } from '@/lib/api/types';
+import type { AnalyzeResult, CalibrationResult } from '@/lib/api/types';
 import { AXES, GUIDE_ITEMS, TRAINING_TIPS, scoreColor, type AxisKey } from '@/features/voice/constants';
 import { overallScore } from '@/features/voice/feedback';
 import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
 import { VoiceRadar } from '@/features/voice/VoiceRadar';
 import { Step1FeedbackCoach } from '@/features/voice/Step1FeedbackCoach';
+import { CalibrationStep } from '@/features/voice/CalibrationStep';
 
 const MAXW = 720;
 
@@ -48,7 +50,7 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── result view ─────────────────────────────────────────── */
+/* ── result view  ────────────────────── */
 
 function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () => void }) {
   const { scores } = result;
@@ -225,10 +227,202 @@ function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () =>
   );
 }
 
+/* ── 녹음/업로드 단계 (신규) ──────────────────────────────────── */
+
+function RecordOrUpload({
+  onSubmit,
+  isPending,
+  isError,
+  error,
+}: {
+  onSubmit: (file: File) => void;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
+}) {
+  const [mode, setMode] = useState<'record' | 'upload'>('record');
+  const [file, setFile] = useState<File | null>(null);
+
+  // ── 브라우저 녹음 ──
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const cleanupStream = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const recordedFile = new File([blob], 'answer.webm', { type: 'audio/webm' });
+        setFile(recordedFile);
+        cleanupStream();
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordSeconds(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
+    } catch (err) {
+      // 마이크 권한 거부 등 — 조용히 실패, 업로드 탭으로 유도
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const resetRecording = () => {
+    setFile(null);
+    setRecordSeconds(0);
+  };
+
+  return (
+    <Panel>
+      <SegmentedControl
+        value={mode}
+        onChange={(v) => {
+          setMode(v as 'record' | 'upload');
+          setFile(null);
+        }}
+        data={[
+          { label: '직접 녹음', value: 'record' },
+          { label: '파일 업로드', value: 'upload' },
+        ]}
+        fullWidth
+        mb={12}
+      />
+
+      {mode === 'record' && (
+        <Stack align="center" gap={10} py={12}>
+          {!file && !isRecording && (
+            <>
+              <Text fz={13} c="var(--rb-ink-soft)">
+                버튼을 누르고 30초 이상 답변해보세요
+              </Text>
+              <Button onClick={startRecording} radius="md">
+                ● 녹음 시작
+              </Button>
+            </>
+          )}
+
+          {isRecording && (
+            <>
+              <Text fz={22} fw={700} c="red">
+                ● {recordSeconds}초
+              </Text>
+              <Button onClick={stopRecording} color="red" radius="md">
+                녹음 종료
+              </Button>
+            </>
+          )}
+
+          {file && !isRecording && (
+            <Group gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px', width: '100%' }}>
+              <Text fz={13} style={{ flex: 1 }}>
+                녹음 완료 ({recordSeconds}초)
+              </Text>
+              <Anchor fz={13} c="var(--rb-ink-faint)" onClick={resetRecording}>
+                ✕ 다시 녹음
+              </Anchor>
+            </Group>
+          )}
+        </Stack>
+      )}
+
+      {mode === 'upload' && (
+        <>
+          <Dropzone
+            onDrop={(files) => setFile(files[0] ?? null)}
+            onReject={() => setFile(null)}
+            accept={{ 'audio/wav': ['.wav'], 'audio/x-wav': ['.wav'], 'audio/wave': ['.wav'] }}
+            maxFiles={1}
+            multiple={false}
+            radius="md"
+            style={{ border: '2px dashed var(--rb-line-strong)', background: 'var(--rb-bg)' }}
+          >
+            <Stack align="center" gap={6} py={24} style={{ pointerEvents: 'none' }}>
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 15V3M7 8l5-5 5 5" />
+                <path d="M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
+              </svg>
+              <Text fz={14} fw={500}>
+                음성 파일을 업로드하세요
+              </Text>
+              <Text fz={12} c="var(--rb-ink-faint)">
+                WAV 형식 · 드래그하거나 클릭
+              </Text>
+            </Stack>
+          </Dropzone>
+
+          {file && (
+            <Group mt={10} gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px' }}>
+              <Text fz={13} style={{ flex: 1, wordBreak: 'break-all' }}>
+                {file.name}
+              </Text>
+              <Anchor fz={13} c="var(--rb-ink-faint)" onClick={() => setFile(null)}>
+                ✕
+              </Anchor>
+            </Group>
+          )}
+        </>
+      )}
+
+      {isPending && (
+        <Stack align="center" gap={6} mt={14}>
+          <LoadingBar label="분석 중" />
+          <Text fz={12} c="var(--rb-ink-faint)">
+            음성 길이에 따라 30초~2분 정도 걸려요
+          </Text>
+        </Stack>
+      )}
+
+      {isError && (
+        <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
+          {error instanceof ApiError ? error.message : '백엔드에 연결할 수 없어요. (localhost:5000 실행 확인)'}
+        </Alert>
+      )}
+
+      <Button
+        mt={12}
+        fullWidth
+        color="brand"
+        radius="md"
+        disabled={!file}
+        loading={isPending}
+        onClick={() => file && onSubmit(file)}
+      >
+        AI 분석 시작
+      </Button>
+    </Panel>
+  );
+}
+
 /* ── page ────────────────────────────────────────────────── */
 
 export default function VoiceStage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [calibration, setCalibration] = useState<CalibrationResult | null>(null);
   const analyze = useAnalyze();
   const result = analyze.data ?? null;
 
@@ -237,7 +431,7 @@ export default function VoiceStage() {
   }, [result]);
 
   const reset = () => {
-    setFile(null);
+    setCalibration(null);
     analyze.reset();
   };
 
@@ -253,7 +447,7 @@ export default function VoiceStage() {
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {result ? (
           <ResultView result={result} onReset={reset} />
-        ) : (
+        ) : !calibration ? (
           <Stack gap={20}>
             <SectionLabel>분석 전 체크리스트</SectionLabel>
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
@@ -270,71 +464,20 @@ export default function VoiceStage() {
               ))}
             </SimpleGrid>
 
-            <SectionLabel>음성 파일 업로드</SectionLabel>
+            <SectionLabel>마이크 캘리브레이션</SectionLabel>
             <Panel>
-              <Dropzone
-                onDrop={(files) => setFile(files[0] ?? null)}
-                onReject={() => setFile(null)}
-                accept={{ 'audio/wav': ['.wav'], 'audio/x-wav': ['.wav'], 'audio/wave': ['.wav'] }}
-                maxFiles={1}
-                multiple={false}
-                radius="md"
-                style={{ border: '2px dashed var(--rb-line-strong)', background: 'var(--rb-bg)' }}
-              >
-                <Stack align="center" gap={6} py={24} style={{ pointerEvents: 'none' }}>
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 15V3M7 8l5-5 5 5" />
-                    <path d="M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
-                  </svg>
-                  <Text fz={14} fw={500}>
-                    음성 파일을 업로드하세요
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-faint)">
-                    WAV 형식 · 드래그하거나 클릭
-                  </Text>
-                </Stack>
-              </Dropzone>
-
-              {file && !analyze.isPending && (
-                <Group mt={10} gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px' }}>
-                  <Text fz={13} style={{ flex: 1, wordBreak: 'break-all' }}>
-                    {file.name}
-                  </Text>
-                  <Anchor fz={13} c="var(--rb-ink-faint)" onClick={reset}>
-                    ✕
-                  </Anchor>
-                </Group>
-              )}
-
-              {analyze.isPending && (
-                <Stack align="center" gap={6} mt={14}>
-                  <LoadingBar label="분석 중" />
-                  <Text fz={12} c="var(--rb-ink-faint)">
-                    음성 길이에 따라 30초~2분 정도 걸려요
-                  </Text>
-                </Stack>
-              )}
-
-              {analyze.isError && (
-                <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
-                  {analyze.error instanceof ApiError
-                    ? analyze.error.message
-                    : '백엔드에 연결할 수 없어요. (localhost:5000 실행 확인)'}
-                </Alert>
-              )}
-
-              <Button
-                mt={12}
-                fullWidth
-                color="brand"
-                radius="md"
-                disabled={!file}
-                loading={analyze.isPending}
-                onClick={() => file && analyze.mutate(file)}
-              >
-                AI 분석 시작
-              </Button>
+              <CalibrationStep onComplete={setCalibration} />
             </Panel>
+          </Stack>
+        ) : (
+          <Stack gap={20}>
+            <SectionLabel>답변 녹음 / 업로드</SectionLabel>
+            <RecordOrUpload
+              onSubmit={(file) => analyze.mutate({ file, calibration })}
+              isPending={analyze.isPending}
+              isError={analyze.isError}
+              error={analyze.error}
+            />
           </Stack>
         )}
       </Box>

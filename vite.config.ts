@@ -15,6 +15,9 @@ export default defineConfig({
       '/analyze': 'http://localhost:5000',
       '/health': 'http://localhost:5000',
       '/community/posts': 'http://localhost:5000',
+      '/interview/tts': 'http://localhost:5000',
+      '/interview/next-question': 'http://localhost:5000',
+      '/interview/transcribe': 'http://localhost:5000',
     },
   },
 });
