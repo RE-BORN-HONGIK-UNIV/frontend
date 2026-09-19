@@ -300,19 +300,20 @@ function RecordOrUpload({
 
   return (
     <Panel>
-      <SegmentedControl
-        value={mode}
-        onChange={(v) => {
-          setMode(v as 'record' | 'upload');
-          setFile(null);
-        }}
-        data={[
-          { label: '직접 녹음', value: 'record' },
-          { label: '파일 업로드', value: 'upload' },
-        ]}
-        fullWidth
-        mb={12}
-      />
+      <Box mb={12}>
+        <SegmentedControl
+          value={mode}
+          onChange={(v) => {
+            setMode(v as 'record' | 'upload');
+            setFile(null);
+          }}
+          data={[
+            { label: '직접 녹음', value: 'record' },
+            { label: '파일 업로드', value: 'upload' },
+          ]}
+          fullWidth
+        />
+      </Box>
 
       {mode === 'record' && (
         <Stack align="center" gap={10} py={12}>
