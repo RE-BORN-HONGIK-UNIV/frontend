@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Alert,
   Anchor,
+  Badge,
   Box,
   Button,
   Dropzone,
@@ -47,6 +48,23 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* 상태 문구별 배지 색 — "정상/편안함"은 긍정, "빈번/과응시/긴장됨"은 주의,
+ * 그 외("보통")는 중립. gaze 지표는 status가 없어서(점수만 있음) null 처리. */
+const STATUS_COLOR: Record<string, 'brand' | 'amber' | 'gray'> = {
+  정상: 'brand',
+  편안함: 'brand',
+  빈번: 'amber',
+  과응시: 'amber',
+  긴장됨: 'amber',
+  보통: 'gray',
+};
+
+function getStatus(tab: MetricKey, result: GazeBlinkResult): string | null {
+  if (tab === 'blink') return result.blink.status;
+  if (tab === 'expression') return result.expression.status;
+  return null;
+}
+
 /* ── result view ─────────────────────────────────────────── */
 
 function ResultView({
@@ -63,6 +81,8 @@ function ResultView({
   const metrics = useMemo(() => extractMetrics(result), [result]);
   const comparisonText = COMPARISON_BUILDERS[tab](metrics, previous);
   const highlight = result[tab].highlight;
+  const score = result[tab].score;
+  const status = getStatus(tab, result);
 
   return (
     <Stack gap={20}>
@@ -88,6 +108,13 @@ function ResultView({
         <Text fz={11} c="var(--rb-ink-faint)" mt={10}>
           {METRIC_TABS.find((m) => m.key === tab)?.desc}
         </Text>
+
+        <Group gap={10} align="center" mt={10}>
+          <Text fz={28} fw={700} c="var(--rb-primary-strong)">
+            {score}점
+          </Text>
+          {status && <Badge color={STATUS_COLOR[status] ?? 'gray'}>{status}</Badge>}
+        </Group>
 
         {highlight ? (
           <video key={tab} src={highlight} controls style={{ width: '100%', borderRadius: 10, marginTop: 12, background: '#000' }} />
