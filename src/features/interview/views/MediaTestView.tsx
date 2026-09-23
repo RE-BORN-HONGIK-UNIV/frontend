@@ -417,7 +417,7 @@ function MicCheckBar({
             variant={phase === 'idle' ? 'filled' : 'subtle'}
             color="brand"
             radius="xl"
-            size="compact-md"
+            size="sm"
             onClick={onStart}
             aria-label={phase === 'idle' ? '마이크 점검 시작' : '마이크 점검 다시 하기'}
             style={{ flexShrink: 0 }}
