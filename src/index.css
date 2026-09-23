@@ -62,6 +62,11 @@
   --rb-primary-tint: #e1ede4;
   --rb-primary-deep-tint: #d3e2d7;
 
+  /* 결과 화면의 "빈번/과응시/긴장됨" 같은 주의 상태 배지용 — 이야기 페이지의
+     rb-community-item-badge와 같은 amber 팔레트를 재사용해서 톤 통일 */
+  --rb-amber-strong: #9a7423;
+  --rb-amber-tint: #f7edd8;
+
   --rb-grad: linear-gradient(105deg, var(--rb-primary-deep) 0%, var(--rb-primary-light) 100%);
   /* lighter left→right wash, used for page-header backgrounds (kept separate from --rb-grad
      so the logo wordmark elsewhere stays at full saturation) */
@@ -106,6 +111,9 @@
   --rb-primary-light: #a8d9b8;
   --rb-primary-tint: #1e3326;
   --rb-primary-deep-tint: #17281c;
+
+  --rb-amber-strong: #e4c583;
+  --rb-amber-tint: #3a3220;
 
   --rb-logo-ink: #8fd6ac;
 }

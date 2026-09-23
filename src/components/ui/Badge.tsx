@@ -3,10 +3,11 @@ import type { CSSProperties, ReactNode } from 'react';
 const TINT: Record<string, { bg: string; fg: string }> = {
   brand: { bg: 'var(--rb-primary-tint)', fg: 'var(--rb-primary-strong)' },
   gray: { bg: 'var(--rb-surface-tint)', fg: 'var(--rb-ink-faint)' },
+  amber: { bg: 'var(--rb-amber-tint)', fg: 'var(--rb-amber-strong)' },
 };
 
 interface BadgeProps {
-  color?: 'brand' | 'gray';
+  color?: 'brand' | 'gray' | 'amber';
   variant?: 'light' | 'filled';
   size?: 'xs' | 'sm' | 'md';
   style?: CSSProperties;
