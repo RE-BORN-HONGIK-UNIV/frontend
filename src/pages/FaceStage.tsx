@@ -22,6 +22,7 @@ import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/c
 import { useAnalyzeGazeBlink } from '@/features/face/queries';
 import { ScoreTrack } from '@/features/face/ScoreTrack';
 import { FaceAvatar } from '@/features/face/FaceAvatar';
+import { GazeTimeline } from '@/features/face/GazeTimeline';
 import type { Stage2Entry } from '@/features/progress/localProgress';
 
 const MAXW = 720;
@@ -142,7 +143,7 @@ function ResultView({
         </Text>
       </Panel>
 
-      {tab === 'expression' ? (
+      {tab === 'expression' && (
         <>
           <SectionLabel>표정 스냅샷</SectionLabel>
           <Panel>
@@ -156,7 +157,21 @@ function ResultView({
             />
           </Panel>
         </>
-      ) : (
+      )}
+
+      {tab === 'gaze' && (
+        <>
+          <SectionLabel>시선 흐름</SectionLabel>
+          <Panel>
+            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
+              점수 대신, 영상 전체에서 언제·얼마나 시선을 피했는지 구간으로 보여드려요.
+            </Text>
+            <GazeTimeline key={tab} segments={result.gaze.segments} />
+          </Panel>
+        </>
+      )}
+
+      {tab === 'blink' && (
         <>
           <SectionLabel>점수 위치</SectionLabel>
           <Panel>
