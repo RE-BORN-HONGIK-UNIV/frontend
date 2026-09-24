@@ -5,6 +5,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { RebornWordmark } from '@/components/RebornWordmark';
 import { Reveal } from '@/components/Reveal';
 import { SectionBadge } from '@/components/SectionBadge';
+import { SiteNavLinks } from '@/components/SiteNavLinks';
 
 const MAXW = 1120;
 
@@ -100,17 +101,7 @@ function Nav() {
        * justify-content: space-between이었을 땐 우측 요소가 없어지자마자
        * 링크 그룹이 오른쪽 끝으로 쏠려버렸음. */}
       <RebornWordmark size={36} animate={false} />
-      <Group gap={32} visibleFrom="sm">
-        <Anchor component={Link} to="/dashboard" c="var(--rb-ink-soft)" fz={14} underline="never">
-          훈련
-        </Anchor>
-        <Anchor component={Link} to="/community" c="var(--rb-ink-soft)" fz={14} underline="never">
-          이야기
-        </Anchor>
-        <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
-          문의
-        </Anchor>
-      </Group>
+      <SiteNavLinks />
       <Box />
     </Box>
   );

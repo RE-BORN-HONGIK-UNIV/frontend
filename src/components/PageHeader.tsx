@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Anchor, Box, Group, Text, Title } from '@/components/ui';
 import { RebornWordmark } from './RebornWordmark';
+import { SiteNavLinks } from './SiteNavLinks';
 import { auth } from '@/lib/auth';
 
 /** Shared header for app pages (Dashboard, VoiceStage, FaceStage, InterviewStage).
@@ -33,14 +34,7 @@ export function PageHeader({
         <Link to="/">
           <RebornWordmark size={36} animate={false} />
         </Link>
-        <Group gap={32} visibleFrom="sm">
-          <Anchor component={Link} to="/community" c="var(--rb-ink-soft)" fz={14} underline="never">
-            이야기
-          </Anchor>
-          <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
-            문의
-          </Anchor>
-        </Group>
+        <SiteNavLinks active="training" />
         {authed && (
           <Group gap={14}>
             <Text fz={14} c="var(--rb-ink-soft)">
