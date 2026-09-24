@@ -66,6 +66,7 @@
      rb-community-item-badge와 같은 amber 팔레트를 재사용해서 톤 통일 */
   --rb-amber-strong: #9a7423;
   --rb-amber-tint: #f7edd8;
+  --rb-amber: #d6a336;
 
   --rb-grad: linear-gradient(105deg, var(--rb-primary-deep) 0%, var(--rb-primary-light) 100%);
   /* lighter left→right wash, used for page-header backgrounds (kept separate from --rb-grad
@@ -114,6 +115,7 @@
 
   --rb-amber-strong: #e4c583;
   --rb-amber-tint: #3a3220;
+  --rb-amber: #e0ac3f;
 
   --rb-logo-ink: #8fd6ac;
 }
@@ -499,5 +501,15 @@ a {
   .rb-loadingbar-load {
     width: 16px;
     transform: translateX(32px);
+  }
+}
+
+
+.rb-meter-marker {
+  transition: left 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-meter-marker {
+    transition: none;
   }
 }
