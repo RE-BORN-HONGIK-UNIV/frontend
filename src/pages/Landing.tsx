@@ -104,17 +104,6 @@ function Nav() {
           문의
         </Anchor>
       </Group>
-      <Button
-        component={Link}
-        to="/signup"
-        variant="outline"
-        color="brand"
-        radius="xl"
-        size="xs"
-        styles={{ root: { fontWeight: 600 } }}
-      >
-        시작하기
-      </Button>
     </Box>
   );
 }

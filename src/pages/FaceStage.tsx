@@ -187,7 +187,7 @@ function ResultView({
             <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
               {METRIC_TABS.find((m) => m.key === tab)?.label} 점수가 0~100점 중 어디쯤인지 보여드려요.
             </Text>
-            <ScoreTrack key={tab} score={score} />
+            <ScoreTrack key={tab} score={score} status={status ?? undefined} statusColor={status ? STATUS_COLOR[status] ?? 'gray' : undefined} />
           </Panel>
         </>
       )}

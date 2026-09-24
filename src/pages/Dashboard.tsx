@@ -142,18 +142,11 @@ export default function Dashboard() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        eyebrow={
-          <Badge
-            variant="light"
-            styles={{ root: { background: 'rgba(255,255,255,0.2)', color: '#fff' } }}
-          >
-            AI 기반 디지털 재활 솔루션
-          </Badge>
-        }
+        eyebrow={<Badge variant="light" color="brand">AI 기반 디지털 재활 솔루션</Badge>}
         title={`안녕하세요, ${name} 님 🌱`}
         subtitle="오늘도 당신의 속도로, 천천히 나아가요"
         rightExtra={
-          <Box style={{ background: '#ffffff', borderRadius: 999, padding: '6px 14px' }}>
+          <Box style={{ background: 'var(--rb-primary-tint)', borderRadius: 999, padding: '6px 14px' }}>
             <Text fz={12} fw={600} c="var(--rb-primary-strong)">
               🔥 {streak}일 연속 방문 중
             </Text>
