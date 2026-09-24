@@ -8,7 +8,8 @@ import { auth } from '@/lib/auth';
  * '이야기'(Community) 페이지와 같은 흰 배경 + 상단 네비(로고/이야기/문의/사용자명/
  * 로그아웃) 스타일로 통일 — 예전엔 이 화면들만 진한 그린 그라디언트 배너를 써서,
  * '이야기'와 오갈 때 디자인 시스템이 확 바뀌는 느낌이 있었음(CommunityShell.tsx
- * 참고). 가운데 title/subtitle 영역은 기존처럼 maxWidth로 정렬. */
+ * 참고). title/subtitle 영역도 CommunityShell처럼 maxWidth 없이 좌우 padding만
+ * 줘서 화면 끝까지 채움 — Dashboard.tsx 본문 wrapper와 동일한 이유. */
 export function PageHeader({
   back,
   eyebrow,
@@ -59,7 +60,7 @@ export function PageHeader({
         )}
       </Group>
 
-      <Box style={{ maxWidth: 1120, margin: '0 auto', padding: '4px 40px 26px' }}>
+      <Box style={{ padding: '4px 40px 26px' }}>
         {back && (
           <Anchor component={Link} to={back} fz={13} c="var(--rb-ink-soft)" display="inline-block" mb={14}>
             ← 뒤로
