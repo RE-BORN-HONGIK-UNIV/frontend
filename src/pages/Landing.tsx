@@ -85,9 +85,9 @@ function Nav() {
     <Box
       component="header"
       style={{
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center',
-        justifyContent: 'space-between',
         padding: '20px 40px',
         borderBottom: '1px solid var(--rb-line)',
         background: 'var(--rb-surface)',
@@ -95,8 +95,15 @@ function Nav() {
         zIndex: 5,
       }}
     >
+      {/* 좌우를 1fr 1fr로 맞춰서, 우측에 로그인 상태 표시 등 다른 요소가
+       * 생기거나 없어져도 가운데 링크 그룹이 항상 정중앙에 오게 함 —
+       * justify-content: space-between이었을 땐 우측 요소가 없어지자마자
+       * 링크 그룹이 오른쪽 끝으로 쏠려버렸음. */}
       <RebornWordmark size={36} animate={false} />
       <Group gap={32} visibleFrom="sm">
+        <Anchor component={Link} to="/dashboard" c="var(--rb-ink-soft)" fz={14} underline="never">
+          훈련
+        </Anchor>
         <Anchor component={Link} to="/community" c="var(--rb-ink-soft)" fz={14} underline="never">
           이야기
         </Anchor>
@@ -104,6 +111,7 @@ function Nav() {
           문의
         </Anchor>
       </Group>
+      <Box />
     </Box>
   );
 }

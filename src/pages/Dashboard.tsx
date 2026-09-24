@@ -154,7 +154,7 @@ export default function Dashboard() {
         }
       />
 
-      <Box style={{ maxWidth: 1120, margin: '0 auto', padding: '20px 16px 0' }}>
+      <Box style={{ padding: '20px 40px 0' }}>
         <Grid gutter={24}>
           {/* main */}
           <Grid.Col span={{ base: 12, md: 8 }}>
