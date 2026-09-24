@@ -21,7 +21,7 @@ import { COMPARISON_BUILDERS, extractMetrics } from '@/features/face/comparison'
 import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/constants';
 import { useAnalyzeGazeBlink } from '@/features/face/queries';
 import { ScoreTrack } from '@/features/face/ScoreTrack';
-import { FaceAvatar } from '@/features/face/FaceAvatar';
+import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
 import { GazeTimeline } from '@/features/face/GazeTimeline';
 import type { Stage2Entry } from '@/features/progress/localProgress';
 
@@ -145,16 +145,25 @@ function ResultView({
 
       {tab === 'expression' && (
         <>
-          <SectionLabel>표정 스냅샷</SectionLabel>
+          <SectionLabel>표정 재생</SectionLabel>
           <Panel>
             <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
-              미소·긴장 두 점수를 하나로 뭉치지 않고 표정으로 같이 보여드려요.
+              미소·긴장이 영상 어느 구간에서 나타났는지, 원하는 지표만 골라 얼굴로 재생해볼 수 있어요.
             </Text>
-            <FaceAvatar
-              key={tab}
-              smileScore={result.expression.smile_score}
-              tensionScore={result.expression.tension_score}
-            />
+            <SimpleGrid cols={2} spacing={12}>
+              <ExpressionPlayer
+                key={`${tab}-smile`}
+                indicator="smile"
+                score={result.expression.smile_score}
+                segments={result.expression.segments}
+              />
+              <ExpressionPlayer
+                key={`${tab}-tension`}
+                indicator="tension"
+                score={result.expression.tension_score}
+                segments={result.expression.segments}
+              />
+            </SimpleGrid>
           </Panel>
         </>
       )}
