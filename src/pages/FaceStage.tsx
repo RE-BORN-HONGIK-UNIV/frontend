@@ -21,6 +21,7 @@ import { COMPARISON_BUILDERS, extractMetrics } from '@/features/face/comparison'
 import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/constants';
 import { useAnalyzeGazeBlink } from '@/features/face/queries';
 import { ScoreTrack } from '@/features/face/ScoreTrack';
+import { FaceAvatar } from '@/features/face/FaceAvatar';
 import type { Stage2Entry } from '@/features/progress/localProgress';
 
 const MAXW = 720;
@@ -141,13 +142,31 @@ function ResultView({
         </Text>
       </Panel>
 
-      <SectionLabel>점수 위치</SectionLabel>
-      <Panel>
-        <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
-          {METRIC_TABS.find((m) => m.key === tab)?.label} 점수가 0~100점 중 어디쯤인지 보여드려요.
-        </Text>
-        <ScoreTrack key={tab} score={score} />
-      </Panel>
+      {tab === 'expression' ? (
+        <>
+          <SectionLabel>표정 스냅샷</SectionLabel>
+          <Panel>
+            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
+              미소·긴장 두 점수를 하나로 뭉치지 않고 표정으로 같이 보여드려요.
+            </Text>
+            <FaceAvatar
+              key={tab}
+              smileScore={result.expression.smile_score}
+              tensionScore={result.expression.tension_score}
+            />
+          </Panel>
+        </>
+      ) : (
+        <>
+          <SectionLabel>점수 위치</SectionLabel>
+          <Panel>
+            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
+              {METRIC_TABS.find((m) => m.key === tab)?.label} 점수가 0~100점 중 어디쯤인지 보여드려요.
+            </Text>
+            <ScoreTrack key={tab} score={score} />
+          </Panel>
+        </>
+      )}
     </Stack>
   );
 }
