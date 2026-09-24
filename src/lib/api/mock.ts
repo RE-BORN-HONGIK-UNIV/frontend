@@ -151,7 +151,7 @@ export const mockApi = {
     return {
       blink: {
         rate_per_min: 18,
-        status: '정상 범위',
+        status: '정상',
         score: 82,
         events: [{ start: 2.1, end: 2.3 }, { start: 9.0, end: 9.2 }],
         highlight: null,
