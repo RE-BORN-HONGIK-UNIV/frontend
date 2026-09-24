@@ -20,7 +20,9 @@ import type { GazeBlinkResult } from '@/lib/api/types';
 import { COMPARISON_BUILDERS, extractMetrics } from '@/features/face/comparison';
 import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/constants';
 import { useAnalyzeGazeBlink } from '@/features/face/queries';
-import { ScoreTrack, type MeterZone } from '@/features/face/ScoreTrack';
+import { ScoreTrack } from '@/features/face/ScoreTrack';
+import { FaceAvatar } from '@/features/face/FaceAvatar';
+import { GazeTimeline } from '@/features/face/GazeTimeline';
 import type { Stage2Entry } from '@/features/progress/localProgress';
 
 const MAXW = 720;
@@ -66,41 +68,6 @@ function getStatus(tab: MetricKey, result: GazeBlinkResult): string | null {
   return null;
 }
 
-function getMeterProps(tab: MetricKey, result: GazeBlinkResult) {
-  if (tab === 'blink') {
-    return {
-      value: result.blink.rate_per_min,
-      domain: [0, 45] as [number, number],
-      zones: [
-        { from: 0, to: 10, color: 'amber' },
-        { from: 10, to: 30, color: 'brand' },
-        { from: 30, to: 45, color: 'amber' },
-      ] as MeterZone[],
-      unit: '회',
-      openEnd: true,
-    };
-  }
-  if (tab === 'gaze') {
-    return {
-      value: result.gaze.avg_fixation_sec,
-      domain: [0, 8] as [number, number],
-      zones: [
-        { from: 0, to: 3, color: 'amber' },
-        { from: 3, to: 5, color: 'brand' },
-        { from: 5, to: 8, color: 'amber' },
-      ] as MeterZone[],
-      unit: '초',
-      openEnd: true,
-    };
-  }
-  return {
-    value: result.expression.score,
-    domain: [0, 100] as [number, number],
-    unit: '점',
-    openEnd: false,
-  };
-}
-
 /* ── result view ─────────────────────────────────────────── */
 
 function ResultView({
@@ -119,7 +86,6 @@ function ResultView({
   const highlight = result[tab].highlight;
   const score = result[tab].score;
   const status = getStatus(tab, result);
-  const meterProps = useMemo(() => getMeterProps(tab, result), [tab, result]);
 
   return (
     <Stack gap={20}>
@@ -153,8 +119,6 @@ function ResultView({
           {status && <Badge color={STATUS_COLOR[status] ?? 'gray'}>{status}</Badge>}
         </Group>
 
-        <ScoreTrack key={tab} {...meterProps} />	
-
         {highlight ? (
           <video key={tab} src={highlight} controls style={{ width: '100%', borderRadius: 10, marginTop: 12, background: '#000' }} />
         ) : (
@@ -178,6 +142,46 @@ function ResultView({
           {comparisonText}
         </Text>
       </Panel>
+
+      {tab === 'expression' && (
+        <>
+          <SectionLabel>표정 스냅샷</SectionLabel>
+          <Panel>
+            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
+              미소·긴장 두 점수를 하나로 뭉치지 않고 표정으로 같이 보여드려요.
+            </Text>
+            <FaceAvatar
+              key={tab}
+              smileScore={result.expression.smile_score}
+              tensionScore={result.expression.tension_score}
+            />
+          </Panel>
+        </>
+      )}
+
+      {tab === 'gaze' && (
+        <>
+          <SectionLabel>시선 흐름</SectionLabel>
+          <Panel>
+            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
+              점수 대신, 영상 전체에서 언제·얼마나 시선을 피했는지 구간으로 보여드려요.
+            </Text>
+            <GazeTimeline key={tab} segments={result.gaze.segments} />
+          </Panel>
+        </>
+      )}
+
+      {tab === 'blink' && (
+        <>
+          <SectionLabel>점수 위치</SectionLabel>
+          <Panel>
+            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
+              {METRIC_TABS.find((m) => m.key === tab)?.label} 점수가 0~100점 중 어디쯤인지 보여드려요.
+            </Text>
+            <ScoreTrack key={tab} score={score} />
+          </Panel>
+        </>
+      )}
     </Stack>
   );
 }
