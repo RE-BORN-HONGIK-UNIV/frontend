@@ -78,14 +78,6 @@
   --rb-header-grad: linear-gradient(105deg, var(--rb-primary) 0%, #a3d2b3 100%);
   --rb-font-display: 'Spectral', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
-  /* ── 로고 전용 토큰(2026-09-14) — "Hey!" 레퍼런스에서 샘플링한 손글씨 폰트/팔레트.
-     본문/제목의 --rb-font-display·--rb-primary-*는 한글이 많이 섞여서 그대로 두고,
-     로고(RebornWordmark/RibbonMark)에만 별도로 적용 — Caveat은 라틴 전용이라
-     한글 제목에 쓰면 폴백만 타서 의미가 없음. */
-  --rb-font-logo: 'Caveat', 'Segoe Script', cursive;
-  --rb-logo-ink: #1d5c3a;
-  --rb-logo-accent: #8fc64d;
-
   color-scheme: light;
 }
 
@@ -121,8 +113,6 @@
   --rb-amber-tint: #3a3220;
 
   --rb-meter: #6f9ce0;
-
-  --rb-logo-ink: #8fd6ac;
 }
 
 * {
@@ -203,42 +193,39 @@ a {
   }
 }
 
-/* ── logo entry animation: ring draws, then the dot glides in ── */
-@keyframes rbDraw {
-  to {
-    stroke-dashoffset: 0;
-  }
+/* ── 로고 워드마크(RebornWordmark) 라이트/다크 이미지 전환 — data-theme
+   속성 기준(React state를 안 거쳐서 테마 전환 시 리렌더 없이 즉시 바뀜).
+   기본은 라이트 버전만 보이고, 다크 테마일 때만 서로 바뀐다. */
+.rb-logo-light {
+  display: block;
 }
-@keyframes rbEmerge {
+.rb-logo-dark {
+  display: none;
+}
+:root[data-theme='dark'] .rb-logo-light {
+  display: none;
+}
+:root[data-theme='dark'] .rb-logo-dark {
+  display: block;
+}
+
+/* ── logo entry animation: 로고 이미지 전체가 살짝 아래·작게 시작해서 페이드인 ── */
+@keyframes rbLogoIn {
   0% {
-    transform: translate(-12px, 3px) scale(0.34);
+    transform: translateY(6px) scale(0.92);
     opacity: 0;
   }
-  55% {
-    opacity: 1;
-  }
   100% {
-    transform: translate(0, 0) scale(1);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
-.rb-ring {
-  stroke-dasharray: 54;
-  stroke-dashoffset: 54;
-  animation: rbDraw 640ms ease-out 120ms both;
-}
-.rb-dot {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: rbEmerge 860ms cubic-bezier(0.2, 0.85, 0.3, 1) 560ms both;
+.rb-logo-anim {
+  animation: rbLogoIn 560ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .rb-ring,
-  .rb-dot {
+  .rb-logo-anim {
     animation: none;
-    stroke-dashoffset: 0;
-    opacity: 1;
-    transform: none;
   }
 }
 
