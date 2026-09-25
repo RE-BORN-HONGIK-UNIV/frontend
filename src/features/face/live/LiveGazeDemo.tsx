@@ -42,6 +42,7 @@ export function LiveGazeDemo() {
   const [baseline, setBaseline] = useState<GazeBaseline | null>(null);
   const [currentlyLooking, setCurrentlyLooking] = useState<boolean | null>(null);
   const [scoreResult, setScoreResult] = useState<ReturnType<typeof scoreGazeSegments> | null>(null);
+  const [rawPose, setRawPose] = useState<RawPose | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,6 +133,7 @@ export function LiveGazeDemo() {
             const committedSoFar = gazeFsmRef.current.segmentBuffer.committed;
             setScoreResult(scoreGazeSegments(committedSoFar));
             setElapsedSec(t);
+            setRawPose(raw);
           }
 
           rafRef.current = requestAnimationFrame(tick);
@@ -166,21 +168,28 @@ export function LiveGazeDemo() {
       </p>
       {phase === 'error' && <p style={{ color: 'red' }}>에러: {errorMessage}</p>}
       {phase === 'live' && (
-        <p>
-          경과 {elapsedSec.toFixed(1)}초 · baseline yaw {baseline?.yaw.toFixed(1)}° / pitch{' '}
-          {baseline?.pitch.toFixed(1)}° · 현재{' '}
-          {currentlyLooking === null ? '판정 대기' : currentlyLooking ? '정면 응시(fixation)' : '회피(aversion)'}
-          {scoreResult && (
-            <>
-              {' '}
-              · 확정된 평균 응시 {scoreResult.avgFixationSec}초 · 점수 {scoreResult.score}
-            </>
-          )}
-        </p>
+        <>
+          <p style={{ fontSize: 32, fontWeight: 'bold', fontFamily: 'monospace' }}>
+            yaw {rawPose ? rawPose.yaw.toFixed(1) : '—'}° &nbsp; pitch{' '}
+            {rawPose ? rawPose.pitch.toFixed(1) : '—'}°
+          </p>
+          <p>
+            경과 {elapsedSec.toFixed(1)}초 · baseline yaw {baseline?.yaw.toFixed(1)}° / pitch{' '}
+            {baseline?.pitch.toFixed(1)}° · 현재{' '}
+            {currentlyLooking === null ? '판정 대기' : currentlyLooking ? '정면 응시(fixation)' : '회피(aversion)'}
+            {scoreResult && (
+              <>
+                {' '}
+                · 확정된 평균 응시 {scoreResult.avgFixationSec}초 · 점수 {scoreResult.score}
+              </>
+            )}
+          </p>
+        </>
       )}
       <p style={{ fontSize: 12, color: '#666' }}>
-        고개를 좌우/상하로 크게 돌려서 fixation↔aversion 전환이 체감상 맞는지 확인해주세요 — headPose.ts가
-        backend와 다른 알고리즘(MediaPipe 변환 행렬)을 쓰기 때문에 임계값 재검증이 필요합니다.
+        위 yaw/pitch 숫자를 보면서 고개를 정면 → 오른쪽으로 살짝(~10°) → 많이(~30°) 순서로 돌려보고 숫자가
+        그 정도로 변하는지 확인해주세요. baseline 대비 ±10°를 벗어나면 회피(aversion)로 판정됩니다 — 이
+        데모가 알려주는 숫자로 "얼마나 돌려야 회피가 뜨는지"를 정확히 알 수 있습니다.
       </p>
       <video ref={videoRef} muted playsInline style={{ width: 480, transform: 'scaleX(-1)' }} />
     </div>
