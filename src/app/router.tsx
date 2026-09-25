@@ -13,6 +13,7 @@ import CommunityPage from '@/pages/CommunityPage';
 import CommunityPostPage from '@/pages/CommunityPostPage';
 import { LiveFaceSpike } from '@/features/face/live/Spike';
 import { LiveBlinkDemo } from '@/features/face/live/LiveBlinkDemo';
+import { LiveGazeDemo } from '@/features/face/live/LiveGazeDemo';
 
 export const router = createBrowserRouter([
   {
@@ -73,6 +74,8 @@ export const router = createBrowserRouter([
       { path: '/face/live-spike', element: <LiveFaceSpike /> },
       // Phase 1 데모 전용, 임시 라우트 — FaceStage.tsx에 통합되면(Phase 4) 제거
       { path: '/face/live-blink-demo', element: <LiveBlinkDemo /> },
+      // Phase 2 데모 전용, 임시 라우트 — FaceStage.tsx에 통합되면(Phase 4) 제거
+      { path: '/face/live-gaze-demo', element: <LiveGazeDemo /> },
       { path: '*', element: <NotFound /> },
     ],
   },

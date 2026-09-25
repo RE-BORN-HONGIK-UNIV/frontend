@@ -27,3 +27,22 @@ export function calibrateBaselineEar(earValues: (number | null)[]): number {
   if (values.length === 0) return DEFAULT_BASELINE_EAR;
   return median(values);
 }
+
+export interface GazeBaseline {
+  yaw: number;
+  pitch: number;
+}
+
+export const DEFAULT_BASELINE_GAZE: GazeBaseline = { yaw: 0, pitch: 0 };
+
+/** backend의 calibrate_baseline_gaze와 동일 — 캘리브레이션 구간에서 모은
+ * yaw/pitch의 중앙값(웹캠 위치가 얼굴 정면이 아닌 사람의 시선 판정 편향
+ * 보정용). 얼굴이 한 번도 검출되지 않으면 (0, 0)으로 폴백. */
+export function calibrateBaselineGaze(poses: (GazeBaseline | null)[]): GazeBaseline {
+  const detected = poses.filter((p): p is GazeBaseline => p !== null);
+  if (detected.length === 0) return DEFAULT_BASELINE_GAZE;
+  return {
+    yaw: median(detected.map((p) => p.yaw)),
+    pitch: median(detected.map((p) => p.pitch)),
+  };
+}
