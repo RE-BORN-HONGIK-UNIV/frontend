@@ -11,6 +11,7 @@ import {
 import { calibrateBaselineGaze, DEFAULT_BASELINE_GAZE, type GazeBaseline } from './calibration';
 import { computeIrisOffset, matrixToHeadPose } from './headPose';
 import { createGazeFsmState, flushGaze, stepGaze } from './gaze';
+import { createSegmentBufferState } from './segmentBuffer';
 import {
   computeExpressionForFrame,
   createExpressionFsmState,
@@ -31,16 +32,26 @@ import type { Point2D } from './types';
  *
  * 캘리브레이션은 시선(gaze)의 baseline yaw/pitch만 필요 — blink는 blendshape
  * 고정 임계값(0.5)이라 baseline이 필요 없고, expression도 backend가 실제로
- * baseline_tension을 안 넘기므로(expression.ts 주석 참고) 캘리브레이션 없이
- * t=0부터 바로 돌린다. 그래서 gaze만 "5초 버퍼링 → baseline 계산 → 리플레이"
- * 패턴(Phase 2)을 따르고, blink/expression은 매 프레임 바로 처리한다.
+ * baseline_tension을 안 넘기므로(expression.ts 주석 참고) 캘리브레이션 없이도
+ * 바로 판정 가능. 그래도 "캘리브레이션이 실제로 잘 됐는지" 확인 없이 바로
+ * 본 촬영(점수에 반영되는 구간)으로 넘어가면 안 되니, 흐름은:
  *
- * 카메라/모델 로딩은 mount 시 자동으로 시작하지 않고 start() 호출로만
- * 시작한다 — 사용자가 준비됐을 때 직접 "촬영 시작"을 누르게 하기 위함
- * (마운트되자마자 카메라 권한 팝업이 뜨는 걸 피함).
+ *   마운트 → (자동) 카메라/모델 로딩 → 캘리브레이션 5초(자동, 얼굴 인식
+ *   상태를 실시간 표시) → 'ready'(캘리브레이션 결과 요약 + "촬영 시작"
+ *   버튼, 사용자가 직접 눌러야 다음 단계로 감) → 'recording'(이때부터
+ *   실제로 blink/expression/gaze를 누적해서 최종 결과에 반영, MAX_CAPTURE_SEC
+ *   지나면 자동 종료) → finish().
  *
- * MAX_CAPTURE_SEC(3분)에 도달하면 자동으로 finish()를 호출해서 세션을
- * 종료한다 — 업로드 모드의 영상 길이 제한과 같은 값을 공유.
+ * 캘리브레이션·대기(ready) 구간 동안의 blink/expression/gaze는 최종
+ * 결과에 안 들어간다 — beginRecording() 시점에 각 FSM을 리셋함(단, gaze의
+ * EMA 스무딩 값(state.smoothed)만은 유지해서 recording 시작 직후 첫
+ * 프레임에서 갑자기 튀지 않게 함). 이건 backend(업로드 영상 분석)가
+ * 캘리브레이션 구간도 분석에 포함시키는 것과 다른 부분인데, 실시간
+ * 모드에서는 "캘리브레이션이 잘 됐는지 사용자가 직접 확인하고 나서
+ * 본 촬영을 시작한다"는 게 제품 요구사항이라 의도적으로 다르게 함.
+ *
+ * MAX_CAPTURE_SEC(3분)은 recording 시작 시점부터 잰다(캘리브레이션·대기
+ * 시간은 안 셈) — 업로드 모드의 영상 길이 제한과 같은 값을 공유.
  *
  * highlight(하이라이트 클립)는 backend가 서버에서 ffmpeg로 원본 영상을
  * 잘라 만드는데, 실시간 모드는 원본 영상 파일이 없어서(녹화본을 따로 만들지
@@ -52,7 +63,12 @@ import type { Point2D } from './types';
 
 const CALIBRATION_SEC = 5;
 
-export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'recording' | 'error';
+export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'ready' | 'recording' | 'error';
+
+export interface CalibrationSummary {
+  /** 캘리브레이션 5초 중 얼굴이 검출된 프레임 비율(0~1). */
+  detectedRatio: number;
+}
 
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -64,15 +80,16 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
   const [faceDetected, setFaceDetected] = useState(false);
+  const [calibrationSummary, setCalibrationSummary] = useState<CalibrationSummary | null>(null);
 
-  const cancelledRef = useRef(false);
-  const startedRef = useRef(false);
   const finishedRef = useRef(false);
+  const isRecordingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const landmarkerRef = useRef<import('@mediapipe/tasks-vision').FaceLandmarker | null>(null);
   const sessionStartRef = useRef(0);
   const elapsedSecRef = useRef(0);
+  const recordingStartTRef = useRef(0);
 
   const calibBufferRef = useRef<[number, GazeBaseline | null][]>([]);
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
@@ -85,132 +102,161 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
   const exprSeriesRef = useRef<[number, number | null, number | null][]>([]);
 
   useEffect(() => {
-    // StrictMode(개발 모드)는 마운트 시 effect를 setup→cleanup→setup 순으로
-    // 두 번 돌린다 — cancelledRef를 여기서 false로 리셋 안 하면 cleanup에서
-    // true가 된 채로 남아, 나중에 사용자가 "촬영 시작"을 눌러도 start()가
-    // cancelledRef.current를 계속 true로 보고 조용히 중단돼버린다.
-    cancelledRef.current = false;
-    return () => {
-      cancelledRef.current = true;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      landmarkerRef.current?.close();
-    };
-  }, []);
+    let cancelled = false;
 
-  async function start() {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    try {
-      setPhase('loading');
-      const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
-      const filesetResolver = await FilesetResolver.forVisionTasks('/mediapipe/wasm');
-      const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task', delegate: 'GPU' },
-        runningMode: 'VIDEO',
-        numFaces: 1,
-        outputFaceBlendshapes: true,
-        outputFacialTransformationMatrixes: true,
-      });
-      if (cancelledRef.current) {
-        landmarker.close();
-        return;
-      }
-      landmarkerRef.current = landmarker;
-
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (cancelledRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      await video.play();
-
-      sessionStartRef.current = performance.now();
-      setPhase('calibrating');
-
-      const tick = () => {
-        if (cancelledRef.current || finishedRef.current || !landmarkerRef.current || !videoRef.current) return;
-        const now = performance.now();
-        const t = (now - sessionStartRef.current) / 1000;
-        const result = landmarkerRef.current.detectForVideo(videoRef.current, now);
-        const landmarks = (result.faceLandmarks?.[0] ?? null) as Point2D[] | null;
-        const categories = result.faceBlendshapes?.[0]?.categories;
-        const blendshapes: Record<string, number> | null = categories
-          ? Object.fromEntries(categories.map((c) => [c.categoryName, c.score]))
-          : null;
-        const matrix = result.facialTransformationMatrixes?.[0]?.data ?? null;
-
-        setFaceDetected(landmarks !== null);
-
-        // blink — blendshape 기반, 캘리브레이션 불필요, 매 프레임 바로 처리
-        const blinkScore = computeBlinkBlendshapeScore(blendshapes);
-        const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
-        if (blink) blinksRef.current.push(blink);
-
-        // expression — baseline 0 고정, 캘리브레이션 불필요, 매 프레임 바로 처리
-        stepExpression(exprFsmRef.current, t, blendshapes);
-        const exprFrame = computeExpressionForFrame(blendshapes);
-        exprSeriesRef.current.push([t, exprFrame ? exprFrame.smile : null, exprFrame ? exprFrame.tension : null]);
-
-        // gaze — baseline yaw/pitch가 필요해서 5초 버퍼링 후 리플레이
-        let gazeRaw: { yaw: number; pitch: number; ox: number; oy: number } | null = null;
-        if (landmarks && matrix) {
-          const { yaw, pitch } = matrixToHeadPose(matrix);
-          const { x: ox, y: oy } = computeIrisOffset(
-            landmarks,
-            LEFT_IRIS_IDX,
-            RIGHT_IRIS_IDX,
-            LEFT_EYE_EAR_IDX,
-            RIGHT_EYE_EAR_IDX,
-          );
-          gazeRaw = { yaw, pitch, ox, oy };
+    async function setup() {
+      try {
+        setPhase('loading');
+        const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+        const filesetResolver = await FilesetResolver.forVisionTasks('/mediapipe/wasm');
+        const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: { modelAssetPath: '/mediapipe/face_landmarker.task', delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true,
+        });
+        if (cancelled) {
+          landmarker.close();
+          return;
         }
+        landmarkerRef.current = landmarker;
 
-        if (t <= CALIBRATION_SEC) {
-          calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch } : null]);
-        } else {
-          if (!calibratedRef.current && calibBufferRef.current.length > 0) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        await video.play();
+
+        sessionStartRef.current = performance.now();
+        setPhase('calibrating');
+
+        const tick = () => {
+          if (cancelled || finishedRef.current || !landmarkerRef.current || !videoRef.current) return;
+          const now = performance.now();
+          const t = (now - sessionStartRef.current) / 1000;
+          const result = landmarkerRef.current.detectForVideo(videoRef.current, now);
+          const landmarks = (result.faceLandmarks?.[0] ?? null) as Point2D[] | null;
+          const categories = result.faceBlendshapes?.[0]?.categories;
+          const blendshapes: Record<string, number> | null = categories
+            ? Object.fromEntries(categories.map((c) => [c.categoryName, c.score]))
+            : null;
+          const matrix = result.facialTransformationMatrixes?.[0]?.data ?? null;
+
+          setFaceDetected(landmarks !== null);
+
+          let gazeRaw: { yaw: number; pitch: number; ox: number; oy: number } | null = null;
+          if (landmarks && matrix) {
+            const { yaw, pitch } = matrixToHeadPose(matrix);
+            const { x: ox, y: oy } = computeIrisOffset(
+              landmarks,
+              LEFT_IRIS_IDX,
+              RIGHT_IRIS_IDX,
+              LEFT_EYE_EAR_IDX,
+              RIGHT_EYE_EAR_IDX,
+            );
+            gazeRaw = { yaw, pitch, ox, oy };
+          }
+
+          if (t <= CALIBRATION_SEC) {
+            calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch } : null]);
+          } else if (!calibratedRef.current) {
             calibratedRef.current = true;
-            const baseline = calibrateBaselineGaze(calibBufferRef.current.map(([, p]) => p));
+            const buffer = calibBufferRef.current;
+            const baseline = calibrateBaselineGaze(buffer.map(([, p]) => p));
             baselineGazeRef.current = baseline;
-            for (const [bt, bPose] of calibBufferRef.current) {
+            for (const [bt, bPose] of buffer) {
               const bRaw = bPose ? { yaw: bPose.yaw, pitch: bPose.pitch, ox: 0, oy: 0 } : null;
               // 캘리브레이션 버퍼엔 iris offset을 안 남겨뒀으니, 리플레이 시엔
               // yaw/pitch만으로 판정한다 — 이 5초 구간은 애초에 baseline 계산용
               // "정면 봐주세요" 구간이라 실제 iris offset도 0에 가까워서 결과에
-              // 미치는 영향이 미미함.
+              // 미치는 영향이 미미함. 이 리플레이는 gaze FSM의 EMA 스무딩
+              // 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
+              // 초기화하므로 이 구간이 실제 구간 판정에 남지는 않는다.
               stepGaze(gazeFsmRef.current, bt, bRaw, baseline.yaw, baseline.pitch);
             }
-            setPhase('recording');
+            gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
+
+            const detected = buffer.filter(([, p]) => p !== null).length;
+            setCalibrationSummary({ detectedRatio: buffer.length > 0 ? detected / buffer.length : 0 });
+            setPhase('ready');
           }
-          stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
-        }
 
-        elapsedSecRef.current = t;
-        setElapsedSec(t);
+          // recording이 시작된 뒤부터만 최종 결과에 반영 — 캘리브레이션·대기
+          // 구간 값은 여기서 버려진다(위 함수 docstring 참고).
+          if (isRecordingRef.current) {
+            const blinkScore = computeBlinkBlendshapeScore(blendshapes);
+            const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
+            if (blink) blinksRef.current.push(blink);
 
-        if (t >= MAX_CAPTURE_SEC) {
-          finish();
-          return;
-        }
+            stepExpression(exprFsmRef.current, t, blendshapes);
+            const exprFrame = computeExpressionForFrame(blendshapes);
+            exprSeriesRef.current.push([
+              t,
+              exprFrame ? exprFrame.smile : null,
+              exprFrame ? exprFrame.tension : null,
+            ]);
 
+            // isRecordingRef가 true인 시점엔 캘리브레이션이 이미 끝난
+            // 뒤라(beginRecording은 phase==='ready'에서만 호출 가능) baseline은
+            // 항상 계산돼 있다.
+            stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
+
+            if (t - recordingStartTRef.current >= MAX_CAPTURE_SEC) {
+              elapsedSecRef.current = t;
+              setElapsedSec(t);
+              finish();
+              return;
+            }
+          }
+
+          elapsedSecRef.current = t;
+          setElapsedSec(t);
+
+          rafRef.current = requestAnimationFrame(tick);
+        };
         rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
-    } catch (err) {
-      if (cancelledRef.current) return;
-      setPhase('error');
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      } catch (err) {
+        if (cancelled) return;
+        setPhase('error');
+        setErrorMessage(err instanceof Error ? err.message : String(err));
+      }
     }
+
+    setup();
+
+    return () => {
+      cancelled = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      landmarkerRef.current?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** 캘리브레이션 확인 후 사용자가 "촬영 시작"을 눌렀을 때 — 이 순간부터
+   * 실제로 점수에 반영되는 구간이 시작된다. */
+  function beginRecording() {
+    if (phase !== 'ready') return;
+    blinkFsmRef.current = createBlinkFsmState();
+    blinksRef.current = [];
+    exprFsmRef.current = createExpressionFsmState();
+    exprSeriesRef.current = [];
+    gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
+    recordingStartTRef.current = elapsedSecRef.current;
+    isRecordingRef.current = true;
+    setPhase('recording');
   }
 
   function finish() {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    isRecordingRef.current = false;
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -219,7 +265,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     flushGaze(gazeFsmRef.current);
     flushExpression(exprFsmRef.current);
 
-    const durationSec = elapsedSecRef.current;
+    const durationSec = Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
     const blinkResult = scoreBlinkRate(blinksRef.current.length, durationSec);
     const gazeResult = scoreGazeSegments(gazeFsmRef.current.segmentBuffer.committed);
     const expressionSummary = summarizeExpression(exprSeriesRef.current);
@@ -268,9 +314,11 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     elapsedSec,
     errorMessage,
     faceDetected,
+    calibrationSummary,
     calibrationSec: CALIBRATION_SEC,
     maxCaptureSec: MAX_CAPTURE_SEC,
-    start,
+    recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
+    beginRecording,
     finish,
   };
 }
