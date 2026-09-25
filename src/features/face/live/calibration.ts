@@ -46,3 +46,18 @@ export function calibrateBaselineGaze(poses: (GazeBaseline | null)[]): GazeBasel
     pitch: median(detected.map((p) => p.pitch)),
   };
 }
+
+export const DEFAULT_BASELINE_TENSION = 0;
+
+/** backend의 calibrate_baseline_tension과 동일 — 캘리브레이션 구간
+ * blendshape의 긴장(browDown) 평균값들의 중앙값. 얼굴이 한 번도 검출되지
+ * 않으면 0으로 폴백. 단, backend app.py는 실제 서비스 호출에서 이 값을
+ * expression_analyzer로 안 넘기고 절대 임계값처럼 쓰기 때문에(코드 주석
+ * 참고 — 개인차가 이미 작아서 baseline까지 빼면 과보정됨을 실측으로 확인)
+ * LiveExpressionDemo도 기본값 0을 그대로 쓴다. 포팅 완전성을 위해 함수만
+ * 남겨둠. */
+export function calibrateBaselineTension(tensionValues: (number | null)[]): number {
+  const values = tensionValues.filter((v): v is number => v !== null);
+  if (values.length === 0) return DEFAULT_BASELINE_TENSION;
+  return median(values);
+}

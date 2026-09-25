@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { calibrateBaselineEar, calibrateBaselineGaze, DEFAULT_BASELINE_EAR } from './calibration';
+import {
+  calibrateBaselineEar,
+  calibrateBaselineGaze,
+  calibrateBaselineTension,
+  DEFAULT_BASELINE_EAR,
+  DEFAULT_BASELINE_TENSION,
+} from './calibration';
 
 // backend/step2/set_baseline.py의 calibrate_baseline_ear에 대응하는 pytest
 // 픽스처는 없어서(원본도 테스트가 없음), 소스 로직(중앙값 + 얼굴 미검출 폴백)을
@@ -42,5 +48,20 @@ describe('calibrateBaselineGaze (backend calibrate_baseline_gaze 포팅)', () =>
   it('값이 하나도 없으면 (0, 0)으로 폴백한다', () => {
     expect(calibrateBaselineGaze([null, null])).toEqual({ yaw: 0, pitch: 0 });
     expect(calibrateBaselineGaze([])).toEqual({ yaw: 0, pitch: 0 });
+  });
+});
+
+describe('calibrateBaselineTension (backend calibrate_baseline_tension 포팅)', () => {
+  it('긴장 점수들의 중앙값을 반환한다', () => {
+    expect(calibrateBaselineTension([0.1, 0.2, 0.3])).toBe(0.2);
+  });
+
+  it('null(얼굴 미검출)은 무시하고 나머지로 중앙값을 계산한다', () => {
+    expect(calibrateBaselineTension([null, 0.1, 0.2, 0.3, null])).toBe(0.2);
+  });
+
+  it('값이 하나도 없으면 DEFAULT_BASELINE_TENSION으로 폴백한다', () => {
+    expect(calibrateBaselineTension([null, null])).toBe(DEFAULT_BASELINE_TENSION);
+    expect(calibrateBaselineTension([])).toBe(DEFAULT_BASELINE_TENSION);
   });
 });
