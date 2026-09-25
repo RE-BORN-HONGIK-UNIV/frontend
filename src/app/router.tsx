@@ -11,6 +11,7 @@ import { NotFound } from '@/pages/stubs';
 import InterviewStage from '@/pages/InterviewStage';
 import CommunityPage from '@/pages/CommunityPage';
 import CommunityPostPage from '@/pages/CommunityPostPage';
+import { LiveFaceSpike } from '@/features/face/live/Spike';
 
 export const router = createBrowserRouter([
   {
@@ -67,6 +68,8 @@ export const router = createBrowserRouter([
           </PrivateRoute>
         ),
       },
+      // Phase 0 스파이크 전용, 임시 라우트 — 확인 끝나면 Spike.tsx와 같이 제거
+      { path: '/face/live-spike', element: <LiveFaceSpike /> },
       { path: '*', element: <NotFound /> },
     ],
   },
