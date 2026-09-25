@@ -18,7 +18,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ApiError } from '@/lib/api/client';
 import type { GazeBlinkResult } from '@/lib/api/types';
 import { COMPARISON_BUILDERS, extractMetrics } from '@/features/face/comparison';
-import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/constants';
+import { FACE_GUIDE_ITEMS, MAX_CAPTURE_SEC, METRIC_TABS, type MetricKey } from '@/features/face/constants';
 import { useAnalyzeGazeBlink } from '@/features/face/queries';
 import { ScoreTrack } from '@/features/face/ScoreTrack';
 import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
@@ -29,6 +29,27 @@ import type { Stage2Entry } from '@/features/progress/localProgress';
 type Mode = 'upload' | 'live';
 
 const MAXW = 720;
+
+/** 업로드된 영상 파일의 길이(초)를 읽는다 — 브라우저가 직접 디코딩 못 하는
+ * 코덱이면 duration을 못 읽을 수 있는데, 그런 경우엔 여기서 막지 않고
+ * 백엔드 분석에 맡긴다(길이 체크는 부가 기능이지 업로드 자체를 막는
+ * 게이트가 아님). */
+function getVideoDurationSec(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const url = URL.createObjectURL(file);
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(video.duration);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('영상 메타데이터를 읽을 수 없어요'));
+    };
+    video.src = url;
+  });
+}
 
 function Check() {
   return (
@@ -205,6 +226,7 @@ function ResultView({
 export default function FaceStage() {
   const [mode, setMode] = useState<Mode>('upload');
   const [file, setFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [liveResult, setLiveResult] = useState<GazeBlinkResult | null>(null);
   const analyze = useAnalyzeGazeBlink();
   const result = analyze.data ?? liveResult;
@@ -212,8 +234,31 @@ export default function FaceStage() {
 
   const reset = () => {
     setFile(null);
+    setUploadError(null);
     analyze.reset();
     setLiveResult(null);
+  };
+
+  const handleDrop = async (files: File[]) => {
+    const f = files[0] ?? null;
+    if (!f) {
+      setFile(null);
+      return;
+    }
+    try {
+      const duration = await getVideoDurationSec(f);
+      if (duration > MAX_CAPTURE_SEC) {
+        setFile(null);
+        setUploadError(
+          `영상이 너무 길어요(${Math.round(duration)}초) — 최대 ${MAX_CAPTURE_SEC / 60}분까지 업로드할 수 있어요.`,
+        );
+        return;
+      }
+    } catch {
+      // duration을 못 읽어도 업로드 자체는 막지 않는다 — 백엔드 분석에 맡김
+    }
+    setUploadError(null);
+    setFile(f);
   };
 
   return (
@@ -265,7 +310,7 @@ export default function FaceStage() {
                 <SectionLabel>영상 파일 업로드</SectionLabel>
                 <Panel>
                   <Dropzone
-                    onDrop={(files) => setFile(files[0] ?? null)}
+                    onDrop={handleDrop}
                     onReject={() => setFile(null)}
                     accept={{ 'video/mp4': ['.mp4'], 'video/quicktime': ['.mov'], 'video/webm': ['.webm'] }}
                     maxFiles={1}
@@ -305,6 +350,12 @@ export default function FaceStage() {
                         영상 길이에 따라 다소 시간이 걸려요
                       </Text>
                     </Stack>
+                  )}
+
+                  {uploadError && (
+                    <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
+                      {uploadError}
+                    </Alert>
                   )}
 
                   {analyze.isError && (

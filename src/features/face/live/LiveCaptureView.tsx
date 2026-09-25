@@ -4,7 +4,7 @@ import type { GazeBlinkResult } from '@/lib/api/types';
 import { useLiveFaceSession, type LivePhase } from './useLiveFaceSession';
 
 const PHASE_LABEL: Record<LivePhase, string> = {
-  idle: '준비 중…',
+  idle: '촬영 시작을 눌러주세요',
   loading: '카메라·분석 모델 불러오는 중…',
   calibrating: '캘리브레이션 중 — 정면을 봐주세요',
   recording: '촬영 중',
@@ -17,10 +17,8 @@ const PHASE_LABEL: Record<LivePhase, string> = {
  * 담당한다. */
 export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlinkResult) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { phase, elapsedSec, errorMessage, calibrationSec, finish } = useLiveFaceSession({
-    videoRef,
-    onComplete,
-  });
+  const { phase, elapsedSec, errorMessage, faceDetected, calibrationSec, maxCaptureSec, start, finish } =
+    useLiveFaceSession({ videoRef, onComplete });
 
   return (
     <Paper p={24} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
@@ -42,6 +40,22 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
             playsInline
             style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
           />
+
+          {phase === 'idle' && (
+            <Box
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Button color="brand" radius="md" onClick={start}>
+                촬영 시작
+              </Button>
+            </Box>
+          )}
         </Box>
 
         <Group justify="center" gap={8}>
@@ -49,13 +63,18 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
             {PHASE_LABEL[phase]}
           </Text>
           {phase === 'calibrating' && (
-            <Text fz={13} c="var(--rb-ink-faint)">
-              ({elapsedSec.toFixed(1)}/{calibrationSec}초)
-            </Text>
+            <>
+              <Text fz={13} c="var(--rb-ink-faint)">
+                ({elapsedSec.toFixed(1)}/{calibrationSec}초)
+              </Text>
+              <Text fz={13} c={faceDetected ? 'var(--rb-primary-strong)' : 'var(--rb-amber-strong)'}>
+                {faceDetected ? '· 얼굴 인식됨' : '· 얼굴이 안 보여요'}
+              </Text>
+            </>
           )}
           {phase === 'recording' && (
             <Text fz={13} c="var(--rb-ink-faint)">
-              경과 {elapsedSec.toFixed(1)}초
+              경과 {elapsedSec.toFixed(1)}초 / 최대 {maxCaptureSec}초
             </Text>
           )}
         </Group>
@@ -66,18 +85,13 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
           </Alert>
         )}
 
-        <Button
-          fullWidth
-          color="brand"
-          radius="md"
-          disabled={phase !== 'recording'}
-          onClick={finish}
-        >
+        <Button fullWidth color="brand" radius="md" disabled={phase !== 'recording'} onClick={finish}>
           촬영 종료하고 결과 보기
         </Button>
 
         <Text fz={11} c="var(--rb-ink-faint)" style={{ textAlign: 'center' }}>
-          정확한 분석을 위해 캘리브레이션 이후 10초 이상 촬영을 권장해요.
+          정확한 분석을 위해 캘리브레이션 이후 10초 이상 촬영을 권장해요. 최대 {maxCaptureSec / 60}분이 지나면
+          자동으로 종료돼요.
         </Text>
       </Stack>
     </Paper>
