@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scoreBlinkRate, scoreGazeSegment, scoreGazeSegments } from './scoring';
+import { scoreBlinkRate, scoreExpression, scoreGazeSegment, scoreGazeSegments } from './scoring';
 
 // backend/tests/test_scoring.py의 score_blink_rate/score_gaze_segment(s)
 // 관련 픽스처를 그대로 옮김.
@@ -55,5 +55,22 @@ describe('scoreGazeSegments (backend score_gaze_segments 포팅)', () => {
     const result = scoreGazeSegments(segments);
     expect(result.avgFixationSec).toBe(2.5);
     expect(result.score).toBe(61.7);
+  });
+});
+
+describe('scoreExpression (backend score_expression 포팅)', () => {
+  it('미소는 많고 긴장은 적으면 편안함', () => {
+    const result = scoreExpression(0.3, 0.05);
+    expect(result.status).toBe('편안함');
+  });
+
+  it('긴장 비율이 높으면 긴장됨', () => {
+    const result = scoreExpression(0.0, 0.5);
+    expect(result.status).toBe('긴장됨');
+  });
+
+  it('미소도 긴장도 적으면 보통', () => {
+    const result = scoreExpression(0.1, 0.1);
+    expect(result.status).toBe('보통');
   });
 });

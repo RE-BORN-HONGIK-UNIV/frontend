@@ -79,3 +79,34 @@ export function scoreGazeSegments(
     score: pyRound(avgScore, 1),
   };
 }
+
+export type ExpressionStatus = '편안함' | '긴장됨' | '보통';
+
+export interface ExpressionScoreResult {
+  smileScore: number;
+  tensionScore: number;
+  score: number;
+  status: ExpressionStatus;
+}
+
+/** backend의 score_expression과 동일 — smile_ratio/tension_ratio를 만드는
+ * 임계값 자체는 심리학 문헌 근거가 아니라 MediaPipe blendshape 스케일에 대한
+ * 엔지니어링 컷오프(backend/step2/scoring.py 주석 참고, 계수 250/200도 잠정치). */
+export function scoreExpression(smileRatio: number, tensionRatio: number): ExpressionScoreResult {
+  const smileScore = Math.min(100, smileRatio * 250);
+  const tensionScore = Math.max(0, 100 - tensionRatio * 200);
+  let status: ExpressionStatus;
+  if (tensionRatio >= 0.4) {
+    status = '긴장됨';
+  } else if (smileRatio >= 0.2) {
+    status = '편안함';
+  } else {
+    status = '보통';
+  }
+  return {
+    smileScore: pyRound(smileScore, 1),
+    tensionScore: pyRound(tensionScore, 1),
+    score: pyRound((smileScore + tensionScore) / 2, 1),
+    status,
+  };
+}
