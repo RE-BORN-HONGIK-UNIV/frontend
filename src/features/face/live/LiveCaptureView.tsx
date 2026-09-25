@@ -74,7 +74,7 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
               </Text>
             </>
           )}
-          {(phase === 'ready' || phase === 'recording') && (
+          {phase === 'ready' && (
             <Text fz={13} c={faceDetected ? 'var(--rb-primary-strong)' : 'var(--rb-amber-strong)'}>
               {faceDetected ? '· 지금 얼굴 인식됨' : '· 지금 얼굴이 안 보여요'}
             </Text>
@@ -106,7 +106,7 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
           </Button>
         ) : (
           <Button fullWidth color="brand" radius="md" disabled={phase !== 'recording'} onClick={finish}>
-            촬영 종료하고 결과 보기
+            촬영 종료
           </Button>
         )}
 
