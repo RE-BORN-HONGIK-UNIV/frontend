@@ -23,7 +23,10 @@ import { useAnalyzeGazeBlink } from '@/features/face/queries';
 import { ScoreTrack } from '@/features/face/ScoreTrack';
 import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
 import { GazeTimeline } from '@/features/face/GazeTimeline';
+import { LiveCaptureView } from '@/features/face/live/LiveCaptureView';
 import type { Stage2Entry } from '@/features/progress/localProgress';
+
+type Mode = 'upload' | 'live';
 
 const MAXW = 720;
 
@@ -74,10 +77,12 @@ function ResultView({
   result,
   previous,
   onReset,
+  mode,
 }: {
   result: GazeBlinkResult;
   previous: Stage2Entry | null;
   onReset: () => void;
+  mode: Mode;
 }) {
   const [tab, setTab] = useState<MetricKey>('blink');
 
@@ -90,7 +95,7 @@ function ResultView({
   return (
     <Stack gap={20}>
       <Button variant="default" radius="md" onClick={onReset} fullWidth>
-        ↺ 새 파일로 다시 분석
+        {mode === 'live' ? '↺ 다시 촬영하기' : '↺ 새 파일로 다시 분석'}
       </Button>
 
       {!previous && (
@@ -198,14 +203,17 @@ function ResultView({
 /* ── page ────────────────────────────────────────────────── */
 
 export default function FaceStage() {
+  const [mode, setMode] = useState<Mode>('upload');
   const [file, setFile] = useState<File | null>(null);
+  const [liveResult, setLiveResult] = useState<GazeBlinkResult | null>(null);
   const analyze = useAnalyzeGazeBlink();
-  const result = analyze.data ?? null;
+  const result = analyze.data ?? liveResult;
   const previous: Stage2Entry | null = result?.previous ?? null;
 
   const reset = () => {
     setFile(null);
     analyze.reset();
+    setLiveResult(null);
   };
 
   return (
@@ -219,7 +227,7 @@ export default function FaceStage() {
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {result ? (
-          <ResultView result={result} previous={previous} onReset={reset} />
+          <ResultView result={result} previous={previous} onReset={reset} mode={mode} />
         ) : (
           <Stack gap={20}>
             <SectionLabel>분석 전 체크리스트</SectionLabel>
@@ -237,71 +245,95 @@ export default function FaceStage() {
               ))}
             </SimpleGrid>
 
-            <SectionLabel>영상 파일 업로드</SectionLabel>
-            <Panel>
-              <Dropzone
-                onDrop={(files) => setFile(files[0] ?? null)}
-                onReject={() => setFile(null)}
-                accept={{ 'video/mp4': ['.mp4'], 'video/quicktime': ['.mov'], 'video/webm': ['.webm'] }}
-                maxFiles={1}
-                multiple={false}
-                radius="md"
-                style={{ border: '2px dashed var(--rb-line-strong)', background: 'var(--rb-bg)' }}
-              >
-                <Stack align="center" gap={6} py={24} style={{ pointerEvents: 'none' }}>
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 15V3M7 8l5-5 5 5" />
-                    <path d="M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
-                  </svg>
-                  <Text fz={14} fw={500}>
-                    얼굴이 나오는 영상을 업로드하세요
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-faint)">
-                    MP4 형식 · 드래그하거나 클릭
-                  </Text>
-                </Stack>
-              </Dropzone>
+            {!analyze.isPending && (
+              <>
+                <SectionLabel>분석 방법 선택</SectionLabel>
+                <SegmentedControl
+                  fullWidth
+                  value={mode}
+                  onChange={(v) => setMode(v as Mode)}
+                  data={[
+                    { label: '영상 업로드', value: 'upload' },
+                    { label: '실시간 촬영', value: 'live' },
+                  ]}
+                />
+              </>
+            )}
 
-              {file && !analyze.isPending && (
-                <Group mt={10} gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px' }}>
-                  <Text fz={13} style={{ flex: 1, wordBreak: 'break-all' }}>
-                    {file.name}
-                  </Text>
-                  <Anchor fz={13} c="var(--rb-ink-faint)" onClick={reset}>
-                    ✕
-                  </Anchor>
-                </Group>
-              )}
+            {mode === 'upload' ? (
+              <>
+                <SectionLabel>영상 파일 업로드</SectionLabel>
+                <Panel>
+                  <Dropzone
+                    onDrop={(files) => setFile(files[0] ?? null)}
+                    onReject={() => setFile(null)}
+                    accept={{ 'video/mp4': ['.mp4'], 'video/quicktime': ['.mov'], 'video/webm': ['.webm'] }}
+                    maxFiles={1}
+                    multiple={false}
+                    radius="md"
+                    style={{ border: '2px dashed var(--rb-line-strong)', background: 'var(--rb-bg)' }}
+                  >
+                    <Stack align="center" gap={6} py={24} style={{ pointerEvents: 'none' }}>
+                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 15V3M7 8l5-5 5 5" />
+                        <path d="M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
+                      </svg>
+                      <Text fz={14} fw={500}>
+                        얼굴이 나오는 영상을 업로드하세요
+                      </Text>
+                      <Text fz={12} c="var(--rb-ink-faint)">
+                        MP4 형식 · 드래그하거나 클릭
+                      </Text>
+                    </Stack>
+                  </Dropzone>
 
-              {analyze.isPending && (
-                <Stack align="center" gap={6} mt={14}>
-                  <LoadingBar label="분석 중" />
-                  <Text fz={12} c="var(--rb-ink-faint)">
-                    영상 길이에 따라 다소 시간이 걸려요
-                  </Text>
-                </Stack>
-              )}
+                  {file && !analyze.isPending && (
+                    <Group mt={10} gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px' }}>
+                      <Text fz={13} style={{ flex: 1, wordBreak: 'break-all' }}>
+                        {file.name}
+                      </Text>
+                      <Anchor fz={13} c="var(--rb-ink-faint)" onClick={reset}>
+                        ✕
+                      </Anchor>
+                    </Group>
+                  )}
 
-              {analyze.isError && (
-                <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
-                  {analyze.error instanceof ApiError
-                    ? analyze.error.message
-                    : '백엔드에 연결할 수 없어요. (localhost:5000 실행 확인)'}
-                </Alert>
-              )}
+                  {analyze.isPending && (
+                    <Stack align="center" gap={6} mt={14}>
+                      <LoadingBar label="분석 중" />
+                      <Text fz={12} c="var(--rb-ink-faint)">
+                        영상 길이에 따라 다소 시간이 걸려요
+                      </Text>
+                    </Stack>
+                  )}
 
-              <Button
-                mt={12}
-                fullWidth
-                color="brand"
-                radius="md"
-                disabled={!file}
-                loading={analyze.isPending}
-                onClick={() => file && analyze.mutate(file)}
-              >
-                AI 분석 시작
-              </Button>
-            </Panel>
+                  {analyze.isError && (
+                    <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
+                      {analyze.error instanceof ApiError
+                        ? analyze.error.message
+                        : '백엔드에 연결할 수 없어요. (localhost:5000 실행 확인)'}
+                    </Alert>
+                  )}
+
+                  <Button
+                    mt={12}
+                    fullWidth
+                    color="brand"
+                    radius="md"
+                    disabled={!file}
+                    loading={analyze.isPending}
+                    onClick={() => file && analyze.mutate(file)}
+                  >
+                    AI 분석 시작
+                  </Button>
+                </Panel>
+              </>
+            ) : (
+              <>
+                <SectionLabel>실시간 촬영</SectionLabel>
+                <LiveCaptureView onComplete={setLiveResult} />
+              </>
+            )}
           </Stack>
         )}
       </Box>
