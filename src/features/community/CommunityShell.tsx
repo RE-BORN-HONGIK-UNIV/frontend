@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Anchor, Box, Group, IconPanelLeft, Text, Title } from '@/components/ui';
 import { RebornWordmark } from '@/components/RebornWordmark';
+import { SiteNavLinks } from '@/components/SiteNavLinks';
 import { auth } from '@/lib/auth';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { CommunitySidebar } from './CommunitySidebar';
@@ -76,17 +77,7 @@ export function CommunityShell({
               <RebornWordmark size={36} animate={false} />
             </Link>
           </Group>
-          {/* Landing.tsx Nav()와 똑같이 로고/우측 사이의 독립된 flex 항목으로 둬서
-           * space-between이 가운데로 밀어주는 위치까지 맞춤 — 지금 있는 페이지
-           * ('이야기')만 글자색을 브랜드 그린으로 바꿔서 활성 표시 */}
-          <Group gap={32}>
-            <Anchor component={Link} to="/community" c="var(--rb-primary-strong)" fz={14} fw={700} underline="never">
-              이야기
-            </Anchor>
-            <Anchor href="#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
-              문의
-            </Anchor>
-          </Group>
+          <SiteNavLinks active="community" />
           <Group gap={14}>
             <Text fz={14} c="var(--rb-ink-soft)">
               {auth.name || '회원'}님

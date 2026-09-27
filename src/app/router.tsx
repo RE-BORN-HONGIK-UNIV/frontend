@@ -11,6 +11,10 @@ import { NotFound } from '@/pages/stubs';
 import InterviewStage from '@/pages/InterviewStage';
 import CommunityPage from '@/pages/CommunityPage';
 import CommunityPostPage from '@/pages/CommunityPostPage';
+import { LiveFaceSpike } from '@/features/face/live/Spike';
+import { LiveBlinkDemo } from '@/features/face/live/LiveBlinkDemo';
+import { LiveGazeDemo } from '@/features/face/live/LiveGazeDemo';
+import { LiveExpressionDemo } from '@/features/face/live/LiveExpressionDemo';
 
 export const router = createBrowserRouter([
   {
@@ -67,6 +71,14 @@ export const router = createBrowserRouter([
           </PrivateRoute>
         ),
       },
+      // Phase 0 스파이크 전용, 임시 라우트 — 확인 끝나면 Spike.tsx와 같이 제거
+      { path: '/face/live-spike', element: <LiveFaceSpike /> },
+      // Phase 1 데모 전용, 임시 라우트 — FaceStage.tsx에 통합되면(Phase 4) 제거
+      { path: '/face/live-blink-demo', element: <LiveBlinkDemo /> },
+      // Phase 2 데모 전용, 임시 라우트 — FaceStage.tsx에 통합되면(Phase 4) 제거
+      { path: '/face/live-gaze-demo', element: <LiveGazeDemo /> },
+      // Phase 3 데모 전용, 임시 라우트 — FaceStage.tsx에 통합되면(Phase 4) 제거
+      { path: '/face/live-expression-demo', element: <LiveExpressionDemo /> },
       { path: '*', element: <NotFound /> },
     ],
   },
