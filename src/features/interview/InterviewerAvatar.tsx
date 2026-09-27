@@ -1,31 +1,29 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Text } from '@/components/ui';
+import type { DifficultyTier } from './difficulty';
+import { getInterviewer } from './interviewers';
 
 interface InterviewerAvatarProps {
+  tier?: DifficultyTier;
   width?: number;
-  height?: number;
   audioUrl?: string | null;
   onEnded?: () => void;
 }
 
 /**
- * 면접관 아바타 — 화상면접 창 스타일.
- * 영상(talking.mp4)은 TTS 음성(audioUrl)이 재생되는 동안에만 같이 움직이고,
- * 음성이 끝나면 영상도 같이 멈춤. audioUrl 재생이 끝나면 onEnded 호출.
- *
- * audioUrl이 없으면(TTS 실패 등) 영상은 멈춘 채로 두고 즉시 onEnded 호출
- * (화면이 멈추지 않도록).
- *
- * 필요한 파일 (public 폴더 기준):
- *   /interviewer/talking.mp4
+ * 면접관 아바타.
+ * TTS 음성(audioUrl)이 재생되는 동안 아바타 주변에 말하는 중 표시(테두리 파동)가 나타남.
+ * 재생이 끝나면 onEnded 호출.
+ * audioUrl이 없거나(TTS 실패) 자동재생이 막히면 즉시 onEnded 호출해서 흐름이 안 멈추게 함.
+ * TODO: 아바타 이미지 완성되면 emoji 대신 입 닫힘/벌림 이미지 2장 번갈아 표시
  */
-export function InterviewerAvatar({ width = 320, height = 240, audioUrl, onEnded }: InterviewerAvatarProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export function InterviewerAvatar({ tier = 'standard', width = 200, audioUrl, onEnded }: InterviewerAvatarProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const interviewer = getInterviewer(tier);
 
   useEffect(() => {
     if (!audioUrl) {
-      // TTS 실패/없음 — 영상은 멈춘 채로 두고, 흐름만 이어지게
       onEnded?.();
       return;
     }
@@ -36,59 +34,53 @@ export function InterviewerAvatar({ width = 320, height = 240, audioUrl, onEnded
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUrl]);
 
-  const handleAudioPlay = () => {
-    videoRef.current?.play().catch(() => {});
-  };
-
-  const handleAudioEnded = () => {
-    videoRef.current?.pause(); // 질문 끝나면 영상도 같이 멈춤
+  const handleEnded = () => {
+    setSpeaking(false);
     onEnded?.();
   };
 
   return (
-    <Box
-      style={{
-        width,
-        height,
-        borderRadius: 16,
-        overflow: 'hidden',
-        position: 'relative',
-        border: '1px solid var(--rb-line-strong)',
-        background: '#000',
-        boxShadow: '0 2px 14px rgba(0,0,0,0.10)',
-      }}
-    >
-      <video
-        ref={videoRef}
-        src="/interviewer/talking.mp4"
-        muted
-        loop
-        playsInline
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-        }}
-      />
-
-      {audioUrl && (
-        <audio ref={audioRef} src={audioUrl} onPlay={handleAudioPlay} onEnded={handleAudioEnded} />
-      )}
+    <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      {/* 말하는 중 파동 애니메이션 */}
+      <style>{`
+        @keyframes rb-speak-pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(18, 184, 134, 0.35); }
+          100% { box-shadow: 0 0 0 18px rgba(18, 184, 134, 0); }
+        }
+      `}</style>
 
       <Box
+        role="img"
+        aria-label={`${interviewer.name} 면접관${speaking ? ', 말하는 중' : ''}`}
         style={{
-          position: 'absolute',
-          bottom: 10,
-          left: 10,
-          padding: '3px 9px',
-          borderRadius: 5,
-          background: 'rgba(0,0,0,0.45)',
+          width,
+          height: width,
+          borderRadius: '50%',
+          background: 'var(--rb-surface)',
+          border: `2px solid ${speaking ? 'var(--rb-brand, #12b886)' : 'var(--rb-line)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: speaking ? 'rb-speak-pulse 1s ease-out infinite' : 'none',
+          transition: 'border-color 150ms',
         }}
       >
-        <Text fz={11.5} c="white">
-          면접관
-        </Text>
+        <Text fz={width * 0.45}>{interviewer.emoji}</Text>
       </Box>
+
+      <Text fz={13} fw={600} c="var(--rb-ink-soft)">
+        {interviewer.name} 면접관
+      </Text>
+
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onPlay={() => setSpeaking(true)}
+          onPause={() => setSpeaking(false)}
+          onEnded={handleEnded}
+        />
+      )}
     </Box>
   );
 }

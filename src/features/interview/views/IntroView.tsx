@@ -1,46 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Box, Button, Stack, Text } from '@/components/ui';
 import { getAnxietyScore, getTier, type DifficultyTier } from '../difficulty';
-
-/**
- * 난이도(tier)별 면접관 정보.
- * 불안도 점수로 정해진 tier에 따라 한 명이 추천됨.
- * TODO: 아바타 제작 전까지 emoji로 임시 표시. 완성되면 이미지로 교체.
- */
-type Interviewer = {
-  tier: DifficultyTier;
-  name: string;
-  emoji: string;
-  tags: string[];
-  intro: string;
-};
-
-const INTERVIEWERS: Interviewer[] = [
-  {
-    tier: 'warmup',
-    name: '하린',
-    emoji: '😊',
-    tags: ['차근차근', '기본 질문'],
-    intro:
-      '반가워요, 하린이에요. 여기까지 온 것만으로도 충분히 잘하고 있어요. 오늘은 기본적인 질문부터 하나씩 같이 해봐요.',
-  },
-  {
-    tier: 'standard',
-    name: '도윤',
-    emoji: '🙂',
-    tags: ['차분한 진행', '직무 질문'],
-    intro:
-      '도윤입니다. 앞 단계에서 연습한 말하기를 이제 실제 질문에 적용해볼 거예요. 생각이 정리되면 그때 답해도 괜찮아요.',
-  },
-  {
-    tier: 'practice',
-    name: '서진',
-    emoji: '🧐',
-    tags: ['꼬리질문', '실전 감각'],
-    intro:
-      '서진입니다. 여기까지 꾸준히 훈련해 오셨네요. 오늘은 답변을 한 번 더 파고드는 질문도 드릴게요. 실제 면접이라고 생각하고 답해보세요.',
-  },
-];
+// 면접관 정보는 ReadyView·InterviewerAvatar와 같이 쓰도록 interviewers.ts로 분리
+import { INTERVIEWERS } from '../interviewers';
 
 // warmup → standard → practice 순서. 추천 tier 기준으로 선택 가능/잠김 구분에 사용
 const TIER_ORDER: DifficultyTier[] = ['warmup', 'standard', 'practice'];

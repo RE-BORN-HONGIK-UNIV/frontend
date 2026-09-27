@@ -1,5 +1,7 @@
 // 백엔드 주소 — .env에 VITE_API_BASE_URL 없으면 로컬 기본값 사용
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+// ??가 아니라 ||를 써서 빈 문자열("")로 설정된 경우도 기본값으로 처리함.
+// (빈 문자열이면 요청이 프론트 개발 서버(3000)로 가서 404가 났음)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export type DifficultyTier = 'warmup' | 'standard' | 'practice';
 
@@ -17,6 +19,9 @@ export async function getNextQuestion(
   tier: DifficultyTier,
   previousQuestions: string[],
   previousAnswer?: string,
+  // main: 새 주제의 기본 질문 / follow_up: 방금 답변을 파고드는 꼬리질문
+  // TODO: 백엔드 interview_question.py에서 mode에 따라 프롬프트 분리 필요 (지금은 서버가 무시함)
+  mode: 'main' | 'follow_up' = 'main',
 ): Promise<NextQuestionResponse> {
   const res = await fetch(`${API_BASE_URL}/interview/next-question`, {
     method: 'POST',
@@ -25,6 +30,7 @@ export async function getNextQuestion(
       tier,
       previous_questions: previousQuestions,
       previous_answer: previousAnswer,
+      mode,
     }),
   });
 
@@ -57,14 +63,15 @@ export async function transcribeAnswer(blob: Blob): Promise<string> {
 
 /**
  * 질문 텍스트를 TTS 음성(mp3)으로 변환해서, 재생 가능한 object URL로 반환.
+ * tier를 넘기면 해당 면접관 목소리로 생성 (안 넘기면 서버에서 standard 음성 사용).
  * 실패하면 null (컴포넌트 쪽에서 null이면 바로 다음 단계로 넘어가게 처리되어 있음).
  */
-export async function getSpeechAudioUrl(text: string): Promise<string | null> {
+export async function getSpeechAudioUrl(text: string, tier?: DifficultyTier): Promise<string | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/interview/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, tier }),
     });
     if (!res.ok) return null;
     const blob = await res.blob();

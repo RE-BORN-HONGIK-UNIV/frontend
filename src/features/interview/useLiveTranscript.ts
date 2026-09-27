@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * 브라우저 내장 Web Speech API로 말하는 내용을 실시간 텍스트로 받아옴.
@@ -41,6 +41,9 @@ export function useLiveTranscript({ active, lang = 'ko-KR' }: { active: boolean;
   const [failed, setFailed] = useState(false); // 권한 거부·네트워크 오류 등으로 인식 불가
   // 값이 바뀌면 인식을 새로 시작함 (이전에 읽은 내용 버리고 다시 듣기)
   const [session, setSession] = useState(0);
+  // 크롬은 조용한 구간이 길면 인식을 끝내고 재시작하는데, 재시작하면 결과가 비워짐.
+  // 긴 답변에서 앞부분이 사라지지 않도록 끝난 인식 결과를 여기에 누적해둠
+  const committedRef = useRef('');
 
   useEffect(() => {
     const Ctor = getRecognitionCtor();
@@ -52,13 +55,15 @@ export function useLiveTranscript({ active, lang = 'ko-KR' }: { active: boolean;
     rec.continuous = true;
 
     let stopped = false;
+    let sessionText = ''; // 이번 인식 세션에서 들은 내용
 
     rec.onresult = (e) => {
       let text = '';
       for (let i = 0; i < e.results.length; i++) {
         text += e.results[i][0].transcript;
       }
-      setTranscript(text);
+      sessionText = text;
+      setTranscript((committedRef.current + ' ' + text).trim());
       setIsFinal(e.results[e.results.length - 1].isFinal);
     };
 
@@ -72,7 +77,13 @@ export function useLiveTranscript({ active, lang = 'ko-KR' }: { active: boolean;
 
     // 크롬은 일정 시간 조용하면 인식을 스스로 끝내서, 점검 중이면 다시 시작
     rec.onend = () => {
+      // 직접 멈춘 경우(reset·화면 종료)는 누적하지 않음. reset 직후 이전 내용이 다시 섞이는 것 방지
       if (stopped) return;
+      // 이번 세션 내용을 누적해두고 다음 세션으로 넘어감
+      if (sessionText) {
+        committedRef.current = (committedRef.current + ' ' + sessionText).trim();
+        sessionText = '';
+      }
       try {
         rec.start();
       } catch {
@@ -89,6 +100,7 @@ export function useLiveTranscript({ active, lang = 'ko-KR' }: { active: boolean;
   }, [active, lang, failed, session]);
 
   const reset = useCallback(() => {
+    committedRef.current = '';
     setTranscript('');
     setIsFinal(false);
     setSession((n) => n + 1);
