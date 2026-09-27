@@ -381,7 +381,7 @@ export function QuestionView({
                 onClick={handleStartAnswer}
                 disabled={phase === 'asking'}
               >
-                답변 시작
+                🎙️ 답변 시작
               </Button>
             )}
 
@@ -439,39 +439,59 @@ function Badge({ children }: { children: string }) {
 
 /**
  * 마이크 음량(0~100). active일 때만 측정.
- * 답변 중 텍스트 대신 "마이크가 듣고 있다"는 것만 보여주기 위해 사용
+ * 답변 중 텍스트 대신 "마이크가 듣고 있다"는 것만 보여주기 위해 사용.
+ * 오디오 장치(AudioContext)는 스트림당 한 번만 만들어 재사용함.
+ * 답변마다 새로 만들고 닫으면 정리가 늦게 돼서, 답변을 반복할수록 막대 반응이 느려졌음
  */
 function useAudioLevel(stream: MediaStream | null, active: boolean) {
   const [level, setLevel] = useState(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
 
+  // 스트림이 생기면 오디오 장치를 한 번만 준비, 화면을 떠날 때 정리
   useEffect(() => {
-    if (!active || !stream) {
+    if (!stream) return;
+    const ctx = new AudioContext();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    ctxRef.current = ctx;
+    analyserRef.current = analyser;
+
+    return () => {
+      source.disconnect();
+      ctx.close();
+      ctxRef.current = null;
+      analyserRef.current = null;
+    };
+  }, [stream]);
+
+  // 답변 중일 때만 측정. 약 15fps로 갱신
+  useEffect(() => {
+    const analyser = analyserRef.current;
+    if (!active || !analyser) {
       setLevel(0);
       return;
     }
+    // 브라우저가 오디오 장치를 일시정지 상태로 만들어둔 경우 다시 켬
+    ctxRef.current?.resume();
 
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
-
     let rafId = 0;
-    const tick = () => {
+    let lastUpdate = 0;
+    const tick = (now: number) => {
+      rafId = requestAnimationFrame(tick);
+      if (now - lastUpdate < 66) return;
+      lastUpdate = now;
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
-      setLevel(Math.min(100, (avg / 128) * 100));
-      rafId = requestAnimationFrame(tick);
+      setLevel(Math.min(100, Math.round((avg / 128) * 100)));
     };
-    tick();
+    rafId = requestAnimationFrame(tick);
 
-    return () => {
-      cancelAnimationFrame(rafId);
-      source.disconnect();
-      audioCtx.close();
-    };
-  }, [stream, active]);
+    return () => cancelAnimationFrame(rafId);
+  }, [active]);
 
   return level;
 }

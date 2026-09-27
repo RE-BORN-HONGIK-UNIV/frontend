@@ -28,8 +28,18 @@ async function listDevices(): Promise<DeviceLists> {
   };
 }
 
-export function useMediaPreview() {
+// 음량 갱신 간격(ms). 매 프레임(60fps) 갱신하면 화면 전체가 계속 다시 그려져서 느려짐
+const LEVEL_UPDATE_MS = 66; // 약 15fps
+
+/**
+ * measureLevel: 음량 막대가 필요한 화면(기기 점검)에서만 true.
+ * false면 음량 값을 갱신하지 않아서, 면접 중 불필요하게 화면이 다시 그려지지 않음
+ */
+export function useMediaPreview({ measureLevel = true }: { measureLevel?: boolean } = {}) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // 스트림 연결 effect 안에서 최신 값을 읽기 위해 ref로 보관
+  const measureLevelRef = useRef(measureLevel);
+  measureLevelRef.current = measureLevel;
   const streamRef = useRef<MediaStream | null>(null);
 
   const [status, setStatus] = useState<'idle' | 'requesting' | 'ready' | 'error'>('idle');
@@ -90,14 +100,25 @@ export function useMediaPreview() {
         source.connect(analyser);
 
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let lastUpdate = 0;
+        let lastLevel = -1;
 
-        function tick() {
+        function tick(now: number) {
+          animationFrameId = requestAnimationFrame(tick);
+          // 음량이 필요 없는 화면이거나, 갱신 간격이 안 됐으면 건너뜀
+          if (!measureLevelRef.current || now - lastUpdate < LEVEL_UPDATE_MS) return;
+          lastUpdate = now;
+
           analyser.getByteFrequencyData(dataArray);
           const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
-          setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
-          animationFrameId = requestAnimationFrame(tick);
+          const level = Math.min(100, Math.round((avg / 128) * 100));
+          // 값이 그대로면 state를 안 바꿔서 불필요한 다시 그리기 방지
+          if (level !== lastLevel) {
+            lastLevel = level;
+            setAudioLevel(level);
+          }
         }
-        tick();
+        animationFrameId = requestAnimationFrame(tick);
       } catch (err) {
         if (cancelled) return;
         setStatus('error');

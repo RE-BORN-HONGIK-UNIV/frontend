@@ -22,7 +22,9 @@ export default function InterviewStage() {
   const [step, setStep] = useState<Step>('intro');
   // IntroView에서 유저가 최종 선택한 면접관 tier. 이후 음성·질문 난이도 모두 이 값 기준
   const [tier, setTier] = useState<DifficultyTier>('standard');
-  const media = useMediaPreview(); // intro 넘어가면서부터 계속 살아있게 최상위에서 관리
+  // intro 넘어가면서부터 계속 살아있게 최상위에서 관리.
+  // 음량 측정은 기기 점검 화면에서만 (면접 중에는 질문 화면이 따로 측정함)
+  const media = useMediaPreview({ measureLevel: step === 'test' });
   const navigate = useNavigate();
   // 면접관과 대화하는 구간에서만 헤더를 숨김
   const focusMode = step === 'ready' || step === 'question';
@@ -57,13 +59,16 @@ export default function InterviewStage() {
           </button>
         </Box>
       ) : (
+        // PageHeader는 title이 필수라 intro가 아닐 땐 빈 문자열로 넘겨서 제목 줄만 비움
         <PageHeader
           back="/dashboard"
           eyebrow="3단계 · 실전 면접 시뮬레이션"
-          {...(step === 'intro' && {
-            title: '면접 시뮬레이터',
-            subtitle: '1,2단계 진단 결과를 바탕으로 난이도가 조절된 실전 면접을 진행합니다.',
-          })}
+          title={step === 'intro' ? '면접 시뮬레이터' : ''}
+          subtitle={
+            step === 'intro'
+              ? '1,2단계 진단 결과를 바탕으로 난이도가 조절된 실전 면접을 진행합니다.'
+              : undefined
+          }
         />
       )}
 
