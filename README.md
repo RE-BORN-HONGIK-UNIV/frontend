@@ -10,7 +10,8 @@
 | UI | Tailwind CSS 4 + 자체 경량 컴포넌트(`src/components/ui/`) — 2026-09-14 Mantine 전면 교체 |
 | 서버 상태 | TanStack Query 5 |
 | 라우팅 | react-router-dom 7 (`createBrowserRouter`, `PrivateRoute`) |
-| 디자인 토큰 | `src/index.css` `:root`의 `--rb-*` 변수 + `@theme` 블록(Tailwind 유틸리티로 매핑) |
+| 디자인 토큰 | `src/index.css` `:root`의 `--rb-*` 변수 + `@theme` 블록(Tailwind 유틸리티로 매핑), 다크모드는 `[data-theme='dark']` 오버라이드(`src/lib/theme.ts`/`useTheme.ts`) |
+| 2단계 실시간 분석 | `@mediapipe/tasks-vision`(브라우저 WASM) — 얼굴 영상이 서버로 안 나가게 클라이언트에서 직접 추론, WASM/모델은 `public/mediapipe/`에 자체 호스팅(CDN 안 씀) |
 
 ## 개발
 
@@ -37,7 +38,7 @@ push/PR 시 GitHub Actions에서 위 네 개(lint·typecheck·test·build)를 �
 
 ### 테스트 하네스
 
-지금은 **순수 로직 유닛테스트**만 있음 (`src/**/*.test.ts`, `vitest.config.ts`) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수 위주. 컴포넌트 테스트(`@testing-library/react`)는 의존성만 깔아뒀고 아직 작성된 건 없음 — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher 이미 로드됨).
+지금은 **순수 로직 유닛테스트**만 있음 (`src/**/*.test.ts`, `vitest.config.ts`, 9개 파일 66개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 의존성만 깔아뒀고 아직 작성된 건 없음 — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher 이미 로드됨).
 
 `vitest.config.ts`를 `vite.config.ts`와 분리해둔 이유: vitest가 내부적으로 물고 있는 vite(rollup 기반)와 이 프로젝트의 vite(rolldown 기반, v8)의 Plugin 타입이 서로 안 맞아서 한 파일에 합치면 `tsc`가 타입 에러를 냄. 백엔드 쪽 계층별 테스트 설계(정확도 검증 하네스 포함)는 `backend/docs/TESTING.md` 참고.
 
@@ -57,26 +58,39 @@ JSX를 거의 안 바꾸고 import만 교체하는 식으로 마이그레이션�
 ```
 src/
   app/         router.tsx, RootLayout.tsx
-  components/  PageHeader, PrivateRoute, RebornMark, RebornWordmark, SectionBadge, AuthShell
+  components/  PageHeader, PrivateRoute, RebornWordmark, Reveal, SectionBadge, SiteNavLinks, ThemeToggle, AuthShell
   features/
     auth/      로그인·회원가입 mutation
     voice/     1단계 음성 분석 — 상수, 폴백 피드백, 쿼리, 레이더 차트, Step1 LLM 코칭
-    face/      2단계 표정·시선 분석 — 상수, 지표 비교 텍스트, 쿼리
+    face/      2단계 표정·시선 분석 — 상수, 지표 비교 텍스트, 쿼리, 결과 시각화(ScoreTrack/GazeTimeline/ExpressionPlayback)
+      live/    실시간 웹캠 분석(업로드 없이 바로 분석) — 아래 "2단계 실시간 웹캠 분석" 참고
     interview/ 3단계 모의 면접 — 면접관 아바타, TTS/STT 연동, 난이도(tier) 로직, 카메라·마이크 녹화
+    community/ "이야기" 자유 게시판 — 목록/글쓰기/댓글
     progress/  1단계 진행 상태 (localStorage). 2단계는 백엔드 DB(Stage2Result)로 이전됨 — backend/DB_DESIGN.md 참고
-  lib/         api/{client,types}, auth.ts, useForm.ts, useMediaQuery.ts
-  pages/       Landing, Login, Signup, Dashboard, VoiceStage, FaceStage, InterviewStage
+  lib/         api/{client,types}, auth.ts, theme.ts/useTheme.ts(다크모드), toast.ts, useForm.ts, useMediaQuery.ts
+  pages/       Landing, Login, Signup, Dashboard, VoiceStage, FaceStage, InterviewStage, CommunityPage, CommunityPostPage
   components/ui/  Mantine 대체 경량 컴포넌트 (Box, Stack, Button, TextInput, Dropzone, Toaster 등)
   index.css
 ```
+
+### 2단계 실시간 웹캠 분석 (`features/face/live/`)
+
+기존엔 영상 파일을 업로드해야만 분석됐는데, `FaceStage`에 "영상 업로드"/"실시간 촬영" 모드 토글을 추가해서 웹캠으로 바로 분석할 수 있음. 얼굴 영상은 서버로 안 나가고 브라우저에서 `@mediapipe/tasks-vision`으로 직접 추론함(프라이버시 + 백엔드 메모리 부담 회피).
+
+- `blink.ts`/`gaze.ts`/`expression.ts`/`scoring.ts`/`calibration.ts` — backend `step2/*.py`의 판정 로직(임계값·공식)을 그대로 포팅. 대응하는 backend pytest 픽스처를 Vitest로 옮겨서 수치가 정확히 일치하는지 검증함(느낌으로 재구현 금지 — `backend/step2/ACCURACY_NOTES.md`에 근거 있는 값들이라).
+- `headPose.ts` — 시선 판정에 필요한 머리 자세는 backend가 `cv2.solvePnP`로 계산하지만, 여기선 MediaPipe가 자체 제공하는 얼굴 변환 행렬을 씀(추가 WASM 불필요) — 알고리즘이 달라 임계값을 실기기로 재검증함.
+- `segmentBuffer.ts` — backend의 구간 병합(`_merge_short_segments`)은 "구간이 끝나야 짧았는지 안다"는 회고적 로직이라 실시간에 그대로 못 씀 — 상태 변화 후 0.3초 보류했다가 확정/흡수하는 지연 버퍼로 재설계(시선·표정 공용).
+- `useLiveFaceSession.ts`/`LiveCaptureView.tsx` — 위 로직들을 한 MediaPipe 세션으로 묶어서 5초 캘리브레이션 → 캘리브레이션 확인 → 실제 촬영(최대 3분) → 파일 업로드와 동일한 형태의 결과 객체 생성까지 담당.
+- 하이라이트 클립(영상에서 특정 순간만 잘라 보여주는 기능)은 실시간 모드에선 녹화본이 없어서 생성 못 함 — 항상 `null`, 결과 화면은 원래 이 경우를 "짚어줄 순간 없음"으로 처리하게 돼 있어서 그대로 재사용됨. "직전 기록" 비교도 백엔드 DB 대신 브라우저 `localProgress`(로컬스토리지) 기준이라 업로드 모드 이력과는 별도 트랙임.
 
 ## 화면
 
 - **Landing** `/` · **Login** `/login` · **Signup** `/signup`
 - **Dashboard** `/dashboard` — 3단계 진행 현황 (인증 필요)
 - **VoiceStage** `/voice` — 1단계 음성 정밀 진단: 업로드 → `/analyze` → 오각형 레이더 + AI 코칭 (인증 필요)
-- **FaceStage** `/face` — 2단계 표정·시선 분석: 영상 업로드 → `/analyze/gaze-blink` → 깜빡임·시선·표정 지표 + 하이라이트 클립 + 지난 세션 대비 비교 (인증 필요)
+- **FaceStage** `/face` — 2단계 표정·시선 분석: "영상 업로드"(`/analyze/gaze-blink`) 또는 "실시간 촬영"(브라우저에서 바로 분석) 중 선택 → 깜빡임·시선·표정 지표 + 지난 세션 대비 비교, 업로드 모드만 하이라이트 클립 제공 (인증 필요)
 - **InterviewStage** `/interview` — 3단계 모의 면접: 아바타 인사 → 카메라/마이크 예열 → 난이도별 질문(TTS) → 답변(STT) → 꼬리질문 → 대화 기록
+- **CommunityPage** `/community`, **CommunityPostPage** `/community/:id` — "이야기" 자유 게시판: 목록/글쓰기/댓글 (인증 필요)
 
 ## 환경변수
 
