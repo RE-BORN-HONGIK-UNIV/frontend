@@ -4,6 +4,8 @@ import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@/component
 import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
 import { daysSince, localProgress } from '@/features/progress/localProgress';
+import { getInterviewer } from '@/features/interview/interviewers';
+import type { DifficultyTier } from '@/features/interview/difficulty';
 
 type Status = 'done' | 'available' | 'locked';
 
@@ -87,6 +89,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const name = auth.name || '회원';
   const s1 = localProgress.stage1();
+  const s3 = localProgress.stage3();
 
   const [streak, setStreak] = useState(1);
   useEffect(() => setStreak(localProgress.bumpStreak()), []);
@@ -121,10 +124,13 @@ export default function Dashboard() {
       id: 3,
       title: '실전 모의 면접',
       subtitle: 'Adaptive Interview',
-      desc: '앞 단계 결과를 바탕으로 맞춤형 난이도의 모의 면접을 진행합니다.',
+      desc: s3.done
+        ? `모의 면접 완료 · ${getInterviewer((s3.tier ?? 'standard') as DifficultyTier).name} 면접관`
+        : '앞 단계 결과를 바탕으로 맞춤형 난이도의 모의 면접을 진행합니다.',
       path: '/interview',
       // 1·2단계 기록이 없으면 InterviewStage가 해당 단계로 안내하므로 카드는 항상 열어둔다
-      status: 'available',
+      // (완료한 뒤에도 다시 면접할 수 있게 'done'이어도 클릭은 열려 있음)
+      status: s3.done ? 'done' : 'available',
     },
   ];
 
@@ -136,6 +142,7 @@ export default function Dashboard() {
   const handleReset = () => {
     if (window.confirm('진행 상황을 초기화할까요?')) {
       localProgress.resetStage1();
+      localProgress.resetStage3();
       window.location.reload();
     }
   };

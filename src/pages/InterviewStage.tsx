@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Text } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
+import { localProgress } from '@/features/progress/localProgress';
 import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import type { DifficultyTier } from '@/features/interview/difficulty';
 import { IntroView } from '@/features/interview/views/IntroView';
@@ -80,7 +81,15 @@ export default function InterviewStage() {
         {step === 'ready' && <ReadyView tier={tier} onStart={() => setStep('question')} />}
 
         {step === 'question' && (
-          <QuestionView stream={media.stream} tier={tier} onAllDone={() => setStep('result')} />
+          <QuestionView
+            stream={media.stream}
+            tier={tier}
+            onAllDone={() => {
+              // 끝까지 마친 면접만 완료로 기록 (대시보드 3단계 카드·진행률에 반영)
+              localProgress.markStage3Done(tier);
+              setStep('result');
+            }}
+          />
         )}
 
         {step === 'result' && <ResultView />}

@@ -7,6 +7,9 @@ const K = {
   s1done: 'rb.stage1.done',
   s1score: 'rb.stage1.score',
   s1at: 'rb.stage1.at',
+  s3done: 'rb.stage3.done',
+  s3tier: 'rb.stage3.tier',
+  s3at: 'rb.stage3.at',
   s2history: 'rb.stage2.history',
   lastVisit: 'rb.lastVisit',
   streak: 'rb.streak',
@@ -42,6 +45,13 @@ export interface Stage1Progress {
   at: string | null;
 }
 
+export interface Stage3Progress {
+  done: boolean;
+  /** 마지막으로 완료한 면접의 난이도(tier) — 어떤 면접관과 했는지 대시보드에 보여주는 용도 */
+  tier: string | null;
+  at: string | null;
+}
+
 /** 2단계(페이스 터치)는 절대 점수 대신 "지난 세션과 비교"로 보여주기 위한 요약 지표. */
 export interface Stage2Metrics {
   blinkRatePerMin: number;
@@ -74,6 +84,27 @@ export const localProgress = {
     del(K.s1done);
     del(K.s1score);
     del(K.s1at);
+  },
+
+  stage3(): Stage3Progress {
+    return {
+      done: get(K.s3done) === 'true',
+      tier: get(K.s3tier),
+      at: get(K.s3at),
+    };
+  },
+
+  /** 3단계 모의 면접을 끝까지 마쳤을 때 기록 (가장 최근 완료로 덮어씀). */
+  markStage3Done(tier: string) {
+    set(K.s3done, 'true');
+    set(K.s3tier, tier);
+    set(K.s3at, new Date().toISOString());
+  },
+
+  resetStage3() {
+    del(K.s3done);
+    del(K.s3tier);
+    del(K.s3at);
   },
 
   stage2History(): Stage2Entry[] {
