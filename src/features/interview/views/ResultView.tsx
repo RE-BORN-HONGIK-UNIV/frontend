@@ -9,7 +9,7 @@ import { summarizeResult, type InterviewResult } from '../resultSummary';
 
 const KIND_LABEL = { main: '기본 질문', follow_up: '꼬리질문' } as const;
 
-/** 코치 노트가 아직 없거나(작성 중·AI 실패) 동의하지 않았을 때 보여줄 기본 카드 */
+/** 코치 노트가 아직 없거나(작성 중·AI 실패·서버 저장 안 됨) 보여줄 기본 카드 */
 const DEFAULT_CARDS: CoachCard[] = [
   { kind: 'again', title: '한 번 더 해보기', body: '방금 해본 흐름을 한 번 더 이어가 봐요. 면접관을 바꿔볼 수도 있어요.' },
   { kind: 'rest', title: '오늘은 여기까지', body: '충분히 잘했어요. 쉬는 것도 연습의 일부예요.' },
