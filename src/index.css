@@ -336,7 +336,23 @@ a {
   }
 }
 
-/* ── logo entry animation: 로고 전체가 살짝 아래·작게 시작해서 페이드인 ── */
+/* ── 로고 워드마크(RebornWordmark) 라이트/다크 이미지 전환 — data-theme
+   속성 기준(React state를 안 거쳐서 테마 전환 시 리렌더 없이 즉시 바뀜).
+   기본은 라이트 버전만 보이고, 다크 테마일 때만 서로 바뀐다. */
+.rb-logo-light {
+  display: block;
+}
+.rb-logo-dark {
+  display: none;
+}
+:root[data-theme='dark'] .rb-logo-light {
+  display: none;
+}
+:root[data-theme='dark'] .rb-logo-dark {
+  display: block;
+}
+
+/* ── logo entry animation: 로고 이미지 전체가 살짝 아래·작게 시작해서 페이드인 ── */
 @keyframes rbLogoIn {
   0% {
     transform: translateY(6px) scale(0.92);
