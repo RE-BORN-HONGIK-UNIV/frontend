@@ -38,7 +38,7 @@ push/PR 시 GitHub Actions에서 위 네 개(lint·typecheck·test·build)를 �
 
 ### 테스트 하네스
 
-지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 13개 파일 86개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView.test.tsx`, `Dashboard.test.tsx` 두 개뿐 — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
+지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 14개 파일 89개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView.test.tsx`, `Dashboard.test.tsx` 두 개뿐 — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
 
 `vitest.config.ts`를 `vite.config.ts`와 분리해둔 이유: vitest가 내부적으로 물고 있는 vite(rollup 기반)와 이 프로젝트의 vite(rolldown 기반, v8)의 Plugin 타입이 서로 안 맞아서 한 파일에 합치면 `tsc`가 타입 에러를 냄. 백엔드 쪽 계층별 테스트 설계(정확도 검증 하네스 포함)는 `backend/docs/TESTING.md` 참고.
 

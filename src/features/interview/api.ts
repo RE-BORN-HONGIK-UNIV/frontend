@@ -1,3 +1,5 @@
+import { auth } from '@/lib/auth';
+
 // 백엔드 주소 — .env에 VITE_API_BASE_URL 없으면 로컬 기본값 사용
 // ??가 아니라 ||를 써서 빈 문자열("")로 설정된 경우도 기본값으로 처리함.
 // (빈 문자열이면 요청이 프론트 개발 서버(3000)로 가서 404가 났음)
@@ -20,12 +22,16 @@ export async function getNextQuestion(
   previousQuestions: string[],
   previousAnswer?: string,
   // main: 새 주제의 기본 질문 / follow_up: 방금 답변을 파고드는 꼬리질문
-  // TODO: 백엔드 interview_question.py에서 mode에 따라 프롬프트 분리 필요 (지금은 서버가 무시함)
   mode: 'main' | 'follow_up' = 'main',
 ): Promise<NextQuestionResponse> {
   const res = await fetch(`${API_BASE_URL}/interview/next-question`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // 로그인 토큰을 같이 보내면 서버가 이 유저의 1·2단계 세부 점수로 질문 방식을 조절함.
+      // 토큰이 없어도 요청은 정상 처리됨(tier만으로 생성).
+      ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}),
+    },
     body: JSON.stringify({
       tier,
       previous_questions: previousQuestions,
