@@ -226,6 +226,20 @@ a {
   }
 }
 
+/* 랜딩 '이런 분들이라면' 카드: 평소엔 흰색, 마우스를 올린 카드만 배경(--rb-bg)보다 살짝 진한 초록으로 */
+.rb-audience-card {
+  transition: transform 180ms ease-out, box-shadow 180ms ease-out, background-color 180ms ease-out;
+}
+.rb-audience-card:hover {
+  /* 카드의 인라인 background(흰색)보다 우선해야 해서 !important */
+  background: var(--rb-primary-deep-tint) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-audience-card {
+    transition: none;
+  }
+}
+
 /* ── 입력창 포커스 링: 클릭하면 테두리 색 바뀌고 은은한 그림자 생김 ── */
 .rb-input {
   border: 1.5px solid var(--rb-line-strong);

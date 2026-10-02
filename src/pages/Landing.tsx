@@ -391,7 +391,7 @@ function Audience() {
           {AUDIENCE.map(([before, em, after], i) => (
             <Reveal key={em} delay={i * 70}>
               <Box
-                className="rb-card-hover"
+                className="rb-card-hover rb-audience-card"
                 style={{
                   ...card,
                   height: '100%',
@@ -402,7 +402,6 @@ function Audience() {
                   color: 'var(--rb-ink)',
                   wordBreak: 'keep-all',
                   border: '1px solid var(--rb-line)',
-                  background: i === 0 ? 'var(--rb-primary-tint)' : 'var(--rb-surface)',
                 }}
               >
                 {before}
