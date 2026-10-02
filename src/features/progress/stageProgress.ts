@@ -1,5 +1,5 @@
-import type { GazeBlinkLatest, Stage1Latest } from '@/lib/api/types';
-import type { Stage1Progress, Stage2Progress } from './localProgress';
+import type { GazeBlinkLatest, InterviewSessionSummary, Stage1Latest } from '@/lib/api/types';
+import type { Stage1Progress, Stage2Progress, Stage3Progress } from './localProgress';
 
 /** 서버 조회 상태 — TanStack Query의 status와 같은 값. */
 export type QueryStatus = 'pending' | 'error' | 'success';
@@ -47,4 +47,27 @@ export function resolveStage2Progress(
 /** 2단계 종합 점수 = 깜빡임·시선·표정 점수의 평균(반올림). 서버 /analyze/stage2/latest의 overallScore와 같은 공식. */
 export function stage2OverallScore(scores: { blink: number; gaze: number; expression: number }): number {
   return Math.round((scores.blink + scores.gaze + scores.expression) / 3);
+}
+
+/**
+ * 3단계 진행 상태. 서버에 "끝까지 마친" 면접(completedAt이 있는 것)이 있으면 완료이고, 가장 최근에
+ * 마친 면접의 면접관(tier)을 보여준다. 서버 목록은 최신순이라 처음 만나는 완료 건이 가장 최근 것이다.
+ *
+ * 1·2단계와 달리 서버에 기록이 없어도 브라우저 완료 메모가 있으면 완료로 본다(합집합). 1·2단계는
+ * 3단계가 서버 점수를 쓰기 때문에 "서버에 없으면 미완료"가 맞지만, 3단계 완료는 다른 곳에서 서버
+ * 값을 쓰지 않아서, 이 기능이 생기기 전에 면접을 마친 사람의 완료 표시를 지울 이유가 없다.
+ * 조회 중·실패일 때도 브라우저 메모를 쓴다.
+ */
+export function resolveStage3Progress(
+  status: QueryStatus,
+  sessions: InterviewSessionSummary[] | undefined,
+  local: Stage3Progress,
+): Stage3Progress {
+  if (status === 'success') {
+    const latestDone = (sessions ?? []).find((s) => s.completedAt !== null);
+    if (latestDone) {
+      return { done: true, tier: latestDone.tier, at: parseServerTime(latestDone.completedAt as string) };
+    }
+  }
+  return local;
 }

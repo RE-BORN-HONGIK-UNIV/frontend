@@ -4,6 +4,7 @@ import {
   parseServerTime,
   resolveStage1Progress,
   resolveStage2Progress,
+  resolveStage3Progress,
   stage2OverallScore,
 } from './stageProgress';
 
@@ -81,5 +82,30 @@ describe('stage2OverallScore', () => {
   it('세 점수의 평균을 반올림한다 (서버 overallScore와 같은 공식)', () => {
     expect(stage2OverallScore({ blink: 100, gaze: 60, expression: 50 })).toBe(70);
     expect(stage2OverallScore({ blink: 100, gaze: 100, expression: 99 })).toBe(100); // 99.67 → 100
+  });
+});
+
+describe('resolveStage3Progress', () => {
+  const LOCAL3_DONE = { done: true, tier: 'standard', at: '2026-09-01T00:00:00.000Z' };
+  const NONE3 = { done: false, tier: null, at: null };
+  const session = (id: number, completedAt: string | null, tier: 'warmup' | 'standard' | 'practice' = 'standard') => ({
+    id, tier, startedAt: '2026-10-02T00:00:00', completedAt, turnCount: 3,
+  });
+
+  it('서버 목록(최신순)에서 처음 만나는 완료된 면접을 쓴다 (최신이어도 중간에 나간 건 건너뜀)', () => {
+    const sessions = [session(3, null, 'warmup'), session(2, '2026-10-02T05:00:00', 'practice'), session(1, '2026-10-01T05:00:00')];
+    expect(resolveStage3Progress('success', sessions, NONE3)).toEqual({
+      done: true, tier: 'practice', at: '2026-10-02T05:00:00Z',
+    });
+  });
+
+  it('완료된 면접이 없으면 서버 기준으로는 미완료이고 브라우저 메모가 있으면 그걸 유지한다', () => {
+    expect(resolveStage3Progress('success', [session(1, null)], NONE3)).toEqual(NONE3);
+    expect(resolveStage3Progress('success', [], LOCAL3_DONE)).toEqual(LOCAL3_DONE);
+  });
+
+  it('조회 실패·진행 중이면 브라우저 메모를 쓴다', () => {
+    expect(resolveStage3Progress('error', undefined, LOCAL3_DONE)).toEqual(LOCAL3_DONE);
+    expect(resolveStage3Progress('pending', undefined, NONE3)).toEqual(NONE3);
   });
 });

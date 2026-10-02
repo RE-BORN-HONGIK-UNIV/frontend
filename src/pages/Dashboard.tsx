@@ -89,9 +89,8 @@ function ProgressRing({ pct }: { pct: number }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const name = auth.name || '회원';
-  // 1·2단계는 서버에 저장된 분석 결과 기준 (3단계 난이도 산정과 같은 출처), 3단계는 아직 브라우저 기록
-  const { stage1: s1, stage2: s2 } = useStageProgress();
-  const s3 = localProgress.stage3();
+  // 1·2·3단계 모두 서버에 저장된 기록 기준 (서버 조회가 안 될 때만 브라우저 메모로 대신 보여줌)
+  const { stage1: s1, stage2: s2, stage3: s3 } = useStageProgress();
 
   const [streak, setStreak] = useState(1);
   useEffect(() => setStreak(localProgress.bumpStreak()), []);

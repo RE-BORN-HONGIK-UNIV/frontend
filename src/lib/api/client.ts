@@ -6,6 +6,7 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   GazeBlinkResult,
+  InterviewSessionSummary,
   LatestResponse,
   LiveSavePayload,
   LiveSaveResponse,
@@ -99,6 +100,43 @@ export const api = {
           method: 'POST',
           body: JSON.stringify(payload),
         }),
+
+  // ── 3단계 면접 기록 (로그인 필요, 본인만) ─────────────────────────
+  /** 면접 시작 — 세션을 만들고 id를 받는다. */
+  startInterviewSession: (tier: string) =>
+    USE_MOCK
+      ? mockApi.startInterviewSession()
+      : request<{ id: number }>('/interview/sessions', { method: 'POST', body: JSON.stringify({ tier }) }),
+
+  /** 질문이 화면에 나올 때 질문 저장. */
+  addInterviewTurn: (sessionId: number, kind: 'main' | 'follow_up', question: string) =>
+    USE_MOCK
+      ? mockApi.addInterviewTurn()
+      : request<{ id: number; order: number }>(`/interview/sessions/${sessionId}/turns`, {
+          method: 'POST',
+          body: JSON.stringify({ kind, question }),
+        }),
+
+  /** 답변 텍스트 저장 (다시 호출하면 덮어씀). */
+  saveInterviewAnswer: (sessionId: number, turnId: number, answer: string) =>
+    USE_MOCK
+      ? mockApi.ok()
+      : request<{ message: string }>(`/interview/sessions/${sessionId}/turns/${turnId}/answer`, {
+          method: 'PUT',
+          body: JSON.stringify({ answer }),
+        }),
+
+  /** 면접을 끝까지 마쳤을 때 완료 처리. */
+  completeInterviewSession: (sessionId: number) =>
+    USE_MOCK
+      ? mockApi.ok()
+      : request<InterviewSessionSummary>(`/interview/sessions/${sessionId}/complete`, { method: 'POST' }),
+
+  /** 내 면접 목록(최신순) — 대시보드 완료 표시용. */
+  listInterviewSessions: () =>
+    USE_MOCK
+      ? mockApi.listInterviewSessions()
+      : request<{ sessions: InterviewSessionSummary[] }>('/interview/sessions'),
 
   /** 저장된 최신 1단계(음성) 결과 — 재분석 없이 조회. 3단계 난이도 산정용. */
   latestStage1: () =>

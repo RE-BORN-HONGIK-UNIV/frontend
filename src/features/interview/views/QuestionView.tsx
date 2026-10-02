@@ -6,6 +6,8 @@ import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } fr
 import { QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
+import { createInterviewRecorder } from '@/features/interview/recorder';
+import { api } from '@/lib/api/client';
 
 // 꼬리질문 생성 실패 시 쓰는 기본 꼬리질문
 const FALLBACK_FOLLOW_UP = '방금 말씀하신 내용을 조금 더 자세히 설명해주실 수 있을까요?';
@@ -53,6 +55,18 @@ export function QuestionView({
   const live = useLiveTranscript({ active: phase === 'answering' });
   const level = useAudioLevel(stream, phase === 'answering');
 
+  // 면접 기록(질문·답변 텍스트) 서버 저장. 저장이 실패해도 면접은 계속된다(recorder.ts 참고).
+  const recorderRef = useRef<ReturnType<typeof createInterviewRecorder> | null>(null);
+  if (!recorderRef.current) {
+    recorderRef.current = createInterviewRecorder(tier, {
+      start: (t) => api.startInterviewSession(t),
+      addTurn: (sid, kind, q) => api.addInterviewTurn(sid, kind, q),
+      saveAnswer: (sid, tid, a) => api.saveInterviewAnswer(sid, tid, a),
+      complete: (sid) => api.completeInterviewSession(sid),
+    });
+  }
+  const recorder = recorderRef.current;
+
   const askedRef = useRef<string[]>([]); // 지금까지 한 질문 (중복 질문 방지용으로 서버에 전달)
   const blobRef = useRef<Blob | null>(null); // 방금 녹화한 답변 영상
   // InterviewerAvatar의 onEnded는 audioUrl이 바뀔 때도 불려서, 질문 읽는 중일 때만 반응하도록 최신 phase를 ref로 확인
@@ -68,7 +82,8 @@ export function QuestionView({
   };
 
   /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 바로 답변 대기로 넘어감 */
-  const ask = async (text: string) => {
+  const ask = async (text: string, kind: 'main' | 'follow_up') => {
+    recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
     askedRef.current = [...askedRef.current, text];
     setQuestion(text);
     const url = await getSpeechAudioUrl(text, tier);
@@ -79,7 +94,7 @@ export function QuestionView({
   /** 해당 차례의 질문을 준비. 첫 질문은 고정, 나머지는 백엔드에서 생성 (실패 시 고정 질문으로 대체) */
   const loadQuestion = async (next: Turn, previousAnswer: string) => {
     if (next.main === 0 && next.sub === 0) {
-      await ask(interviewer.firstQuestion);
+      await ask(interviewer.firstQuestion, 'main');
       return;
     }
 
@@ -91,15 +106,16 @@ export function QuestionView({
         previousAnswer || undefined,
         isFollowUp ? 'follow_up' : 'main',
       );
-      await ask(q);
+      await ask(q, isFollowUp ? 'follow_up' : 'main');
     } catch {
       const bank = QUESTION_BANK[tier];
-      await ask(isFollowUp ? FALLBACK_FOLLOW_UP : bank[next.main % bank.length]);
+      await ask(isFollowUp ? FALLBACK_FOLLOW_UP : bank[next.main % bank.length], isFollowUp ? 'follow_up' : 'main');
     }
   };
 
   // 화면 처음 열릴 때 첫 질문 시작
   useEffect(() => {
+    recorder.start();
     loadQuestion({ main: 0, sub: 0 }, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -150,8 +166,11 @@ export function QuestionView({
       if (!answer) answer = await transcribeAnswer(blob);
     }
 
+    recorder.answer(answer); // 유저가 확인·수정한 답변 텍스트 저장 (영상은 저장 안 함)
+
     const next = getNextTurn(turn);
     if (!next) {
+      recorder.complete(); // 끝까지 마친 면접만 완료로 기록
       setQuestion('');
       const url = await getSpeechAudioUrl(interviewer.closing, tier);
       setAudio(url);

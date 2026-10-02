@@ -115,6 +115,15 @@ export interface GazeBlinkLatest {
   overallScore: number;
 }
 
+/** GET /interview/sessions — 면접 1회 요약 (질문·답변 본문은 제외). completedAt이 null이면 끝까지 마치지 않은 면접. */
+export interface InterviewSessionSummary {
+  id: number;
+  tier: 'warmup' | 'standard' | 'practice';
+  startedAt: string;
+  completedAt: string | null;
+  turnCount: number;
+}
+
 export interface LatestResponse<T> {
   result: T | null;
 }

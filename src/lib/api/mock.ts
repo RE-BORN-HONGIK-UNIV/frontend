@@ -5,6 +5,7 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   GazeBlinkResult,
+  InterviewSessionSummary,
   LatestResponse,
   LiveSaveResponse,
   LoginResponse,
@@ -151,6 +152,27 @@ export const mockApi = {
   },
 
   // 아래 두 값은 합산(6:4)하면 55 — difficulty.ts의 예전 고정 점수와 같은 표준 난이도 구간
+  // 3단계 면접 기록 — mock엔 서버가 없어서 저장은 흉내만 내고 목록은 비어 있음
+  async startInterviewSession(): Promise<{ id: number }> {
+    await delay(50);
+    return { id: 1 };
+  },
+
+  async addInterviewTurn(): Promise<{ id: number; order: number }> {
+    await delay(50);
+    return { id: 1, order: 0 };
+  },
+
+  async ok(): Promise<{ message: string }> {
+    await delay(50);
+    return { message: 'ok (mock)' };
+  },
+
+  async listInterviewSessions(): Promise<{ sessions: InterviewSessionSummary[] }> {
+    await delay();
+    return { sessions: [] };
+  },
+
   async saveLiveGazeBlink(): Promise<LiveSaveResponse> {
     await delay();
     return { previous: null }; // mock엔 서버 이력이 없어서 비교는 localProgress 폴백이 맡음
