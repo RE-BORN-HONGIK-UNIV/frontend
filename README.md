@@ -25,7 +25,7 @@ npm run dev        # http://localhost:3000 (백엔드로 /api·/analyze·/health
 
 백엔드 없이 프론트만 확인하고 싶으면 `.env.example`을 `.env`로 복사한 뒤 `VITE_USE_MOCK_API=true`로 바꾸세요.
 로그인·1단계 음성 분석·2단계 표정/시선 분석이 전부 가짜 응답(`lib/api/mock.ts`)으로 동작합니다
-(3단계 면접의 추천 면접관은 1·2단계 최신 점수(`/analyze/stage1/latest`, `/analyze/gaze-blink/latest`)로 정해지고, mock 모드에선 `mock.ts`의 가짜 점수(합산 55 → 표준 난이도)를 씀. 질문은 `features/interview/difficulty.ts`의 `QUESTION_BANK` 폴백 참고).
+(3단계 면접의 추천 면접관은 1·2단계 최신 점수(`/analyze/stage1/latest`, `/analyze/stage2/latest`)로 정해지고, mock 모드에선 `mock.ts`의 가짜 점수(합산 55 → 표준 난이도)를 씀. 질문은 `features/interview/difficulty.ts`의 `QUESTION_BANK` 폴백 참고).
 
 ```bash
 npm run build      # tsc --noEmit + vite build

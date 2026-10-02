@@ -123,7 +123,8 @@ export default function Dashboard() {
       subtitle: 'Adaptive Interview',
       desc: '앞 단계 결과를 바탕으로 맞춤형 난이도의 모의 면접을 진행합니다.',
       path: '/interview',
-      status: 'locked',
+      // 1·2단계 기록이 없으면 InterviewStage가 해당 단계로 안내하므로 카드는 항상 열어둔다
+      status: 'available',
     },
   ];
 

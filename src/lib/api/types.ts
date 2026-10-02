@@ -103,7 +103,7 @@ export interface Stage1Latest {
   overallScore: number;
 }
 
-/** GET /analyze/gaze-blink/latest — 저장된 가장 최근 2단계(표정·시선) 결과. 기록이 없으면 result: null. */
+/** GET /analyze/stage2/latest — 저장된 가장 최근 2단계(표정·시선) 결과. 기록이 없으면 result: null. */
 export interface GazeBlinkLatest {
   at: string;
   blinkScore: number;

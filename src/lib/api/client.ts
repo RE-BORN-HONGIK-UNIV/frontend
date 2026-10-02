@@ -110,7 +110,7 @@ export const api = {
   latestGazeBlink: () =>
     USE_MOCK
       ? mockApi.latestGazeBlink()
-      : request<LatestResponse<GazeBlinkLatest>>('/analyze/gaze-blink/latest'),
+      : request<LatestResponse<GazeBlinkLatest>>('/analyze/stage2/latest'),
 
   // ── '이야기' 자유 게시판 ──────────────────────────────────────
   listPosts: () =>
