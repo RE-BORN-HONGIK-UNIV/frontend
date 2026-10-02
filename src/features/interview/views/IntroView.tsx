@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Button, Checkbox, Stack, Text } from '@/components/ui';
-import { getInterviewConsent, setInterviewConsent } from '../consent';
+import { Box, Button, Stack, Text } from '@/components/ui';
 import { getAnxietyScore, getTier, type DifficultyTier, type StageKey } from '../difficulty';
 import { NeedStagesView } from './NeedStagesView';
 // 면접관 정보는 ReadyView·InterviewerAvatar와 같이 쓰도록 interviewers.ts로 분리
@@ -50,11 +49,9 @@ function AvatarSlot({ emoji, size, label }: { emoji: string; size: number; label
  * 두 단계 중 기록이 없는 단계가 있으면(조회 실패 포함) 면접을 시작시키지 않고
  * NeedStagesView로 해당 단계를 먼저 하고 오게 안내함.
  * 유저는 추천 면접관 또는 더 쉬운 면접관만 선택 가능. 어려운 면접관은 잠김.
- * onStart로 최종 선택된 tier와 기록 저장·AI 사용 동의 여부를 넘겨줌 (질문 난이도 결정 / 서버 저장 여부에 사용).
+ * onStart로 최종 선택된 tier를 넘겨줌 (질문 난이도 결정에 사용).
  */
-export function IntroView({ onStart }: { onStart: (tier: DifficultyTier, consent: boolean) => void }) {
-  // 면접 기록 저장·AI 코치 노트 동의 — 기본은 동의 안 함, 마지막 선택은 이 기기에 기억
-  const [consent, setConsent] = useState(getInterviewConsent);
+export function IntroView({ onStart }: { onStart: (tier: DifficultyTier) => void }) {
   // 점수 받아오기 전에는 null. 잘못된 면접관이 잠깐 보이는 것 방지
   const [recommendedTier, setRecommendedTier] = useState<DifficultyTier | null>(null);
   const [selectedTier, setSelectedTier] = useState<DifficultyTier | null>(null);
@@ -307,27 +304,14 @@ export function IntroView({ onStart }: { onStart: (tier: DifficultyTier, consent
         완벽하지 않아도 끝까지 말해보는 게 중요해요.
       </Text>
 
-      {/* 면접 답변은 민감할 수 있는 개인정보 — 동의한 경우에만 서버에 저장하고 AI로 보낸다.
-          동의하지 않아도 면접은 그대로 할 수 있다(꼬리질문은 기본 문구, 기록·코치 노트 없음). */}
-      <Stack gap={6} style={{ maxWidth: 420, width: '100%' }}>
-        <Checkbox
-          checked={consent}
-          onChange={(e) => {
-            setConsent(e.target.checked);
-            setInterviewConsent(e.target.checked);
-          }}
-          label="내 면접 기록 저장과 AI 코치 노트에 동의해요 (선택)"
-        />
-        <Text fz={11} c="var(--rb-ink-faint)" style={{ lineHeight: 1.7, paddingLeft: 24 }}>
-          동의하면 질문과 내 답변 텍스트가 내 계정에 저장되고, 꼬리질문과 코치 노트를 만들기 위해 AI(Anthropic)에
-          전송돼요. 영상과 음성은 저장하지 않아요. 저장한 기록은 결과 화면에서 언제든 삭제할 수 있어요.
-          <br />
-          동의하지 않아도 면접은 그대로 할 수 있어요. 대신 기록과 코치 노트는 만들어지지 않고, 꼬리질문은 기본 질문으로
-          나와요.
-        </Text>
-      </Stack>
+      {/* 안내(동의 절차 아님): 면접 중 질문·답변 텍스트가 저장되고 AI로 전송된다는 점을 알린다.
+          면접 답변은 민감할 수 있는 개인정보라 투명하게 알리는 것만은 남겨둔다. */}
+      <Text fz={11} c="var(--rb-ink-faint)" ta="center" style={{ maxWidth: 420, lineHeight: 1.7 }}>
+        면접 중 질문과 내 답변 텍스트는 내 계정에 저장되고, 꼬리질문과 코치 노트를 만들기 위해 AI(Anthropic)에 전송돼요.
+        영상과 음성은 저장하지 않아요. 저장한 기록은 결과 화면에서 언제든 삭제할 수 있어요.
+      </Text>
 
-      <Button color="brand" radius="md" size="md" onClick={() => onStart(selectedTier, consent)}>
+      <Button color="brand" radius="md" size="md" onClick={() => onStart(selectedTier)}>
         면접 준비 시작하기
       </Button>
     </Stack>

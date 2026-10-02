@@ -26,19 +26,16 @@ type NoteState = 'none' | 'loading' | 'ready' | 'failed';
  * 같은 무게의 선택지로 둔다(쉬어도 괜찮다는 신호).
  *
  * 화면은 코치 노트를 기다리지 않고 바로 그려진다: 질문·답변은 면접 중 메모리에 모아둔 것(result.turns)이고,
- * 노트가 도착하기 전엔 사실만 말하는 기본 내용을 보여준 뒤 노트가 오면 채운다. 동의하지 않았거나 서버 저장이
- * 안 됐으면(sessionId 없음) 노트를 요청하지 않는다.
+ * 노트가 도착하기 전엔 사실만 말하는 기본 내용을 보여준 뒤 노트가 오면 채운다. 서버 저장이 안 됐으면
+ * (sessionId 없음) 노트를 요청하지 않는다.
  */
 export function ResultView({
   result,
   tier,
-  consent,
   onRetry,
 }: {
   result: InterviewResult;
   tier: DifficultyTier;
-  /** 기록 저장·AI 코치 노트 동의 여부 */
-  consent: boolean;
   onRetry: () => void;
 }) {
   const navigate = useNavigate();
@@ -46,13 +43,13 @@ export function ResultView({
   const { questionCount, answeredCount, minutes } = summarizeResult(result);
 
   const [note, setNote] = useState<CoachNote | null>(null);
-  const [noteState, setNoteState] = useState<NoteState>(consent && result.sessionId !== null ? 'loading' : 'none');
+  const [noteState, setNoteState] = useState<NoteState>(result.sessionId !== null ? 'loading' : 'none');
   const [deleted, setDeleted] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
 
   useEffect(() => {
-    if (!consent || result.sessionId === null) return;
+    if (result.sessionId === null) return;
     let cancelled = false;
     api
       .createCoachNote(result.sessionId)
@@ -67,7 +64,7 @@ export function ResultView({
     return () => {
       cancelled = true;
     };
-  }, [consent, result.sessionId]);
+  }, [result.sessionId]);
 
   const handleDelete = async () => {
     if (result.sessionId === null) return;
@@ -182,11 +179,6 @@ export function ResultView({
             {noteState === 'failed' && (
               <Text fz={12} c="var(--rb-ink-faint)">
                 코치 노트를 불러오지 못했어요. 그래도 오늘 해낸 건 그대로예요.
-              </Text>
-            )}
-            {!consent && (
-              <Text fz={12} c="var(--rb-ink-faint)" style={{ lineHeight: 1.6 }}>
-                기록 저장과 코치 노트에 동의하지 않아서 이번 면접은 저장하지 않았어요. 다음에 동의하면 코치 노트도 받을 수 있어요.
               </Text>
             )}
           </Stack>
@@ -326,11 +318,11 @@ export function ResultView({
               {deleting ? '삭제하는 중…' : '이 면접 기록 삭제'}
             </Button>
           </>
-        ) : consent ? (
+        ) : (
           <Text fz={11} c="var(--rb-ink-faint)" style={{ lineHeight: 1.6 }}>
             이번 면접은 기록이 저장되지 않았어요. 이 화면을 나가면 내용이 사라져요.
           </Text>
-        ) : null}
+        )}
         {deleteError && (
           <Text fz={12} c="var(--rb-ink-soft)">
             삭제하지 못했어요. 잠시 후 다시 시도해주세요.

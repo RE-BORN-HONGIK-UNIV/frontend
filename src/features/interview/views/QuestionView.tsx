@@ -6,7 +6,7 @@ import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } fr
 import { QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
-import { createDisabledRecorder, createInterviewRecorder, type InterviewRecorder } from '@/features/interview/recorder';
+import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
 
@@ -38,13 +38,10 @@ type Turn = { main: number; sub: number };
 export function QuestionView({
   stream,
   tier,
-  consent,
   onAllDone,
 }: {
   stream: MediaStream | null;
   tier: DifficultyTier;
-  /** 면접 기록 저장·AI 사용 동의 여부. false면 서버 저장 안 함 + 답변 텍스트를 AI로 보내지 않음(꼬리질문은 기본 문구) */
-  consent: boolean;
   /** 결과 화면으로 넘어갈 때, 이번 면접의 질문·답변과 서버 저장 id를 함께 넘긴다 */
   onAllDone: (result: InterviewResult) => void;
 }) {
@@ -61,17 +58,14 @@ export function QuestionView({
   const level = useAudioLevel(stream, phase === 'answering');
 
   // 면접 기록(질문·답변 텍스트) 서버 저장. 저장이 실패해도 면접은 계속된다(recorder.ts 참고).
-  const recorderRef = useRef<InterviewRecorder | null>(null);
+  const recorderRef = useRef<ReturnType<typeof createInterviewRecorder> | null>(null);
   if (!recorderRef.current) {
-    // 동의하지 않았으면 서버로 아무것도 보내지 않는 기록기 (세션 자체가 만들어지지 않음)
-    recorderRef.current = consent
-      ? createInterviewRecorder(tier, {
-          start: (t) => api.startInterviewSession(t),
-          addTurn: (sid, kind, q) => api.addInterviewTurn(sid, kind, q),
-          saveAnswer: (sid, tid, a) => api.saveInterviewAnswer(sid, tid, a),
-          complete: (sid) => api.completeInterviewSession(sid),
-        })
-      : createDisabledRecorder();
+    recorderRef.current = createInterviewRecorder(tier, {
+      start: (t) => api.startInterviewSession(t),
+      addTurn: (sid, kind, q) => api.addInterviewTurn(sid, kind, q),
+      saveAnswer: (sid, tid, a) => api.saveInterviewAnswer(sid, tid, a),
+      complete: (sid) => api.completeInterviewSession(sid),
+    });
   }
   const recorder = recorderRef.current;
 
@@ -119,8 +113,7 @@ export function QuestionView({
       const { question: q } = await getNextQuestion(
         tier,
         askedRef.current,
-        // 동의하지 않으면 답변 텍스트를 AI로 보내지 않는다 (서버는 답변이 없으면 기본 꼬리질문을 줌)
-        consent ? previousAnswer || undefined : undefined,
+        previousAnswer || undefined,
         isFollowUp ? 'follow_up' : 'main',
       );
       await ask(q, isFollowUp ? 'follow_up' : 'main');

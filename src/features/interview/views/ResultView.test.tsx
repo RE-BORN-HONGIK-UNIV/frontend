@@ -35,13 +35,13 @@ const NOTE: CoachNote = {
 
 const ok = (note: CoachNote = NOTE, source: CoachNoteResponse['source'] = 'llm'): CoachNoteResponse => ({ note, source });
 
-function renderView(props: { result?: Partial<InterviewResult>; consent?: boolean } = {}, onRetry = vi.fn()) {
+function renderView(props: { result?: Partial<InterviewResult> } = {}, onRetry = vi.fn()) {
   render(
     <MemoryRouter initialEntries={['/interview']}>
       <Routes>
         <Route
           path="/interview"
-          element={<ResultView result={{ ...RESULT, ...props.result }} tier="practice" consent={props.consent ?? true} onRetry={onRetry} />}
+          element={<ResultView result={{ ...RESULT, ...props.result }} tier="practice" onRetry={onRetry} />}
         />
         <Route path="/dashboard" element={<div>DASHBOARD_PAGE</div>} />
         <Route path="/face" element={<div>FACE_PAGE</div>} />
@@ -70,7 +70,7 @@ describe('ResultView', () => {
       expect(screen.getByText('오늘은 여기까지')).toBeTruthy();
     });
 
-    it('동의한 면접이고 서버에 저장됐을 때만 코치 노트를 요청한다', () => {
+    it('서버에 저장된 면접이면 코치 노트를 요청한다', () => {
       vi.mocked(api.createCoachNote).mockReturnValue(new Promise(() => {}));
       renderView();
       expect(api.createCoachNote).toHaveBeenCalledWith(42);
@@ -137,23 +137,12 @@ describe('ResultView', () => {
       expect(screen.getByText('오늘은 여기까지')).toBeTruthy();
     });
 
-    it('동의하지 않았으면 노트를 요청하지 않고, 저장하지 않았다는 사실을 알린다', () => {
-      renderView({ consent: false, result: { sessionId: null } });
-      expect(api.createCoachNote).not.toHaveBeenCalled();
-      expect(screen.getByText(/동의하지 않아서 이번 면접은 저장하지 않았어요/)).toBeTruthy();
-      expect(screen.queryByText('이 면접 기록 삭제')).toBeNull();
-      expect(screen.getByText('자기소개 부탁드려요')).toBeTruthy(); // 이 화면 안의 내용은 그대로 볼 수 있음
-    });
-
-    it('(안전장치) 동의하지 않았는데 세션 id가 남아 있는 비정상 상태여도 코치 노트를 요청하지 않는다', () => {
-      renderView({ consent: false, result: { sessionId: 42 } });
-      expect(api.createCoachNote).not.toHaveBeenCalled();
-    });
-
-    it('동의했지만 서버 저장이 안 됐으면(세션 없음) 노트를 요청하지 않고 그 사실을 알린다', () => {
-      renderView({ consent: true, result: { sessionId: null } });
+    it('서버 저장이 안 됐으면(세션 없음) 노트를 요청하지 않고 그 사실을 알린다', () => {
+      renderView({ result: { sessionId: null } });
       expect(api.createCoachNote).not.toHaveBeenCalled();
       expect(screen.getByText(/기록이 저장되지 않았어요/)).toBeTruthy();
+      expect(screen.queryByText('이 면접 기록 삭제')).toBeNull();
+      expect(screen.getByText('자기소개 부탁드려요')).toBeTruthy(); // 이 화면 안의 내용은 그대로 볼 수 있음
     });
   });
 

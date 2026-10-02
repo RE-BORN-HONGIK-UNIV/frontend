@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDisabledRecorder, createInterviewRecorder, type InterviewRecorderClient } from './recorder';
+import { createInterviewRecorder, type InterviewRecorderClient } from './recorder';
 
 function makeClient(overrides: Partial<InterviewRecorderClient> = {}) {
   let turnSeq = 0;
@@ -118,17 +118,5 @@ describe('createInterviewRecorder', () => {
     failed.start();
     await failed.idle();
     expect(failed.sessionId()).toBeNull();
-  });
-});
-
-describe('createDisabledRecorder (동의하지 않은 면접)', () => {
-  it('어떤 호출을 해도 에러 없이 아무 것도 하지 않고 sessionId는 null이다', async () => {
-    const rec = createDisabledRecorder();
-    rec.start();
-    rec.ask('main', '질문');
-    rec.answer('답변');
-    rec.complete();
-    await expect(rec.idle()).resolves.toBeUndefined();
-    expect(rec.sessionId()).toBeNull();
   });
 });
