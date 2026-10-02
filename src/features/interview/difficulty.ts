@@ -1,3 +1,5 @@
+import { api } from '@/lib/api/client';
+
 export type DifficultyTier = 'warmup' | 'standard' | 'practice';
 
 export interface TierInfo {
@@ -20,15 +22,37 @@ export function getTier(score: number): TierInfo {
   return { tier: 'practice', label: '실전 난이도' };
 }
 
+/** 1·2단계 기록이 하나도 없거나 조회가 전부 실패했을 때 쓰는 기본 점수 (표준 난이도). */
+export const DEFAULT_ANXIETY_SCORE = 55;
+
 /**
- * TODO: Stage1/2 파이프라인 API 연동 전까지 쓰는 임시 mock.
- * 실제로는 백엔드에서 계산된 통합 불안도 점수(0~100)를 받아와야 함.
- * 연동 시 이 함수 내부만 실제 fetch 호출로 교체하면 나머지 로직은 그대로 동작함.
+ * 1·2단계 최신 점수로 통합 점수를 정한다 (순수 함수 — 조회와 분리해 테스트 가능).
+ * - 둘 다 있으면 가중 합산(combineAnxietyScore)
+ * - 하나만 있으면 그 점수를 그대로 (없는 쪽을 0점으로 취급하면 난이도가 과하게 낮아짐)
+ * - 둘 다 없으면 null → 호출측이 기본값 사용
+ */
+export function resolveAnxietyScore(stage1: number | null, stage2: number | null): number | null {
+  if (stage1 !== null && stage2 !== null) return combineAnxietyScore(stage1, stage2);
+  return stage1 ?? stage2;
+}
+
+/**
+ * 통합 점수(0~100)를 서버에 저장된 1·2단계 최신 결과에서 계산한다.
+ * 이름은 "불안도"지만 값은 **높을수록 안정적**(1·2단계 점수가 그렇다) — 그래서
+ * getTier()에서 높을수록 실전 난이도가 됨.
+ *
+ * 조회 실패(네트워크·미로그인 등)나 기록 없음은 에러로 던지지 않고 한 단계씩 폴백한다:
+ * 한쪽 실패 → 다른 쪽만 사용, 둘 다 없음 → DEFAULT_ANXIETY_SCORE. 면접 화면 흐름이
+ * 이 조회 때문에 막히면 안 되기 때문.
+ *
+ * 한계: 2단계는 "영상 업로드" 모드 결과만 서버(DB)에 저장되고, "실시간 촬영" 모드는
+ * 브라우저 localProgress에만 남아서 여기서는 보이지 않는다.
  */
 export async function getAnxietyScore(): Promise<number> {
-  // 임시 고정값. 워밍업/표준/실전 화면을 각각 확인해보려면
-  // 30 / 55 / 80 처럼 값을 바꿔서 테스트해보면 됨.
-  return 55;
+  const [s1, s2] = await Promise.allSettled([api.latestStage1(), api.latestGazeBlink()]);
+  const stage1 = s1.status === 'fulfilled' ? (s1.value.result?.overallScore ?? null) : null;
+  const stage2 = s2.status === 'fulfilled' ? (s2.value.result?.overallScore ?? null) : null;
+  return resolveAnxietyScore(stage1, stage2) ?? DEFAULT_ANXIETY_SCORE;
 }
 
 /**

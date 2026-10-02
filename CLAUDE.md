@@ -59,5 +59,5 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 
 - 백엔드 연동 전 임시 로직(mock 값, 고정 질문 리스트 등)은 코드에 왜 임시인지와
   실제 연동 시 뭘 바꾸면 되는지를 주석으로 남긴다 (`src/features/interview/difficulty.ts`
-  의 `getAnxietyScore`/`QUESTION_BANK` 패턴 참고).
+  의 `QUESTION_BANK` 패턴 참고).
 - 커밋 메시지는 한국어로, "무엇을"보다 "왜" 위주로 쓴다.

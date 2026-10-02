@@ -3,10 +3,13 @@ import type {
   AnalyzeResult,
   CommentItem,
   FeedbackResponse,
+  GazeBlinkLatest,
   GazeBlinkResult,
+  LatestResponse,
   LoginResponse,
   PostDetail,
   PostSummary,
+  Stage1Latest,
 } from './types';
 
 /** 백엔드 없이 프론트만 돌릴 때(VITE_USE_MOCK_API=true) 쓰는 가짜 응답들.
@@ -144,6 +147,30 @@ export const mockApi = {
     const post = mockPosts.find((p) => p.id === postId);
     if (post) post.comment_count += 1;
     return comment;
+  },
+
+  // 아래 두 값은 합산(6:4)하면 55 — difficulty.ts의 예전 고정 점수와 같은 표준 난이도 구간
+  async latestStage1(): Promise<LatestResponse<Stage1Latest>> {
+    await delay();
+    return {
+      result: {
+        at: new Date().toISOString(),
+        stability: 50, fluency: 60, pauseCtrl: 55, continuity: 60, calm: 50,
+        overallScore: 55,
+      },
+    };
+  },
+
+  async latestGazeBlink(): Promise<LatestResponse<GazeBlinkLatest>> {
+    await delay();
+    return {
+      result: {
+        at: new Date().toISOString(),
+        blinkScore: 60, blinkStatus: '정상', gazeScore: 50,
+        expressionScore: 55, expressionStatus: '보통',
+        overallScore: 55,
+      },
+    };
   },
 
   async analyzeGazeBlink(): Promise<GazeBlinkResult> {

@@ -73,6 +73,34 @@ export interface GazeBlinkResult {
   } | null;
 }
 
+/** GET /analyze/stage1/latest — 저장된 가장 최근 1단계(음성) 결과. 기록이 없으면 result: null. */
+export interface Stage1Latest {
+  at: string;
+  stability: number;
+  fluency: number;
+  pauseCtrl: number;
+  continuity: number;
+  calm: number;
+  /** 5축 평균 (0~100, 높을수록 안정적) */
+  overallScore: number;
+}
+
+/** GET /analyze/gaze-blink/latest — 저장된 가장 최근 2단계(표정·시선) 결과. 기록이 없으면 result: null. */
+export interface GazeBlinkLatest {
+  at: string;
+  blinkScore: number;
+  blinkStatus: string;
+  gazeScore: number;
+  expressionScore: number;
+  expressionStatus: string;
+  /** 깜빡임·시선·표정 점수 평균 (0~100, 높을수록 안정적) */
+  overallScore: number;
+}
+
+export interface LatestResponse<T> {
+  result: T | null;
+}
+
 export interface LoginResponse {
   token: string;
   name: string;

@@ -4,11 +4,14 @@ import type {
   AnalyzeResult,
   CommentItem,
   FeedbackResponse,
+  GazeBlinkLatest,
   GazeBlinkResult,
+  LatestResponse,
   LoginResponse,
   PostDetail,
   PostSummary,
   SignupPayload,
+  Stage1Latest,
 } from './types';
 
 /** Empty in dev (Vite proxy handles /api, /analyze). Set VITE_API_BASE_URL for deployed builds. */
@@ -85,6 +88,18 @@ export const api = {
     fd.append('file', file);
     return request<GazeBlinkResult>('/analyze/gaze-blink', { method: 'POST', body: fd });
   },
+
+  /** 저장된 최신 1단계(음성) 결과 — 재분석 없이 조회. 3단계 난이도 산정용. */
+  latestStage1: () =>
+    USE_MOCK
+      ? mockApi.latestStage1()
+      : request<LatestResponse<Stage1Latest>>('/analyze/stage1/latest'),
+
+  /** 저장된 최신 2단계(표정·시선) 결과 — 재분석 없이 조회. 3단계 난이도 산정용. */
+  latestGazeBlink: () =>
+    USE_MOCK
+      ? mockApi.latestGazeBlink()
+      : request<LatestResponse<GazeBlinkLatest>>('/analyze/gaze-blink/latest'),
 
   // ── '이야기' 자유 게시판 ──────────────────────────────────────
   listPosts: () =>

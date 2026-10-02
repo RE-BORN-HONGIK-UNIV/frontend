@@ -44,8 +44,8 @@ function AvatarSlot({ emoji, size, label }: { emoji: string; size: number; label
 
 /**
  * 3단계 면접 시작 전 면접관 소개 화면.
- * getAnxietyScore()로 통합 불안도 점수를 받아 추천 면접관을 정함.
- * 1·2단계 연동 전까지는 difficulty.ts의 mock 점수(55, standard) 사용.
+ * getAnxietyScore()로 1·2단계 최신 점수를 합산한 통합 점수를 받아 추천 면접관을 정함.
+ * 기록이 없거나 조회에 실패하면 difficulty.ts의 기본 점수(55, standard)로 폴백.
  * 유저는 추천 면접관 또는 더 쉬운 면접관만 선택 가능. 어려운 면접관은 잠김.
  * onStart로 최종 선택된 tier를 넘겨줌 (질문 난이도 결정에 사용).
  */
