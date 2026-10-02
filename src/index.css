@@ -162,7 +162,7 @@
   --color-primary-deep-tint: var(--rb-primary-deep-tint);
 
   --font-sans: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
-  --font-display: 'Spectral', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-display: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; /* 제목도 본문과 같은 에이투지체 (예전 Spectral 세리프는 한글이 없어 한글 제목이 시스템 명조로 나왔음) */
 
   --radius-xs: 6px;
   --radius-sm: 10px;
@@ -205,7 +205,7 @@
   /* lighter left→right wash, used for page-header backgrounds (kept separate from --rb-grad
      so the logo wordmark elsewhere stays at full saturation) */
   --rb-header-grad: linear-gradient(105deg, var(--rb-primary) 0%, #a3d2b3 100%);
-  --rb-font-display: 'Spectral', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --rb-font-display: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; /* 제목도 본문과 같은 에이투지체 (예전 Spectral 세리프는 한글이 없어 한글 제목이 시스템 명조로 나왔음) */
 
   color-scheme: light;
 }
@@ -336,23 +336,7 @@ a {
   }
 }
 
-/* ── 로고 워드마크(RebornWordmark) 라이트/다크 이미지 전환 — data-theme
-   속성 기준(React state를 안 거쳐서 테마 전환 시 리렌더 없이 즉시 바뀜).
-   기본은 라이트 버전만 보이고, 다크 테마일 때만 서로 바뀐다. */
-.rb-logo-light {
-  display: block;
-}
-.rb-logo-dark {
-  display: none;
-}
-:root[data-theme='dark'] .rb-logo-light {
-  display: none;
-}
-:root[data-theme='dark'] .rb-logo-dark {
-  display: block;
-}
-
-/* ── logo entry animation: 로고 이미지 전체가 살짝 아래·작게 시작해서 페이드인 ── */
+/* ── logo entry animation: 로고 전체가 살짝 아래·작게 시작해서 페이드인 ── */
 @keyframes rbLogoIn {
   0% {
     transform: translateY(6px) scale(0.92);
