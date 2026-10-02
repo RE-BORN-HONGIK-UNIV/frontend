@@ -103,4 +103,20 @@ describe('createInterviewRecorder', () => {
     expect(client.addTurn).toHaveBeenCalledTimes(2);
     expect(client.complete).toHaveBeenCalledWith(7);
   });
+
+  it('sessionId()는 세션 생성이 끝나면 id를, 실패하면 null을 돌려준다', async () => {
+    const ok = createInterviewRecorder('standard', makeClient());
+    expect(ok.sessionId()).toBeNull(); // 생성 전
+    ok.start();
+    await ok.idle();
+    expect(ok.sessionId()).toBe(7);
+
+    const failed = createInterviewRecorder(
+      'standard',
+      makeClient({ start: vi.fn(async () => { throw new Error('401'); }) }),
+    );
+    failed.start();
+    await failed.idle();
+    expect(failed.sessionId()).toBeNull();
+  });
 });

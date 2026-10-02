@@ -7,6 +7,7 @@ import { QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficu
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
+import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
 
 // 꼬리질문 생성 실패 시 쓰는 기본 꼬리질문
@@ -41,7 +42,8 @@ export function QuestionView({
 }: {
   stream: MediaStream | null;
   tier: DifficultyTier;
-  onAllDone: () => void;
+  /** 결과 화면으로 넘어갈 때, 이번 면접의 질문·답변과 서버 저장 id를 함께 넘긴다 */
+  onAllDone: (result: InterviewResult) => void;
 }) {
   const interviewer = getInterviewer(tier);
   const { start, stop } = useRecorder(stream);
@@ -67,6 +69,13 @@ export function QuestionView({
   }
   const recorder = recorderRef.current;
 
+  // 결과 화면용으로 이번 면접의 질문·답변을 메모리에도 모아둔다 — 서버 저장이 실패해도 결과는 보여야 하므로
+  const transcriptRef = useRef<InterviewTranscriptTurn[]>([]);
+  const startedAtRef = useRef(Date.now());
+  const endedAtRef = useRef(0);
+  const startedRef = useRef(false); // 개발 모드(StrictMode)에서 effect가 두 번 돌아 첫 질문이 중복되는 것 방지
+  const [finishing, setFinishing] = useState(false);
+
   const askedRef = useRef<string[]>([]); // 지금까지 한 질문 (중복 질문 방지용으로 서버에 전달)
   const blobRef = useRef<Blob | null>(null); // 방금 녹화한 답변 영상
   // InterviewerAvatar의 onEnded는 audioUrl이 바뀔 때도 불려서, 질문 읽는 중일 때만 반응하도록 최신 phase를 ref로 확인
@@ -84,6 +93,7 @@ export function QuestionView({
   /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 바로 답변 대기로 넘어감 */
   const ask = async (text: string, kind: 'main' | 'follow_up') => {
     recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
+    transcriptRef.current.push({ kind, question: text, answer: '' });
     askedRef.current = [...askedRef.current, text];
     setQuestion(text);
     const url = await getSpeechAudioUrl(text, tier);
@@ -115,6 +125,8 @@ export function QuestionView({
 
   // 화면 처음 열릴 때 첫 질문 시작
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     recorder.start();
     loadQuestion({ main: 0, sub: 0 }, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,11 +178,14 @@ export function QuestionView({
       if (!answer) answer = await transcribeAnswer(blob);
     }
 
+    const current = transcriptRef.current[transcriptRef.current.length - 1];
+    if (current) current.answer = answer;
     recorder.answer(answer); // 유저가 확인·수정한 답변 텍스트 저장 (영상은 저장 안 함)
 
     const next = getNextTurn(turn);
     if (!next) {
       recorder.complete(); // 끝까지 마친 면접만 완료로 기록
+      endedAtRef.current = Date.now();
       setQuestion('');
       const url = await getSpeechAudioUrl(interviewer.closing, tier);
       setAudio(url);
@@ -180,6 +195,18 @@ export function QuestionView({
 
     setTurn(next);
     await loadQuestion(next, answer);
+  };
+
+  /** 결과 화면으로: 밀린 서버 저장이 끝나 면접 id가 확정될 때까지 잠깐 기다린다(최대 3초 — 느려도 결과 화면은 막지 않음) */
+  const handleFinish = async () => {
+    setFinishing(true);
+    await Promise.race([recorder.idle(), new Promise((r) => setTimeout(r, 3000))]);
+    onAllDone({
+      turns: transcriptRef.current.map((t) => ({ ...t })),
+      sessionId: recorder.sessionId(),
+      startedAt: startedAtRef.current,
+      endedAt: endedAtRef.current || Date.now(),
+    });
   };
 
   // 질문 번호 표시. 꼬리질문이 있는 면접관이면 "Q 1-2 / 3", 없으면 "Q 1 / 3"
@@ -427,8 +454,8 @@ export function QuestionView({
             )}
 
             {phase === 'finished' && (
-              <Button color="brand" radius="xl" size="sm" onClick={onAllDone}>
-                결과 보기
+              <Button color="brand" radius="xl" size="sm" disabled={finishing} onClick={handleFinish}>
+                {finishing ? '정리하고 있어요…' : '결과 보기'}
               </Button>
             )}
           </Box>

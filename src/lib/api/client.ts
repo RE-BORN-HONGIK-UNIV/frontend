@@ -132,6 +132,12 @@ export const api = {
       ? mockApi.ok()
       : request<InterviewSessionSummary>(`/interview/sessions/${sessionId}/complete`, { method: 'POST' }),
 
+  /** 면접 기록 삭제 — 질문·답변 텍스트가 함께 지워진다. */
+  deleteInterviewSession: (sessionId: number) =>
+    USE_MOCK
+      ? mockApi.ok()
+      : request<{ message: string }>(`/interview/sessions/${sessionId}`, { method: 'DELETE' }),
+
   /** 내 면접 목록(최신순) — 대시보드 완료 표시용. */
   listInterviewSessions: () =>
     USE_MOCK

@@ -63,7 +63,12 @@ export function createInterviewRecorder(tier: string, client: InterviewRecorderC
       });
     },
 
-    /** 지금까지 쌓인 저장 작업이 모두 끝날 때까지 기다림 (테스트용). */
+    /** 서버에 만들어진 면접 id. 아직 생성 전이거나 실패했으면 null — 결과 화면에서 "기록 삭제" 가능 여부를 정한다. */
+    sessionId(): number | null {
+      return sessionId;
+    },
+
+    /** 지금까지 쌓인 저장 작업이 모두 끝날 때까지 기다림. 결과 화면으로 넘어가기 직전에 id를 확정하는 데 쓴다. */
     idle(): Promise<void> {
       return chain;
     },
