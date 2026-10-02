@@ -4,6 +4,7 @@ import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@/component
 import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
 import { daysSince, localProgress } from '@/features/progress/localProgress';
+import { useStageProgress } from '@/features/progress/useStageProgress';
 import { getInterviewer } from '@/features/interview/interviewers';
 import type { DifficultyTier } from '@/features/interview/difficulty';
 
@@ -88,7 +89,8 @@ function ProgressRing({ pct }: { pct: number }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const name = auth.name || '회원';
-  const s1 = localProgress.stage1();
+  // 1·2단계는 서버에 저장된 분석 결과 기준 (3단계 난이도 산정과 같은 출처), 3단계는 아직 브라우저 기록
+  const { stage1: s1, stage2: s2 } = useStageProgress();
   const s3 = localProgress.stage3();
 
   const [streak, setStreak] = useState(1);
@@ -116,9 +118,11 @@ export default function Dashboard() {
       id: 2,
       title: '표정 분석',
       subtitle: '페이스 터치',
-      desc: '시선 처리와 표정을 분석해 비언어적 소통 능력을 교정합니다.',
+      desc: s2.done
+        ? `표정·시선 분석 완료 · 종합 점수 ${s2.score}점`
+        : '시선 처리와 표정을 분석해 비언어적 소통 능력을 교정합니다.',
       path: '/face',
-      status: 'available',
+      status: s2.done ? 'done' : 'available',
     },
     {
       id: 3,
@@ -140,8 +144,11 @@ export default function Dashboard() {
   const gap = daysSince(s1.at);
 
   const handleReset = () => {
-    if (window.confirm('진행 상황을 초기화할까요?')) {
+    // 서버에 저장된 1·2단계 분석 기록은 지우지 못한다(완료 표시도 서버 기준이라 그대로 남음).
+    // 이 기기(브라우저)에 저장된 기록만 지운다.
+    if (window.confirm('이 기기에 저장된 진행 기록을 초기화할까요?\n(서버에 저장된 1·2단계 분석 기록은 그대로 남아요)')) {
       localProgress.resetStage1();
+      localProgress.resetStage2();
       localProgress.resetStage3();
       window.location.reload();
     }
