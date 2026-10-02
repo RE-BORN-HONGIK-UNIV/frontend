@@ -41,7 +41,7 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 
 지금은 순수 로직 유닛테스트만 있음(`src/**/*.test.ts` — `combineAnxietyScore`,
 `getTier`, `scoreColor` 등 결정적 함수). `@testing-library/react` + jsdom은
-설치·설정(`src/test/setup.ts`)까지 끝났고 컴포넌트 테스트는 `NeedStagesView`·`Dashboard`·`ResultView` 세 개뿐 —
+설치·설정(`src/test/setup.ts`)까지 끝났고 컴포넌트 테스트는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`·`QuestionView.consent` 뿐 —
 필요해지면 `*.test.tsx`로 추가.
 
 백엔드 쪽 계층별(순수 로직/정확도 검증/API 통합) 테스트 설계는
@@ -60,4 +60,7 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 - 백엔드 연동 전 임시 로직(mock 값, 고정 질문 리스트 등)은 코드에 왜 임시인지와
   실제 연동 시 뭘 바꾸면 되는지를 주석으로 남긴다 (`src/features/interview/difficulty.ts`
   의 `QUESTION_BANK` 패턴 참고).
+- 면접 답변 텍스트는 민감정보다. 서버 저장·AI 전송은 **동의한 경우에만**(`features/interview/consent.ts`, 기본 해제) —
+  동의 여부에 따른 서버 호출은 `QuestionView.consent.test.tsx`가 지킨다. 결과 화면에는 점수·등급·비교 같은 평가
+  표현을 넣지 않는다(사회불안 사용자가 평가받는 느낌을 받으면 다시 오지 않음).
 - 커밋 메시지는 한국어로, "무엇을"보다 "왜" 위주로 쓴다.

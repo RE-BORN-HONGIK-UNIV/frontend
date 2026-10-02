@@ -4,6 +4,7 @@ import type {
   CommentItem,
   FeedbackResponse,
   GazeBlinkLatest,
+  CoachNoteResponse,
   GazeBlinkResult,
   InterviewSessionSummary,
   LatestResponse,
@@ -166,6 +167,26 @@ export const mockApi = {
   async ok(): Promise<{ message: string }> {
     await delay(50);
     return { message: 'ok (mock)' };
+  },
+
+  async createCoachNote(): Promise<CoachNoteResponse> {
+    await delay(900); // 실제 AI 작성 시간을 흉내
+    return {
+      source: 'llm',
+      note: {
+        greeting: '오늘도 끝까지 와줘서 고마워요.',
+        won: ['면접을 끝까지 마쳤어요', '꼬리질문에도 답해봤어요'],
+        quote: { text: '매주 정리해서 공유했어요', why: '맡은 일을 꾸준히 해낸 점이 구체적으로 느껴져요' },
+        recommended: 'daily_mission',
+        cards: [
+          { kind: 'again', title: '한 번 더 해보기', body: '방금 해본 흐름을 한 번 더 이어가 봐요. 면접관을 바꿔볼 수도 있어요.' },
+          { kind: 'light_practice', title: '가볍게 연습', body: '부담 없이 목소리나 표정으로 몸을 풀어봐요. 짧게 해도 충분해요.', path: '/voice' },
+          { kind: 'daily_mission', title: '현실로 한 걸음', body: '오늘 거울 앞에서 소리 내어 인사 한마디 해보기' },
+          { kind: 'rest', title: '오늘은 여기까지', body: '충분히 잘했어요. 쉬는 것도 연습의 일부예요.' },
+        ],
+        care: null,
+      },
+    };
   },
 
   async listInterviewSessions(): Promise<{ sessions: InterviewSessionSummary[] }> {

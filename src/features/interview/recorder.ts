@@ -74,3 +74,20 @@ export function createInterviewRecorder(tier: string, client: InterviewRecorderC
     },
   };
 }
+
+export type InterviewRecorder = ReturnType<typeof createInterviewRecorder>;
+
+/**
+ * 동의하지 않은 면접용 — 서버로 아무것도 보내지 않는 기록기. createInterviewRecorder와 같은 모양이라
+ * 호출부(QuestionView)는 동의 여부를 신경 쓰지 않고 똑같이 호출한다. 세션이 만들어지지 않으므로 sessionId는 항상 null.
+ */
+export function createDisabledRecorder(): InterviewRecorder {
+  return {
+    start() {},
+    ask() {},
+    answer() {},
+    complete() {},
+    sessionId: () => null,
+    idle: () => Promise.resolve(),
+  };
+}

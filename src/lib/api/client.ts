@@ -5,6 +5,7 @@ import type {
   CommentItem,
   FeedbackResponse,
   GazeBlinkLatest,
+  CoachNoteResponse,
   GazeBlinkResult,
   InterviewSessionSummary,
   LatestResponse,
@@ -131,6 +132,12 @@ export const api = {
     USE_MOCK
       ? mockApi.ok()
       : request<InterviewSessionSummary>(`/interview/sessions/${sessionId}/complete`, { method: 'POST' }),
+
+  /** 면접 직후 코치 노트 — 이미 있으면 그대로, 없으면 서버 에이전트가 만든다(수 초~수십 초 걸릴 수 있음). */
+  createCoachNote: (sessionId: number) =>
+    USE_MOCK
+      ? mockApi.createCoachNote()
+      : request<CoachNoteResponse>(`/interview/sessions/${sessionId}/coach-note`, { method: 'POST' }),
 
   /** 면접 기록 삭제 — 질문·답변 텍스트가 함께 지워진다. */
   deleteInterviewSession: (sessionId: number) =>

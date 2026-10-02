@@ -26,6 +26,8 @@ export default function InterviewStage() {
   const [tier, setTier] = useState<DifficultyTier>('standard');
   // 면접을 끝까지 마친 뒤 결과 화면에 넘겨줄 이번 면접의 질문·답변 (면접 중 메모리에 모아둔 것)
   const [result, setResult] = useState<InterviewResult | null>(null);
+  // 기록 저장·AI 코치 노트 동의 여부 — IntroView에서 정한 값. false면 서버에 아무것도 저장·전송하지 않음
+  const [consent, setConsent] = useState(false);
   // intro 넘어가면서부터 계속 살아있게 최상위에서 관리.
   // 음량 측정은 기기 점검 화면에서만 (면접 중에는 질문 화면이 따로 측정함)
   const media = useMediaPreview({ measureLevel: step === 'test' });
@@ -40,8 +42,9 @@ export default function InterviewStage() {
     }
   };
 
-  const handleIntroStart = (selected: DifficultyTier) => {
+  const handleIntroStart = (selected: DifficultyTier, agreed: boolean) => {
     setTier(selected);
+    setConsent(agreed);
     setStep('test');
   };
 
@@ -87,6 +90,7 @@ export default function InterviewStage() {
           <QuestionView
             stream={media.stream}
             tier={tier}
+            consent={consent}
             onAllDone={(r) => {
               // 끝까지 마친 면접만 완료로 기록 (대시보드 3단계 카드·진행률에 반영)
               localProgress.markStage3Done(tier);
@@ -100,6 +104,7 @@ export default function InterviewStage() {
           <ResultView
             result={result}
             tier={tier}
+            consent={consent}
             onRetry={() => {
               setResult(null);
               setStep('intro'); // 면접관 선택부터 다시 (카메라·마이크 연결은 유지됨)

@@ -124,6 +124,35 @@ export interface InterviewSessionSummary {
   turnCount: number;
 }
 
+/** 면접 직후 코치 노트 — 서버(coach/)가 만들고 검증한 것. 카드(다음 한 걸음)는 서버 코드가 정한 4종류. */
+export type CoachCardKind = 'again' | 'light_practice' | 'daily_mission' | 'rest';
+
+export interface CoachCard {
+  kind: CoachCardKind;
+  title: string;
+  body: string;
+  /** light_practice 카드가 보낼 화면 (/voice 또는 /face) */
+  path?: string;
+}
+
+export interface CoachNote {
+  greeting: string;
+  /** 오늘 해낸 것 (행동 기준, 점수 아님) */
+  won: string[];
+  /** 사용자의 답변에서 글자 그대로 인용한 잘한 문장 — 서버가 원문과 대조해 검증한 것만 옴 */
+  quote: { text: string; why: string } | null;
+  recommended: CoachCardKind;
+  cards: CoachCard[];
+  /** 위기 신호가 감지됐을 때만 — 코칭 대신 돌봄 안내 */
+  care: { body: string; resources: string } | null;
+}
+
+export interface CoachNoteResponse {
+  note: CoachNote;
+  /** llm: AI가 작성 / fallback: AI를 못 써서 사실만 말하는 대체 노트 / care: 돌봄 안내 */
+  source: 'llm' | 'fallback' | 'care';
+}
+
 export interface LatestResponse<T> {
   result: T | null;
 }
