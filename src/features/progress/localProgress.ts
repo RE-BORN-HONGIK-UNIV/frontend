@@ -10,6 +10,9 @@ const K = {
   s3done: 'rb.stage3.done',
   s3tier: 'rb.stage3.tier',
   s3at: 'rb.stage3.at',
+  s2done: 'rb.stage2.done',
+  s2score: 'rb.stage2.score',
+  s2at: 'rb.stage2.at',
   s2history: 'rb.stage2.history',
   lastVisit: 'rb.lastVisit',
   streak: 'rb.streak',
@@ -40,6 +43,12 @@ function del(k: string) {
 }
 
 export interface Stage1Progress {
+  done: boolean;
+  score: number | null;
+  at: string | null;
+}
+
+export interface Stage2Progress {
   done: boolean;
   score: number | null;
   at: string | null;
@@ -107,6 +116,22 @@ export const localProgress = {
     del(K.s3at);
   },
 
+  stage2(): Stage2Progress {
+    const raw = get(K.s2score);
+    return {
+      done: get(K.s2done) === 'true',
+      score: raw ? Number(raw) : null,
+      at: get(K.s2at),
+    };
+  },
+
+  /** 2단계 분석을 마쳤을 때 기록 (서버 조회가 실패했을 때 대시보드가 대신 쓰는 메모 — 1단계와 같은 방식). */
+  markStage2Done(score: number) {
+    set(K.s2done, 'true');
+    set(K.s2score, String(score));
+    set(K.s2at, new Date().toISOString());
+  },
+
   stage2History(): Stage2Entry[] {
     try {
       const raw = get(K.s2history);
@@ -127,6 +152,9 @@ export const localProgress = {
 
   resetStage2() {
     del(K.s2history);
+    del(K.s2done);
+    del(K.s2score);
+    del(K.s2at);
   },
 
   /** Visit streak — increments once per calendar day, resets if a day is skipped. */

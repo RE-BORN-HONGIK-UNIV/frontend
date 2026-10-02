@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { GazeBlinkLatest, Stage1Latest } from '@/lib/api/types';
-import { parseServerTime, resolveStage1Progress, resolveStage2Progress } from './stageProgress';
+import {
+  parseServerTime,
+  resolveStage1Progress,
+  resolveStage2Progress,
+  stage2OverallScore,
+} from './stageProgress';
 
 const S1: Stage1Latest = {
   at: '2026-10-02T01:11:04.523876',
@@ -49,16 +54,32 @@ describe('resolveStage1Progress', () => {
 });
 
 describe('resolveStage2Progress', () => {
+  const LOCAL2_DONE = { done: true, score: 66, at: '2026-09-01T00:00:00.000Z' };
+  const NONE = { done: false, score: null, at: null };
+
   it('서버에 기록이 있으면 완료', () => {
-    expect(resolveStage2Progress('success', S2)).toEqual({
+    expect(resolveStage2Progress('success', S2, NONE)).toEqual({
       done: true, score: 70, at: '2026-10-02T02:00:00Z',
     });
   });
 
-  it('기록 없음·조회 실패·진행 중은 모두 미완료', () => {
-    const none = { done: false, score: null, at: null };
-    expect(resolveStage2Progress('success', null)).toEqual(none);
-    expect(resolveStage2Progress('error', undefined)).toEqual(none);
-    expect(resolveStage2Progress('pending', undefined)).toEqual(none);
+  it('서버에 기록이 없으면, 브라우저에 완료 메모가 남아 있어도 미완료다 (3단계는 서버 점수를 쓰기 때문)', () => {
+    expect(resolveStage2Progress('success', null, LOCAL2_DONE)).toEqual(NONE);
+  });
+
+  it('조회 실패·진행 중이면 1단계처럼 브라우저 메모로 대신 보여준다', () => {
+    expect(resolveStage2Progress('error', undefined, LOCAL2_DONE)).toEqual(LOCAL2_DONE);
+    expect(resolveStage2Progress('pending', undefined, LOCAL2_DONE)).toEqual(LOCAL2_DONE);
+  });
+
+  it('조회 실패인데 브라우저 메모도 없으면 미완료', () => {
+    expect(resolveStage2Progress('error', undefined, NONE)).toEqual(NONE);
+  });
+});
+
+describe('stage2OverallScore', () => {
+  it('세 점수의 평균을 반올림한다 (서버 overallScore와 같은 공식)', () => {
+    expect(stage2OverallScore({ blink: 100, gaze: 60, expression: 50 })).toBe(70);
+    expect(stage2OverallScore({ blink: 100, gaze: 100, expression: 99 })).toBe(100); // 99.67 → 100
   });
 });

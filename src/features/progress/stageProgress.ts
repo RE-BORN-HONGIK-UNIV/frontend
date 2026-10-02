@@ -1,14 +1,8 @@
 import type { GazeBlinkLatest, Stage1Latest } from '@/lib/api/types';
-import type { Stage1Progress } from './localProgress';
+import type { Stage1Progress, Stage2Progress } from './localProgress';
 
 /** 서버 조회 상태 — TanStack Query의 status와 같은 값. */
 export type QueryStatus = 'pending' | 'error' | 'success';
-
-export interface Stage2Progress {
-  done: boolean;
-  score: number | null;
-  at: string | null;
-}
 
 /**
  * 서버가 주는 시각(`created_at.isoformat()`)은 UTC인데 타임존 표시가 없다("2026-10-02T01:11:04").
@@ -36,11 +30,21 @@ export function resolveStage1Progress(
   return { done: true, score: Math.round(server.overallScore), at: parseServerTime(server.at) };
 }
 
-/** 2단계 진행 상태. 서버(Stage2Result)에 기록이 있으면 완료. 조회 중·실패면 미완료로 둔다(브라우저엔 완료 플래그가 없음). */
+/**
+ * 2단계 진행 상태. 1단계와 같은 규칙 — 서버(Stage2Result)가 기준이고, 조회 중·실패일 때만
+ * 브라우저 기록으로 대신 보여준다.
+ */
 export function resolveStage2Progress(
   status: QueryStatus,
   server: GazeBlinkLatest | null | undefined,
+  local: Stage2Progress,
 ): Stage2Progress {
-  if (status !== 'success' || !server) return { done: false, score: null, at: null };
+  if (status !== 'success') return local;
+  if (!server) return { done: false, score: null, at: null };
   return { done: true, score: Math.round(server.overallScore), at: parseServerTime(server.at) };
+}
+
+/** 2단계 종합 점수 = 깜빡임·시선·표정 점수의 평균(반올림). 서버 /analyze/stage2/latest의 overallScore와 같은 공식. */
+export function stage2OverallScore(scores: { blink: number; gaze: number; expression: number }): number {
+  return Math.round((scores.blink + scores.gaze + scores.expression) / 3);
 }

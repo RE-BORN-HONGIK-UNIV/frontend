@@ -82,4 +82,28 @@ describe('Dashboard 단계 진행 표시', () => {
     renderDashboard();
     expect(await screen.findByText('음성 분석 완료 · 종합 점수 88점')).toBeTruthy();
   });
+
+  it('서버 조회가 실패하면 2단계도 브라우저의 완료 메모로 대신 보여준다', async () => {
+    vi.mocked(api.latestStage1).mockRejectedValue(new Error('network'));
+    vi.mocked(api.latestGazeBlink).mockRejectedValue(new Error('network'));
+    localProgress.markStage2Done(66);
+    renderDashboard();
+    expect(await screen.findByText('표정·시선 분석 완료 · 종합 점수 66점')).toBeTruthy();
+  });
+
+  it('서버 조회가 실패했고 브라우저 메모도 없으면 2단계는 미완료다', async () => {
+    vi.mocked(api.latestStage1).mockRejectedValue(new Error('network'));
+    vi.mocked(api.latestGazeBlink).mockRejectedValue(new Error('network'));
+    renderDashboard();
+    await waitFor(() => expect(api.latestGazeBlink).toHaveBeenCalled());
+    expect(screen.queryByText(/표정·시선 분석 완료/)).toBeNull();
+  });
+
+  it('서버에 2단계 기록이 없으면 브라우저 메모가 있어도 미완료다', async () => {
+    server(null, null);
+    localProgress.markStage2Done(66);
+    renderDashboard();
+    await waitFor(() => expect(api.latestGazeBlink).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText(/표정·시선 분석 완료/)).toBeNull());
+  });
 });

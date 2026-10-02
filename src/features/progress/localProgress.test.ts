@@ -35,3 +35,36 @@ describe('localProgress.stage3', () => {
     expect(localProgress.stage1().done).toBe(true);
   });
 });
+
+describe('localProgress.stage2', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('기록이 없으면 미완료다', () => {
+    expect(localProgress.stage2()).toEqual({ done: false, score: null, at: null });
+  });
+
+  it('완료를 기록하면 점수와 시각이 남는다', () => {
+    localProgress.markStage2Done(72);
+    const s2 = localProgress.stage2();
+    expect(s2.done).toBe(true);
+    expect(s2.score).toBe(72);
+    expect(Number.isNaN(Date.parse(s2.at ?? ''))).toBe(false);
+  });
+
+  it('resetStage2는 완료 메모와 비교용 이력을 모두 지운다', () => {
+    localProgress.markStage2Done(72);
+    localProgress.appendStage2Result({ blinkRatePerMin: 18, avgFixationSec: 3, smileRatio: 0.1, tensionRatio: 0.1 });
+    localProgress.resetStage2();
+    expect(localProgress.stage2().done).toBe(false);
+    expect(localProgress.stage2History()).toEqual([]);
+  });
+
+  it('1단계·3단계 기록과 서로 영향을 주지 않는다', () => {
+    localProgress.markStage1Done(80);
+    localProgress.markStage3Done('standard');
+    localProgress.markStage2Done(72);
+    localProgress.resetStage2();
+    expect(localProgress.stage1().done).toBe(true);
+    expect(localProgress.stage3().done).toBe(true);
+  });
+});

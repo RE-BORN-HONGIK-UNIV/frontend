@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Anchor,
@@ -24,7 +24,8 @@ import { ScoreTrack } from '@/features/face/ScoreTrack';
 import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
 import { GazeTimeline } from '@/features/face/GazeTimeline';
 import { LiveCaptureView } from '@/features/face/live/LiveCaptureView';
-import type { Stage2Entry } from '@/features/progress/localProgress';
+import { localProgress, type Stage2Entry } from '@/features/progress/localProgress';
+import { stage2OverallScore } from '@/features/progress/stageProgress';
 
 type Mode = 'upload' | 'live';
 
@@ -231,6 +232,19 @@ export default function FaceStage() {
   const analyze = useAnalyzeGazeBlink();
   const result = analyze.data ?? liveResult;
   const previous: Stage2Entry | null = result?.previous ?? null;
+
+  // 분석 결과가 나오면(업로드·실시간 공통) 이 기기에도 "2단계 완료" 메모를 남긴다 —
+  // 서버 조회가 안 될 때 대시보드가 이 메모로 대신 완료 여부를 보여줌 (1단계와 같은 방식).
+  useEffect(() => {
+    if (!result) return;
+    localProgress.markStage2Done(
+      stage2OverallScore({
+        blink: result.blink.score,
+        gaze: result.gaze.score,
+        expression: result.expression.score,
+      }),
+    );
+  }, [result]);
 
   const reset = () => {
     setFile(null);

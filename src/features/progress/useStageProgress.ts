@@ -14,6 +14,6 @@ export function useStageProgress() {
 
   return {
     stage1: resolveStage1Progress(s1.status, s1.data?.result, localProgress.stage1()),
-    stage2: resolveStage2Progress(s2.status, s2.data?.result),
+    stage2: resolveStage2Progress(s2.status, s2.data?.result, localProgress.stage2()),
   };
 }
