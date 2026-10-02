@@ -17,6 +17,14 @@ const DEFAULT_CARDS: CoachCard[] = [
 
 type NoteState = 'none' | 'loading' | 'ready' | 'failed';
 
+/** 카드 한 장이 펼쳐지는 간격 (위에서부터 차례로) */
+const CARD_STAGGER_MS = 140;
+/**
+ * 코치 노트를 기다리는 최대 시간. 노트가 도착하면 카드 4장이 한 번에 위에서부터 펼쳐지는데, 서버가 느려도
+ * 이 시간이 지나면 기본 카드로라도 보여준다 — AI가 느리다고 사용자가 화면에서 나갈 길이 막히면 안 되므로.
+ */
+const CARDS_MAX_WAIT_MS = 3000;
+
 /**
  * 3단계 면접 결과 화면 — 평가가 아니라 "내가 해낸 것"과 "다음 한 걸음"을 보여준다.
  *
@@ -47,6 +55,12 @@ export function ResultView({
   const [deleted, setDeleted] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
+  const [waitedEnough, setWaitedEnough] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setWaitedEnough(true), CARDS_MAX_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (result.sessionId === null) return;
@@ -80,6 +94,9 @@ export function ResultView({
     setDeleting(false);
   };
 
+  // 노트가 도착(또는 실패)했거나 충분히 기다렸으면 카드를 펼친다. 그 전엔 카드를 그리지 않아서, 기본 카드 2장이
+  // 먼저 나왔다가 4장으로 바뀌며 펼침 효과가 끊기는 일이 없다.
+  const showCards = noteState !== 'loading' || waitedEnough;
   const activeNote = deleted ? null : note;
   const care = activeNote?.care ?? null;
 
@@ -211,54 +228,59 @@ export function ResultView({
       )}
 
       {/* 다음 한 걸음 — 하나를 시키지 않고 고르게 한다 */}
-      <Stack gap={10} style={{ maxWidth: 480, width: '100%' }}>
-        <Text fz={15} fw={700}>
-          다음 한 걸음
-        </Text>
-        <Text fz={12} c="var(--rb-ink-faint)">
-          하나만 골라도 충분해요. 오늘은 여기까지도 좋아요.
-        </Text>
-        {cards.map((card) => {
-          const isRecommended = card.kind === recommended;
-          const actionable = card.kind !== 'daily_mission';
-          const content = (
-            <Stack gap={4} align="flex-start" ta="left">
-              <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Text fz={14} fw={700}>
-                  {card.title}
-                </Text>
-                {isRecommended && (
-                  <Text fz={11} fw={700} c="var(--rb-primary-strong)">
-                    추천
+      {showCards && (
+        <Stack gap={10} style={{ maxWidth: 480, width: '100%' }}>
+          <Text fz={15} fw={700}>
+            다음 한 걸음
+          </Text>
+          <Text fz={12} c="var(--rb-ink-faint)">
+            하나만 골라도 충분해요. 오늘은 여기까지도 좋아요.
+          </Text>
+          {cards.map((card, index) => {
+            const isRecommended = card.kind === recommended;
+            const actionable = card.kind !== 'daily_mission';
+            const content = (
+              <Stack gap={4} align="flex-start" ta="left">
+                <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Text fz={14} fw={700}>
+                    {card.title}
                   </Text>
+                  {isRecommended && (
+                    <Text fz={11} fw={700} c="var(--rb-primary-strong)">
+                      추천
+                    </Text>
+                  )}
+                </Box>
+                <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
+                  {card.body}
+                </Text>
+              </Stack>
+            );
+            const style = {
+              width: '100%',
+              padding: '14px 18px',
+              borderRadius: 16,
+              background: 'var(--rb-surface)',
+              border: isRecommended ? '2px solid var(--rb-primary)' : '1px solid var(--rb-line)',
+              textAlign: 'left' as const,
+              font: 'inherit',
+              color: 'inherit',
+            };
+            // 위에서부터 한 장씩 펼쳐지도록 카드 순서대로 등장 시점을 늦춘다 (key가 kind라서 이미 나온 카드는 다시 안 펼쳐짐)
+            return (
+              <div key={card.kind} className="rb-step-card" style={{ animationDelay: `${index * CARD_STAGGER_MS}ms` }}>
+                {actionable ? (
+                  <button type="button" onClick={() => handleCard(card)} style={{ ...style, cursor: 'pointer' }}>
+                    {content}
+                  </button>
+                ) : (
+                  <Box style={style}>{content}</Box>
                 )}
-              </Box>
-              <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
-                {card.body}
-              </Text>
-            </Stack>
-          );
-          const style = {
-            width: '100%',
-            padding: '14px 18px',
-            borderRadius: 16,
-            background: 'var(--rb-surface)',
-            border: isRecommended ? '2px solid var(--rb-primary)' : '1px solid var(--rb-line)',
-            textAlign: 'left' as const,
-            font: 'inherit',
-            color: 'inherit',
-          };
-          return actionable ? (
-            <button key={card.kind} type="button" onClick={() => handleCard(card)} style={{ ...style, cursor: 'pointer' }}>
-              {content}
-            </button>
-          ) : (
-            <Box key={card.kind} style={style}>
-              {content}
-            </Box>
-          );
-        })}
-      </Stack>
+              </div>
+            );
+          })}
+        </Stack>
+      )}
 
       {/* 오늘의 질문과 답변 — 접어둠 (다시 보고 싶을 때만) */}
       {!deleted && result.turns.length > 0 && (

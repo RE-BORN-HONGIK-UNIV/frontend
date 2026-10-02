@@ -352,6 +352,29 @@ a {
   animation: rbSidebarIn 200ms ease-out both;
 }
 
+/* ── 면접 결과 "다음 한 걸음" 카드: 위에서부터 한 장씩 펼쳐지듯 등장 ──
+   윗변을 기준으로 살짝 접힌 상태(세로로 눌리고 위로 당겨진 상태)에서 제 모양으로 펼쳐진다. 카드별 등장 시점은
+   인라인 animation-delay로 정한다(ResultView). */
+@keyframes rbStepUnfold {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scaleY(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+.rb-step-card {
+  transform-origin: top center;
+  animation: rbStepUnfold 480ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-step-card {
+    animation: none;
+  }
+}
+
 /* ── 게시글 카드 순차 등장 ── */
 @keyframes rbCardIn {
   from {

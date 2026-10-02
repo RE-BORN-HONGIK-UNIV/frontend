@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ResultView } from './ResultView';
 import { api } from '@/lib/api/client';
@@ -60,12 +60,26 @@ describe('ResultView', () => {
   });
 
   describe('코치 노트를 기다리는 동안', () => {
-    it('화면을 막지 않고 사실만 말하는 기본 내용과 기본 카드를 먼저 보여준다', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('인사와 사실만 말하는 기본 내용은 먼저 보여주고, 카드는 노트가 올 때까지 그리지 않는다', () => {
       vi.mocked(api.createCoachNote).mockReturnValue(new Promise(() => {})); // 아직 도착 안 함
       renderView();
       expect(screen.getByText('코치 노트를 쓰고 있어요…')).toBeTruthy();
       expect(screen.getByText(/면접을 끝까지 마쳤어요/)).toBeTruthy();
       expect(screen.getByText(/2개의 질문에 답했어요/)).toBeTruthy();
+      // 기본 카드 2장이 먼저 나왔다가 4장으로 바뀌며 펼침 효과가 끊기지 않게, 아직 카드를 안 그린다
+      expect(screen.queryByText('다음 한 걸음')).toBeNull();
+      expect(screen.queryByText('한 번 더 해보기')).toBeNull();
+    });
+
+    it('노트가 오지 않아도 최대 3초 뒤에는 기본 카드를 열어준다 (AI가 느려도 화면에서 나갈 길이 막히지 않게)', () => {
+      vi.useFakeTimers();
+      vi.mocked(api.createCoachNote).mockReturnValue(new Promise(() => {}));
+      renderView();
+      act(() => { vi.advanceTimersByTime(2900); });
+      expect(screen.queryByText('한 번 더 해보기')).toBeNull();
+      act(() => { vi.advanceTimersByTime(200); });
       expect(screen.getByText('한 번 더 해보기')).toBeTruthy();
       expect(screen.getByText('오늘은 여기까지')).toBeTruthy();
     });
@@ -88,6 +102,18 @@ describe('ResultView', () => {
       expect(screen.getByText('강점을 한 단어로 또렷하게 말했어요')).toBeTruthy();
       expect(screen.getByText('현실로 한 걸음')).toBeTruthy();
       expect(screen.queryByText('코치 노트를 쓰고 있어요…')).toBeNull();
+    });
+
+    it('카드 4장이 위에서부터 차례로 펼쳐지도록 등장 시점이 순서대로 늦어진다', async () => {
+      renderView();
+      await screen.findByText('현실로 한 걸음');
+      const titles = ['한 번 더 해보기', '가볍게 연습', '현실로 한 걸음', '오늘은 여기까지'];
+      const delays = titles.map((t) => {
+        const wrapper = screen.getByText(t).closest('.rb-step-card') as HTMLElement;
+        expect(wrapper).not.toBeNull();
+        return parseInt(wrapper.style.animationDelay, 10);
+      });
+      expect(delays).toEqual([0, 140, 280, 420]);   // 카드 순서 그대로, 한 장씩 140ms 간격
     });
 
     it('추천 카드에만 "추천" 표시가 붙고, 일상 미션 카드는 눌러서 이동하는 버튼이 아니다', async () => {
