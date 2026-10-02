@@ -22,18 +22,31 @@ export function getTier(score: number): TierInfo {
   return { tier: 'practice', label: '실전 난이도' };
 }
 
-/** 1·2단계 기록이 하나도 없거나 조회가 전부 실패했을 때 쓰는 기본 점수 (표준 난이도). */
-export const DEFAULT_ANXIETY_SCORE = 55;
+export type StageKey = 'stage1' | 'stage2';
+
+export type AnxietyScoreResult =
+  | { status: 'ready'; score: number }
+  /** 난이도를 정할 수 없음 — missing 단계의 결과가 필요. failed는 기록 없음이 아니라 조회 자체가 실패한 경우. */
+  | { status: 'missing'; missing: StageKey[]; failed: boolean };
 
 /**
  * 1·2단계 최신 점수로 통합 점수를 정한다 (순수 함수 — 조회와 분리해 테스트 가능).
- * - 둘 다 있으면 가중 합산(combineAnxietyScore)
- * - 하나만 있으면 그 점수를 그대로 (없는 쪽을 0점으로 취급하면 난이도가 과하게 낮아짐)
- * - 둘 다 없으면 null → 호출측이 기본값 사용
+ * 난이도는 두 단계 결과가 **모두** 있어야 정한다 — 한쪽만으로 추정하면 안 맞는 면접관이
+ * 배정되므로, 빠진 단계를 먼저 하고 오게 안내한다 (기본 점수로 대충 진행시키지 않음).
+ * 점수가 null이면 "기록 없음 또는 조회 실패"이고, failed로 둘을 구분한다.
  */
-export function resolveAnxietyScore(stage1: number | null, stage2: number | null): number | null {
-  if (stage1 !== null && stage2 !== null) return combineAnxietyScore(stage1, stage2);
-  return stage1 ?? stage2;
+export function resolveAnxietyScore(
+  stage1: number | null,
+  stage2: number | null,
+  failed = false,
+): AnxietyScoreResult {
+  if (stage1 !== null && stage2 !== null) {
+    return { status: 'ready', score: combineAnxietyScore(stage1, stage2) };
+  }
+  const missing: StageKey[] = [];
+  if (stage1 === null) missing.push('stage1');
+  if (stage2 === null) missing.push('stage2');
+  return { status: 'missing', missing, failed };
 }
 
 /**
@@ -41,15 +54,15 @@ export function resolveAnxietyScore(stage1: number | null, stage2: number | null
  * 이름은 "불안도"지만 값은 **높을수록 안정적**(1·2단계 점수가 그렇다) — 그래서
  * getTier()에서 높을수록 실전 난이도가 됨.
  *
- * 조회 실패(네트워크·미로그인 등)나 기록 없음은 에러로 던지지 않고 한 단계씩 폴백한다:
- * 한쪽 실패 → 다른 쪽만 사용, 둘 다 없음 → DEFAULT_ANXIETY_SCORE. 면접 화면 흐름이
- * 이 조회 때문에 막히면 안 되기 때문.
+ * 기록이 없거나 조회가 실패하면 던지지 않고 'missing'을 돌려준다 — 호출측이 "먼저 해당
+ * 단계를 하고 오세요" 안내 화면을 띄우기 위함 (면접 화면이 에러로 깨지지 않게).
  */
-export async function getAnxietyScore(): Promise<number> {
+export async function getAnxietyScore(): Promise<AnxietyScoreResult> {
   const [s1, s2] = await Promise.allSettled([api.latestStage1(), api.latestGazeBlink()]);
   const stage1 = s1.status === 'fulfilled' ? (s1.value.result?.overallScore ?? null) : null;
   const stage2 = s2.status === 'fulfilled' ? (s2.value.result?.overallScore ?? null) : null;
-  return resolveAnxietyScore(stage1, stage2) ?? DEFAULT_ANXIETY_SCORE;
+  const failed = s1.status === 'rejected' || s2.status === 'rejected';
+  return resolveAnxietyScore(stage1, stage2, failed);
 }
 
 /**

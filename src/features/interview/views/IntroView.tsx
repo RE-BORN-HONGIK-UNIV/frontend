@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Box, Button, Stack, Text } from '@/components/ui';
-import { getAnxietyScore, getTier, type DifficultyTier } from '../difficulty';
+import { getAnxietyScore, getTier, type DifficultyTier, type StageKey } from '../difficulty';
+import { NeedStagesView } from './NeedStagesView';
 // 면접관 정보는 ReadyView·InterviewerAvatar와 같이 쓰도록 interviewers.ts로 분리
 import { INTERVIEWERS } from '../interviewers';
 
@@ -45,7 +46,8 @@ function AvatarSlot({ emoji, size, label }: { emoji: string; size: number; label
 /**
  * 3단계 면접 시작 전 면접관 소개 화면.
  * getAnxietyScore()로 1·2단계 최신 점수를 합산한 통합 점수를 받아 추천 면접관을 정함.
- * 기록이 없거나 조회에 실패하면 difficulty.ts의 기본 점수(55, standard)로 폴백.
+ * 두 단계 중 기록이 없는 단계가 있으면(조회 실패 포함) 면접을 시작시키지 않고
+ * NeedStagesView로 해당 단계를 먼저 하고 오게 안내함.
  * 유저는 추천 면접관 또는 더 쉬운 면접관만 선택 가능. 어려운 면접관은 잠김.
  * onStart로 최종 선택된 tier를 넘겨줌 (질문 난이도 결정에 사용).
  */
@@ -56,16 +58,33 @@ export function IntroView({ onStart }: { onStart: (tier: DifficultyTier) => void
   // 잠긴 면접관 안내 말풍선을 띄울 대상 (hover 또는 탭)
   const [hintTier, setHintTier] = useState<DifficultyTier | null>(null);
 
-  useEffect(() => {
-    getAnxietyScore().then((score) => {
-      const { tier } = getTier(score);
+  // 1·2단계 기록이 없어서 난이도를 못 정하는 경우 (안내 화면용)
+  const [needStages, setNeedStages] = useState<{ missing: StageKey[]; failed: boolean } | null>(null);
+
+  const loadScore = useCallback(() => {
+    setNeedStages(null);
+    setRecommendedTier(null);
+    getAnxietyScore().then((result) => {
+      if (result.status === 'missing') {
+        setNeedStages({ missing: result.missing, failed: result.failed });
+        return;
+      }
+      const { tier } = getTier(result.score);
       setRecommendedTier(tier);
       setSelectedTier(tier); // 기본 선택값은 추천 면접관
     });
   }, []);
 
+  useEffect(() => {
+    loadScore();
+  }, [loadScore]);
+
   // TODO: TTS 연동 후 인사 음성 재생
   const handlePlayVoice = () => {};
+
+  if (needStages) {
+    return <NeedStagesView missing={needStages.missing} failed={needStages.failed} onRetry={loadScore} />;
+  }
 
   if (recommendedTier === null || selectedTier === null) {
     return (

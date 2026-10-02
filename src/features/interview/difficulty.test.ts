@@ -37,23 +37,27 @@ describe('getTier', () => {
 
 describe('resolveAnxietyScore', () => {
   it('1·2단계 둘 다 있으면 가중 합산한다', () => {
-    expect(resolveAnxietyScore(100, 0)).toBe(60);
+    expect(resolveAnxietyScore(100, 0)).toEqual({ status: 'ready', score: 60 });
   });
 
-  it('1단계만 있으면 그 점수를 그대로 쓴다 (2단계를 0점으로 취급하지 않음)', () => {
-    expect(resolveAnxietyScore(80, null)).toBe(80);
+  it('1단계만 없으면 1단계가 필요하다고 알린다 (2단계 점수만으론 난이도를 정하지 않음)', () => {
+    expect(resolveAnxietyScore(null, 45)).toEqual({ status: 'missing', missing: ['stage1'], failed: false });
   });
 
-  it('2단계만 있으면 그 점수를 그대로 쓴다', () => {
-    expect(resolveAnxietyScore(null, 45)).toBe(45);
+  it('2단계만 없으면 2단계가 필요하다고 알린다', () => {
+    expect(resolveAnxietyScore(80, null)).toEqual({ status: 'missing', missing: ['stage2'], failed: false });
   });
 
-  it('둘 다 없으면 null', () => {
-    expect(resolveAnxietyScore(null, null)).toBeNull();
+  it('둘 다 없으면 두 단계 모두 필요하다고 알린다', () => {
+    expect(resolveAnxietyScore(null, null)).toEqual({ status: 'missing', missing: ['stage1', 'stage2'], failed: false });
+  });
+
+  it('조회 실패 여부를 failed로 구분해 전달한다', () => {
+    expect(resolveAnxietyScore(null, null, true)).toEqual({ status: 'missing', missing: ['stage1', 'stage2'], failed: true });
   });
 
   it('0점도 기록 있음으로 취급한다 (null과 구분)', () => {
-    expect(resolveAnxietyScore(0, null)).toBe(0);
-    expect(resolveAnxietyScore(null, 0)).toBe(0);
+    expect(resolveAnxietyScore(0, 0)).toEqual({ status: 'ready', score: 0 });
+    expect(resolveAnxietyScore(0, null)).toEqual({ status: 'missing', missing: ['stage2'], failed: false });
   });
 });
