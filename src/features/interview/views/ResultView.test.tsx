@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ResultView } from './ResultView';
 import { api } from '@/lib/api/client';
 import type { CoachNote, CoachNoteResponse } from '@/lib/api/types';
@@ -26,12 +26,18 @@ const NOTE: CoachNote = {
   recommended: 'daily_mission',
   cards: [
     { kind: 'again', title: '한 번 더 해보기', body: '한 번 더 이어가 봐요.' },
-    { kind: 'light_practice', title: '가볍게 연습', body: '표정으로 몸을 풀어봐요.', path: '/face' },
+    { kind: 'light_practice', title: '이 질문 다시 답해보기', body: '힌트와 함께 한 번 더 답해봐요.', practiceTurn: 1 },
     { kind: 'daily_mission', title: '현실로 한 걸음', body: '거울 앞에서 인사 한마디 해보기' },
     { kind: 'rest', title: '오늘은 여기까지', body: '쉬는 것도 연습의 일부예요.' },
   ],
   care: null,
 };
+
+/** /practice로 넘어온 router state를 화면에 드러내서 검증한다 */
+function PracticeProbe() {
+  const state = useLocation().state as { question: string; previousAnswer: string; tier: string } | null;
+  return <div>PRACTICE_PAGE|{state?.question}|{state?.previousAnswer}|{state?.tier}</div>;
+}
 
 const ok = (note: CoachNote = NOTE, source: CoachNoteResponse['source'] = 'llm'): CoachNoteResponse => ({ note, source });
 
@@ -45,6 +51,7 @@ function renderView(props: { result?: Partial<InterviewResult> } = {}, onRetry =
         />
         <Route path="/dashboard" element={<div>DASHBOARD_PAGE</div>} />
         <Route path="/face" element={<div>FACE_PAGE</div>} />
+        <Route path="/practice" element={<PracticeProbe />} />
         <Route path="/voice" element={<div>VOICE_PAGE</div>} />
       </Routes>
     </MemoryRouter>,
@@ -81,6 +88,7 @@ describe('ResultView', () => {
       expect(screen.queryByText('한 번 더 해보기')).toBeNull();
       act(() => { vi.advanceTimersByTime(200); });
       expect(screen.getByText('한 번 더 해보기')).toBeTruthy();
+      expect(screen.getByText('이 질문 다시 답해보기')).toBeTruthy();   // 서버 노트 없이도 같은 규칙으로 연습 카드를 만든다
       expect(screen.getByText('오늘은 여기까지')).toBeTruthy();
     });
 
@@ -107,7 +115,7 @@ describe('ResultView', () => {
     it('카드 4장이 위에서부터 차례로 펼쳐지도록 등장 시점이 순서대로 늦어진다', async () => {
       renderView();
       await screen.findByText('현실로 한 걸음');
-      const titles = ['한 번 더 해보기', '가볍게 연습', '현실로 한 걸음', '오늘은 여기까지'];
+      const titles = ['한 번 더 해보기', '이 질문 다시 답해보기', '현실로 한 걸음', '오늘은 여기까지'];
       const delays = titles.map((t) => {
         const wrapper = screen.getByText(t).closest('.rb-step-card') as HTMLElement;
         expect(wrapper).not.toBeNull();
@@ -124,13 +132,47 @@ describe('ResultView', () => {
       expect(screen.getByText('한 번 더 해보기').closest('button')).not.toBeNull();
     });
 
-    it('카드를 누르면 각각 다시 하기 / 가벼운 연습 화면 / 대시보드로 간다', async () => {
+    it('카드마다 아이콘과 행동 버튼이 보인다 (일상 미션은 이동 대신 "해볼게요")', async () => {
+      renderView();
+      await screen.findByText('현실로 한 걸음');
+      for (const icon of ['🔁', '🎯', '🌱', '🌙']) expect(screen.getByText(icon)).toBeTruthy();
+      expect(screen.getByText('다시 하기 →')).toBeTruthy();
+      expect(screen.getByText('연습하기 →')).toBeTruthy();
+      expect(screen.getByText('마치기 →')).toBeTruthy();
+      expect(screen.getByRole('button', { name: '해볼게요' })).toBeTruthy();
+    });
+
+    it('"해볼게요"를 누르면 마음먹은 상태로 바뀌고, 다시 누르면 되돌아간다', async () => {
+      renderView();
+      fireEvent.click(await screen.findByRole('button', { name: '해볼게요' }));
+      expect(screen.getByRole('button', { name: '✓ 해볼게요' })).toBeTruthy();
+      expect(screen.getByText(/작게 시작하는 게 제일 좋아요/)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: '✓ 해볼게요' }));
+      expect(screen.queryByText(/작게 시작하는 게 제일 좋아요/)).toBeNull();
+    });
+
+    it('"한 번 더 해보기" 카드는 onRetry를 호출한다', async () => {
       const { onRetry } = renderView();
       await screen.findByText('현실로 한 걸음');
       fireEvent.click(screen.getByText('한 번 더 해보기'));
       expect(onRetry).toHaveBeenCalledTimes(1);
-      fireEvent.click(screen.getByText('가볍게 연습'));
-      expect(screen.getByText('FACE_PAGE')).toBeTruthy();   // 카드가 정한 경로로 이동
+    });
+
+    it('연습 카드는 맞춤 연습 화면으로 가면서, 면접 중 모아둔 그 순번의 질문·이전 답변·면접관을 넘긴다', async () => {
+      renderView();
+      await screen.findByText('현실로 한 걸음');
+      fireEvent.click(screen.getByText('이 질문 다시 답해보기'));
+      // practiceTurn: 1 → 두 번째 질문 (답을 못 남긴 꼬리질문)
+      expect(screen.getByText('PRACTICE_PAGE|조금 더 설명해주실 수 있을까요?||practice')).toBeTruthy();
+    });
+
+    it('질문 순번이 없는 연습 카드(1·2단계 연습 화면용)는 정해진 경로로 이동한다', async () => {
+      vi.mocked(api.createCoachNote).mockResolvedValue(
+        ok({ ...NOTE, cards: [{ kind: 'light_practice', title: '가볍게 연습', body: '몸을 풀어봐요.', path: '/face' }, NOTE.cards[3]] }),
+      );
+      renderView();
+      fireEvent.click(await screen.findByText('가볍게 연습'));
+      expect(screen.getByText('FACE_PAGE')).toBeTruthy();
     });
 
     it('"오늘은 여기까지"는 다른 카드와 같은 무게의 선택지로 대시보드로 보낸다', async () => {

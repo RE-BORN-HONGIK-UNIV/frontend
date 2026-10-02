@@ -9,6 +9,7 @@ import FaceStage from '@/pages/FaceStage';
 import Dashboard from '@/pages/Dashboard';
 import { NotFound } from '@/pages/stubs';
 import InterviewStage from '@/pages/InterviewStage';
+import PracticePage from '@/pages/PracticePage';
 import CommunityPage from '@/pages/CommunityPage';
 import CommunityPostPage from '@/pages/CommunityPostPage';
 import { LiveFaceSpike } from '@/features/face/live/Spike';
@@ -52,6 +53,14 @@ export const router = createBrowserRouter([
         element: (
           <PrivateRoute>
             <InterviewStage />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: '/practice',
+        element: (
+          <PrivateRoute>
+            <PracticePage />
           </PrivateRoute>
         ),
       },

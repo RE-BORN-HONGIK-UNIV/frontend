@@ -131,8 +131,10 @@ export interface CoachCard {
   kind: CoachCardKind;
   title: string;
   body: string;
-  /** light_practice 카드가 보낼 화면 (/voice 또는 /face) */
+  /** light_practice 카드가 보낼 화면 (/voice 또는 /face) — practiceTurn이 없을 때만 */
   path?: string;
+  /** light_practice 카드: 방금 면접에서 한 번 더 답해볼 질문의 순번(0부터). 있으면 맞춤 연습 화면으로 간다 */
+  practiceTurn?: number;
 }
 
 export interface CoachNote {
@@ -151,6 +153,12 @@ export interface CoachNoteResponse {
   note: CoachNote;
   /** llm: AI가 작성 / fallback: AI를 못 써서 사실만 말하는 대체 노트 / care: 돌봄 안내 */
   source: 'llm' | 'fallback' | 'care';
+}
+
+/** POST /interview/practice-hint — 맞춤 연습의 힌트 (AI가 만들었거나 일반 힌트) */
+export interface PracticeHintResponse {
+  hint: { opening: string; steps: string[] };
+  source: 'llm' | 'fallback';
 }
 
 export interface LatestResponse<T> {

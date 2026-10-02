@@ -5,15 +5,39 @@ import { api } from '@/lib/api/client';
 import type { CoachCard, CoachCardKind, CoachNote } from '@/lib/api/types';
 import type { DifficultyTier } from '../difficulty';
 import { getInterviewer } from '../interviewers';
-import { summarizeResult, type InterviewResult } from '../resultSummary';
+import { summarizeResult, type InterviewResult, type InterviewTranscriptTurn } from '../resultSummary';
+import { pickPracticeTurn, type PracticeState } from '../practice';
 
 const KIND_LABEL = { main: '기본 질문', follow_up: '꼬리질문' } as const;
 
-/** 코치 노트가 아직 없거나(작성 중·AI 실패·서버 저장 안 됨) 보여줄 기본 카드 */
-const DEFAULT_CARDS: CoachCard[] = [
-  { kind: 'again', title: '한 번 더 해보기', body: '방금 해본 흐름을 한 번 더 이어가 봐요. 면접관을 바꿔볼 수도 있어요.' },
-  { kind: 'rest', title: '오늘은 여기까지', body: '충분히 잘했어요. 쉬는 것도 연습의 일부예요.' },
-];
+/**
+ * 코치 노트가 아직 없거나(작성 중·AI 실패·서버 저장 안 됨) 보여줄 기본 카드. 연습 카드는 서버의 코치 노트 없이도
+ * 면접 중 모아둔 질문·답변에서 같은 규칙으로 고를 수 있어서 함께 넣는다.
+ */
+function defaultCards(turns: InterviewTranscriptTurn[]): CoachCard[] {
+  const practiceTurn = pickPracticeTurn(turns);
+  return [
+    { kind: 'again', title: '한 번 더 해보기', body: '방금 해본 흐름을 한 번 더 이어가 봐요. 면접관을 바꿔볼 수도 있어요.' },
+    ...(practiceTurn !== null
+      ? [{
+          kind: 'light_practice' as const,
+          title: '이 질문 다시 답해보기',
+          body: '방금 질문 하나를 힌트와 함께 한 번 더 답해봐요. 천천히, 편하게요.',
+          practiceTurn,
+        }]
+      : []),
+    { kind: 'rest', title: '오늘은 여기까지', body: '충분히 잘했어요. 쉬는 것도 연습의 일부예요.' },
+  ];
+}
+
+/** 카드 종류별 아이콘과 눌렀을 때의 행동 문구 (일상 미션은 이동하지 않고 "해볼게요"로 마음먹기) */
+const CARD_ICON: Record<CoachCardKind, string> = { again: '🔁', light_practice: '🎯', daily_mission: '🌱', rest: '🌙' };
+const CARD_ACTION: Record<CoachCardKind, string | null> = {
+  again: '다시 하기',
+  light_practice: '연습하기',
+  daily_mission: null,
+  rest: '마치기',
+};
 
 type NoteState = 'none' | 'loading' | 'ready' | 'failed';
 
@@ -56,6 +80,7 @@ export function ResultView({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const [waitedEnough, setWaitedEnough] = useState(false);
+  const [missionAccepted, setMissionAccepted] = useState(false); // "해볼게요"를 눌렀는지 (화면 안의 마음먹기, 저장은 안 함)
 
   useEffect(() => {
     const timer = setTimeout(() => setWaitedEnough(true), CARDS_MAX_WAIT_MS);
@@ -111,12 +136,22 @@ export function ResultView({
     (answeredCount === questionCount && questionCount > 0
       ? `${interviewer.name} 면접관과 끝까지 함께했어요. 오늘 해낸 것만으로도 큰 한 걸음이에요.`
       : `${interviewer.name} 면접관과 끝까지 함께했어요. 여기까지 와준 것만으로도 충분해요.`);
-  const cards = activeNote?.cards.length ? activeNote.cards : DEFAULT_CARDS;
+  const cards = activeNote?.cards.length ? activeNote.cards : defaultCards(result.turns);
   const recommended: CoachCardKind | null = activeNote?.recommended ?? null;
 
   const handleCard = (card: CoachCard) => {
     if (card.kind === 'again') onRetry();
-    else if (card.kind === 'light_practice') navigate(card.path ?? '/voice');
+    else if (card.kind === 'light_practice') {
+      // 한 번 더 답해볼 질문이 정해져 있으면 맞춤 연습 화면으로(면접 중 메모리에 모아둔 질문·이전 답변과 함께),
+      // 없으면 1·2단계 연습 화면으로
+      const turn = card.practiceTurn !== undefined ? result.turns[card.practiceTurn] : undefined;
+      if (turn) {
+        const state: PracticeState = { question: turn.question, previousAnswer: turn.answer, tier };
+        navigate('/practice', { state });
+      } else {
+        navigate(card.path ?? '/voice');
+      }
+    }
     else if (card.kind === 'rest') navigate('/dashboard');
     // daily_mission은 읽는 카드 (눌러서 이동하는 곳이 없음)
   };
@@ -239,10 +274,28 @@ export function ResultView({
           {cards.map((card, index) => {
             const isRecommended = card.kind === recommended;
             const actionable = card.kind !== 'daily_mission';
-            const content = (
-              <Stack gap={4} align="flex-start" ta="left">
+            const action = CARD_ACTION[card.kind];
+          const content = (
+            <Box style={{ display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left' }}>
+              <Box
+                aria-hidden
+                style={{
+                  flex: '0 0 auto',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: 'var(--rb-primary-tint)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 22,
+                }}
+              >
+                {CARD_ICON[card.kind]}
+              </Box>
+              <Stack gap={4} align="flex-start" ta="left" style={{ flex: 1, minWidth: 0 }}>
                 <Box style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Text fz={14} fw={700}>
+                  <Text fz={14} fw={700} style={{ wordBreak: 'keep-all' }}>
                     {card.title}
                   </Text>
                   {isRecommended && (
@@ -251,22 +304,54 @@ export function ResultView({
                     </Text>
                   )}
                 </Box>
-                <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
+                <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6, wordBreak: 'keep-all' }}>
                   {card.body}
                 </Text>
+                {card.kind === 'daily_mission' && missionAccepted && (
+                  <Text fz={12} c="var(--rb-primary-strong)" fw={600}>
+                    좋아요! 작게 시작하는 게 제일 좋아요.
+                  </Text>
+                )}
               </Stack>
-            );
-            const style = {
-              width: '100%',
-              padding: '14px 18px',
-              borderRadius: 16,
-              background: 'var(--rb-surface)',
-              border: isRecommended ? '2px solid var(--rb-primary)' : '1px solid var(--rb-line)',
-              textAlign: 'left' as const,
-              font: 'inherit',
-              color: 'inherit',
-            };
-            // 위에서부터 한 장씩 펼쳐지도록 카드 순서대로 등장 시점을 늦춘다 (key가 kind라서 이미 나온 카드는 다시 안 펼쳐짐)
+              {action && (
+                <span
+                  style={{
+                    flex: '0 0 auto',
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    background: 'var(--rb-primary-tint)',
+                    color: 'var(--rb-primary-strong)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {action} →
+                </span>
+              )}
+              {card.kind === 'daily_mission' && (
+                <Button
+                  variant={missionAccepted ? 'light' : 'default'}
+                  radius="xl"
+                  size="sm"
+                  onClick={() => setMissionAccepted((v) => !v)}
+                >
+                  {missionAccepted ? '✓ 해볼게요' : '해볼게요'}
+                </Button>
+              )}
+            </Box>
+          );
+          const style = {
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: 16,
+            background: 'var(--rb-surface)',
+            border: isRecommended ? '2px solid var(--rb-primary)' : '1px solid var(--rb-line)',
+            textAlign: 'left' as const,
+            font: 'inherit',
+            color: 'inherit',
+          };
+          // 위에서부터 한 장씩 펼쳐지도록 카드 순서대로 등장 시점을 늦춘다 (key가 kind라서 이미 나온 카드는 다시 안 펼쳐짐)
             return (
               <div key={card.kind} className="rb-step-card" style={{ animationDelay: `${index * CARD_STAGGER_MS}ms` }}>
                 {actionable ? (

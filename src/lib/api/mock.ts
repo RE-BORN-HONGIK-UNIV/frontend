@@ -9,6 +9,7 @@ import type {
   InterviewSessionSummary,
   LatestResponse,
   LiveSaveResponse,
+  PracticeHintResponse,
   LoginResponse,
   PostDetail,
   PostSummary,
@@ -167,6 +168,21 @@ export const mockApi = {
   async ok(): Promise<{ message: string }> {
     await delay(50);
     return { message: 'ok (mock)' };
+  },
+
+  async getPracticeHint(): Promise<PracticeHintResponse> {
+    await delay(700); // 실제 AI 작성 시간을 흉내
+    return {
+      source: 'llm',
+      hint: {
+        opening: '제가 ___에서 ___을 맡았을 때 가장 기억에 남는 건 ___예요.',
+        steps: [
+          '먼저 그때의 상황을 한 문장으로 말해보세요.',
+          '그 안에서 내가 직접 한 일을 말해보세요.',
+          '결과나 배운 점으로 한마디 마무리해보세요.',
+        ],
+      },
+    };
   },
 
   async createCoachNote(): Promise<CoachNoteResponse> {

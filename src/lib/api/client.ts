@@ -11,6 +11,7 @@ import type {
   LatestResponse,
   LiveSavePayload,
   LiveSaveResponse,
+  PracticeHintResponse,
   LoginResponse,
   PostDetail,
   PostSummary,
@@ -138,6 +139,15 @@ export const api = {
     USE_MOCK
       ? mockApi.createCoachNote()
       : request<CoachNoteResponse>(`/interview/sessions/${sessionId}/coach-note`, { method: 'POST' }),
+
+  /** 맞춤 연습 힌트 — 질문 하나를 다시 답할 때의 시작 문장 틀·말하는 순서. 이전 답변을 보내면 그걸 바탕으로 맞춤. */
+  getPracticeHint: (question: string, previousAnswer: string) =>
+    USE_MOCK
+      ? mockApi.getPracticeHint()
+      : request<PracticeHintResponse>('/interview/practice-hint', {
+          method: 'POST',
+          body: JSON.stringify({ question, previous_answer: previousAnswer }),
+        }),
 
   /** 면접 기록 삭제 — 질문·답변 텍스트가 함께 지워진다. */
   deleteInterviewSession: (sessionId: number) =>
