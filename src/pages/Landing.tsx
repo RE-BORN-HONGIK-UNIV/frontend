@@ -359,45 +359,60 @@ function Why() {
   );
 }
 
-function Facts() {
-  const items = [
-    ['5', '발화 지표 진단'],
-    ['3', '단계 재활 여정'],
-    ['AI', '음성·표정·대화 분석'],
-  ];
+// 이 플랫폼이 누구를 위한 곳인지 먼저 알려주는 섹션. 진단·평가로 들리는 표현("~증상", "~장애")은
+// 피하고, 사용자가 "나도 해당되네" 하고 편하게 느낄 수 있는 상황 묘사만 쓴다.
+// 강조(bold)할 부분은 [본문, 강조] 쌍으로 나눠서 적는다.
+const AUDIENCE: [string, string, string][] = [
+  ['사람 앞에서 말하려면 ', '가슴이 먼저 뛰는', ' 사람'],
+  ['말하다가 ', '머릿속이 하얘져서', ' 멈춘 적이 있는 사람'],
+  ['밖에 나가기가 부담돼서 ', '집에서 혼자', ' 시작해보고 싶은 사람'],
+  ['내 목소리와 표정이 어떤지 ', '부담 없이', ' 살펴보고 싶은 사람'],
+  ['면접이나 발표 전에 ', '실전처럼 연습', '해보고 싶은 사람'],
+  ['한 번에 다 하기엔 막막하지만 ', '내 속도로 한 걸음씩', ' 가고 싶은 사람'],
+];
+
+function Audience() {
   return (
-    <Box component="section" style={{ padding: '0 24px 96px', background: 'var(--rb-bg)' }}>
-      <Reveal>
-        <Group
-          justify="space-around"
-          wrap="wrap"
-          gap={24}
-          style={{
-            maxWidth: MAXW,
-            margin: '0 auto',
-            background: 'var(--rb-primary-tint)',
-            border: '1px solid var(--rb-line)',
-            borderRadius: 24,
-            padding: 40,
-          }}
-        >
-          {items.map(([n, label]) => (
-            <Stack key={label} align="center" gap={4}>
-              <span
+    <Box component="section" style={{ padding: '96px 24px', background: 'var(--rb-bg)' }}>
+      <Stack style={{ maxWidth: MAXW, margin: '0 auto' }} gap={40}>
+        <Reveal>
+          <Stack align="center" gap={16} ta="center">
+            <SectionBadge>이런 분께</SectionBadge>
+            <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em', wordBreak: 'keep-all' }}>
+              이런 분들이라면 잘 찾아오셨어요
+            </h2>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)', maxWidth: 520, wordBreak: 'keep-all' }}>
+              말하는 게 어렵고 사람 앞이 부담스러웠던 분, 집 밖으로 나서기 막막했던 분을 환영해요.
+            </p>
+          </Stack>
+        </Reveal>
+
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={20}>
+          {AUDIENCE.map(([before, em, after], i) => (
+            <Reveal key={em} delay={i * 70}>
+              <Box
+                className="rb-card-hover"
                 style={{
-                  fontFamily: 'var(--rb-font-display)',
-                  fontSize: 40,
-                  fontWeight: 600,
-                  color: 'var(--rb-primary-strong)',
+                  ...card,
+                  height: '100%',
+                  boxSizing: 'border-box',
+                  padding: '26px 28px',
+                  fontSize: 15,
+                  lineHeight: 1.85,
+                  color: 'var(--rb-ink)',
+                  wordBreak: 'keep-all',
+                  border: '1px solid var(--rb-line)',
+                  background: i === 0 ? 'var(--rb-primary-tint)' : 'var(--rb-surface)',
                 }}
               >
-                {n}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--rb-ink-soft)' }}>{label}</span>
-            </Stack>
+                {before}
+                <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>{em}</strong>
+                {after}
+              </Box>
+            </Reveal>
           ))}
-        </Group>
-      </Reveal>
+        </SimpleGrid>
+      </Stack>
     </Box>
   );
 }
@@ -537,9 +552,9 @@ export default function Landing() {
     <Box style={{ background: 'var(--rb-bg)' }}>
       <Nav />
       <Hero />
+      <Audience />
       <Steps />
       <Why />
-      <Facts />
       <FinalCta />
       <Footer />
     </Box>
