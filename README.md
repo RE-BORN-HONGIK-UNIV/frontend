@@ -38,7 +38,7 @@ push/PR 시 GitHub Actions에서 위 네 개(lint·typecheck·test·build)를 �
 
 ### 테스트 하네스
 
-지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 20개 파일 147개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`(저장·AI 전송 안내)·`QuestionView.record`(면접 기록 저장) — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
+지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 20개 파일 149개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`(저장·AI 전송 안내)·`QuestionView.record`(면접 기록 저장) — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
 
 `vitest.config.ts`를 `vite.config.ts`와 분리해둔 이유: vitest가 내부적으로 물고 있는 vite(rollup 기반)와 이 프로젝트의 vite(rolldown 기반, v8)의 Plugin 타입이 서로 안 맞아서 한 파일에 합치면 `tsc`가 타입 에러를 냄. 백엔드 쪽 계층별 테스트 설계(정확도 검증 하네스 포함)는 `backend/docs/TESTING.md` 참고.
 
@@ -89,7 +89,7 @@ src/
 - **Dashboard** `/dashboard` — 3단계 진행 현황 (인증 필요). 1·2단계 완료는 서버에 저장된 분석 결과 기준이라 기기를 바꿔도 같고, 3단계 면접 난이도 산정과 같은 출처. "진행 상황 초기화"는 이 기기의 브라우저 기록만 지움(서버 기록은 유지)
 - **VoiceStage** `/voice` — 1단계 음성 정밀 진단: 업로드 → `/analyze` → 오각형 레이더 + AI 코칭 (인증 필요)
 - **FaceStage** `/face` — 2단계 표정·시선 분석: "영상 업로드"(`/analyze/gaze-blink`) 또는 "실시간 촬영"(브라우저에서 바로 분석) 중 선택 → 깜빡임·시선·표정 지표 + 지난 세션 대비 비교, 업로드 모드만 하이라이트 클립 제공 (인증 필요)
-- **InterviewStage** `/interview` — 3단계 모의 면접: 아바타 인사 → 카메라/마이크 예열 → 난이도별 질문(TTS) → 답변(STT) → 꼬리질문 → 대화 기록. 질문이 나올 때·답변이 확정될 때 텍스트를 서버에 저장하고(영상은 저장 안 함, 저장이 실패해도 면접은 계속됨), 끝까지 마치면 완료로 기록하고 결과 화면으로 이동. **면접 시작 화면에는 동의 절차 없이 "질문·답변 텍스트가 저장되고 AI로 전송된다"는 안내만 있음**(영상·음성은 저장 안 함, 결과 화면에서 삭제 가능). 결과 화면은 점수·평가 없이 "오늘 해낸 것 → 내 말 중 좋았던 한 문장 → 다음 한 걸음(카드 고르기)" 순서이고, 질문·답변 다시 보기는 접혀 있으며, 기록 삭제가 가능. 코치 노트는 서버 에이전트(`POST /interview/sessions/<id>/coach-note`)가 만든 것을 화면이 비동기로 채움(실패해도 화면은 그대로)
+- **InterviewStage** `/interview` — 3단계 모의 면접: 아바타 인사 → 카메라/마이크 예열 → 난이도별 질문(TTS) → 답변(STT) → 꼬리질문 → 대화 기록. 질문이 나올 때·답변이 확정될 때 텍스트를 서버에 저장하고(영상은 저장 안 함, 저장이 실패해도 면접은 계속됨), 끝까지 마치면 완료로 기록하고 결과 화면으로 이동. **면접 시작 화면에는 동의 절차 없이 "질문·답변 텍스트가 저장되고 AI로 전송된다"는 안내만 있음**(영상·음성은 저장 안 함, 결과 화면에서 삭제 가능). 결과 화면은 점수·평가 없이 "오늘 해낸 것 → 내 말 중 좋았던 한 문장 → 다음 한 걸음(카드 고르기, 코치 노트가 도착하면 — 늦어도 3초 뒤 — 위에서부터 한 장씩 펼쳐지듯 등장, 움직임 줄이기 설정이면 끔)" 순서이고, 질문·답변 다시 보기는 접혀 있으며, 기록 삭제가 가능. 코치 노트는 서버 에이전트(`POST /interview/sessions/<id>/coach-note`)가 만든 것을 화면이 비동기로 채움(실패해도 화면은 그대로)
 - **CommunityPage** `/community`, **CommunityPostPage** `/community/:id` — "이야기" 자유 게시판: 목록/글쓰기/댓글 (인증 필요)
 
 ## 환경변수
