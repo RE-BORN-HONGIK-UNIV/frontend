@@ -6,6 +6,7 @@ import type {
   GazeBlinkLatest,
   GazeBlinkResult,
   LatestResponse,
+  LiveSaveResponse,
   LoginResponse,
   PostDetail,
   PostSummary,
@@ -150,6 +151,11 @@ export const mockApi = {
   },
 
   // 아래 두 값은 합산(6:4)하면 55 — difficulty.ts의 예전 고정 점수와 같은 표준 난이도 구간
+  async saveLiveGazeBlink(): Promise<LiveSaveResponse> {
+    await delay();
+    return { previous: null }; // mock엔 서버 이력이 없어서 비교는 localProgress 폴백이 맡음
+  },
+
   async latestStage1(): Promise<LatestResponse<Stage1Latest>> {
     await delay();
     return {

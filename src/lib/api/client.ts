@@ -7,6 +7,8 @@ import type {
   GazeBlinkLatest,
   GazeBlinkResult,
   LatestResponse,
+  LiveSavePayload,
+  LiveSaveResponse,
   LoginResponse,
   PostDetail,
   PostSummary,
@@ -88,6 +90,15 @@ export const api = {
     fd.append('file', file);
     return request<GazeBlinkResult>('/analyze/gaze-blink', { method: 'POST', body: fd });
   },
+
+  /** 실시간 촬영 결과 저장 — 업로드 모드와 같은 이력(Stage2Result)에 쌓이고, 저장 직전 기록을 돌려준다. */
+  saveLiveGazeBlink: (payload: LiveSavePayload) =>
+    USE_MOCK
+      ? mockApi.saveLiveGazeBlink()
+      : request<LiveSaveResponse>('/analyze/gaze-blink/live', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }),
 
   /** 저장된 최신 1단계(음성) 결과 — 재분석 없이 조회. 3단계 난이도 산정용. */
   latestStage1: () =>

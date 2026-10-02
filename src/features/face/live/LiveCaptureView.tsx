@@ -34,6 +34,7 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
     recordingElapsedSec,
     beginRecording,
     finish,
+    saving,
   } = useLiveFaceSession({ videoRef, onComplete });
 
   const calibrationLooksGood = (calibrationSummary?.detectedRatio ?? 0) >= 0.5;
@@ -105,8 +106,8 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
             촬영 시작
           </Button>
         ) : (
-          <Button fullWidth color="brand" radius="md" disabled={phase !== 'recording'} onClick={finish}>
-            촬영 종료
+          <Button fullWidth color="brand" radius="md" disabled={phase !== 'recording' || saving} onClick={finish}>
+            {saving ? '결과 정리 중…' : '촬영 종료'}
           </Button>
         )}
 

@@ -73,6 +73,24 @@ export interface GazeBlinkResult {
   } | null;
 }
 
+/** POST /analyze/gaze-blink/live 요청 — 실시간 촬영 결과의 숫자 요약 (영상·구간 데이터 제외). */
+export interface LiveSavePayload {
+  blinkRatePerMin: number;
+  blinkStatus: string;
+  blinkScore: number;
+  avgFixationSec: number;
+  gazeScore: number;
+  smileRatio: number;
+  tensionRatio: number;
+  expressionScore: number;
+  expressionStatus: string;
+}
+
+/** POST /analyze/gaze-blink/live 응답 — 저장 직전의 2단계 기록(업로드·실시간 통합 이력), 처음이면 null. */
+export interface LiveSaveResponse {
+  previous: GazeBlinkResult['previous'];
+}
+
 /** GET /analyze/stage1/latest — 저장된 가장 최근 1단계(음성) 결과. 기록이 없으면 result: null. */
 export interface Stage1Latest {
   at: string;

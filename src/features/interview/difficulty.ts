@@ -44,9 +44,6 @@ export function resolveAnxietyScore(stage1: number | null, stage2: number | null
  * 조회 실패(네트워크·미로그인 등)나 기록 없음은 에러로 던지지 않고 한 단계씩 폴백한다:
  * 한쪽 실패 → 다른 쪽만 사용, 둘 다 없음 → DEFAULT_ANXIETY_SCORE. 면접 화면 흐름이
  * 이 조회 때문에 막히면 안 되기 때문.
- *
- * 한계: 2단계는 "영상 업로드" 모드 결과만 서버(DB)에 저장되고, "실시간 촬영" 모드는
- * 브라우저 localProgress에만 남아서 여기서는 보이지 않는다.
  */
 export async function getAnxietyScore(): Promise<number> {
   const [s1, s2] = await Promise.allSettled([api.latestStage1(), api.latestGazeBlink()]);

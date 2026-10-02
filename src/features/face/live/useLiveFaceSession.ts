@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { GazeBlinkResult } from '@/lib/api/types';
 import { localProgress } from '@/features/progress/localProgress';
+import { api } from '@/lib/api/client';
+import { buildLiveSavePayload } from './savePayload';
 import { MAX_CAPTURE_SEC } from '@/features/face/constants';
 import {
   createBlinkFsmState,
@@ -57,11 +59,16 @@ import type { Point2D } from './types';
  * 잘라 만드는데, 실시간 모드는 원본 영상 파일이 없어서(녹화본을 따로 만들지
  * 않음) highlight를 만들 수 없다 — 항상 null로 채운다. ResultView는 이미
  * highlight가 null이어도 "짚어서 보여줄 순간이 없다"는 안내로 정상 표시되게
- * 돼 있어서 화면이 깨지지 않는다. 세션 결과 저장(DB)도 안 함(Phase 5로
- * 미룸) — 대신 localProgress(브라우저 로컬)로 "직전 기록"과 비교한다.
+ * 돼 있어서 화면이 깨지지 않는다. 촬영이 끝나면 숫자 요약만 서버에
+ * 저장하고(POST /analyze/gaze-blink/live — 영상은 안 보냄) 서버 이력 기준의
+ * "직전 기록"으로 비교한다. 저장 실패·시간초과 시엔 localProgress(브라우저
+ * 로컬) 이력으로 폴백.
  */
 
 const CALIBRATION_SEC = 5;
+
+/** 서버 저장 응답을 기다리는 최대 시간 — 결과 화면이 네트워크 때문에 오래 막히지 않게. */
+const SAVE_TIMEOUT_MS = 5000;
 
 export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'ready' | 'recording' | 'error';
 
@@ -81,6 +88,8 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
   const [elapsedSec, setElapsedSec] = useState(0);
   const [faceDetected, setFaceDetected] = useState(false);
   const [calibrationSummary, setCalibrationSummary] = useState<CalibrationSummary | null>(null);
+  // 촬영 종료 후 서버에 결과를 저장하는 동안 true (카메라는 이미 꺼진 상태)
+  const [saving, setSaving] = useState(false);
 
   const finishedRef = useRef(false);
   const isRecordingRef = useRef(false);
@@ -210,7 +219,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
             if (t - recordingStartTRef.current >= MAX_CAPTURE_SEC) {
               elapsedSecRef.current = t;
               setElapsedSec(t);
-              finish();
+              void finish();
               return;
             }
           }
@@ -253,7 +262,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     setPhase('recording');
   }
 
-  function finish() {
+  async function finish() {
     if (finishedRef.current) return;
     finishedRef.current = true;
     isRecordingRef.current = false;
@@ -271,7 +280,8 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     const expressionSummary = summarizeExpression(exprSeriesRef.current);
     const expressionResult = scoreExpression(expressionSummary.smileRatio, expressionSummary.tensionRatio);
 
-    const { previous } = localProgress.appendStage2Result({
+    // 서버 저장이 실패·지연되는 경우의 폴백 이력 — 브라우저 로컬(같은 기기에서만 유효)
+    const { previous: localPrevious } = localProgress.appendStage2Result({
       blinkRatePerMin: blinkResult.ratePerMin,
       avgFixationSec: gazeResult.avgFixationSec,
       smileRatio: expressionSummary.smileRatio,
@@ -303,8 +313,23 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
         segments: exprFsmRef.current.segmentBuffer.committed as GazeBlinkResult['expression']['segments'],
         highlight: null,
       },
-      previous,
+      previous: localPrevious,
     };
+
+    // 결과를 서버(Stage2Result)에 저장하고, 서버 이력 기준의 "직전 기록"을 받아 비교에 쓴다.
+    // 업로드 모드 이력과 합쳐지고 기기를 바꿔도 이어지며, 3단계 난이도·ai-agent도 읽을 수 있음.
+    // 실패·시간초과·서버에 이력 없음이면 로컬 이력으로 폴백 — 결과 화면은 절대 안 막는다.
+    setSaving(true);
+    try {
+      const saved = await Promise.race([
+        api.saveLiveGazeBlink(buildLiveSavePayload(result)),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), SAVE_TIMEOUT_MS)),
+      ]);
+      result.previous = saved?.previous ?? localPrevious;
+    } catch {
+      // 미로그인·네트워크 오류 등 — 로컬 이력 그대로 사용
+    }
+    setSaving(false);
 
     onComplete(result);
   }
@@ -313,6 +338,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     phase,
     elapsedSec,
     errorMessage,
+    saving,
     faceDetected,
     calibrationSummary,
     calibrationSec: CALIBRATION_SEC,
