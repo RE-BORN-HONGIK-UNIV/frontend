@@ -3,6 +3,9 @@ import type { GazeBlinkResult } from '@/lib/api/types';
 import { localProgress } from '@/features/progress/localProgress';
 import { api } from '@/lib/api/client';
 import { buildLiveSavePayload } from './savePayload';
+import { startClipRecorder, type ClipRecorder } from './clipRecorder';
+import { buildHighlightRanges, pickHighlightIntervals, type HighlightMetric } from './highlight';
+import { checkCaptureQuality, type CaptureRejection } from './quality';
 import { MAX_CAPTURE_SEC } from '@/features/face/constants';
 import {
   createBlinkFsmState,
@@ -55,11 +58,12 @@ import type { Point2D } from './types';
  * MAX_CAPTURE_SEC(3분)은 recording 시작 시점부터 잰다(캘리브레이션·대기
  * 시간은 안 셈) — 업로드 모드의 영상 길이 제한과 같은 값을 공유.
  *
- * highlight(하이라이트 클립)는 backend가 서버에서 ffmpeg로 원본 영상을
- * 잘라 만드는데, 실시간 모드는 원본 영상 파일이 없어서(녹화본을 따로 만들지
- * 않음) highlight를 만들 수 없다 — 항상 null로 채운다. ResultView는 이미
- * highlight가 null이어도 "짚어서 보여줄 순간이 없다"는 안내로 정상 표시되게
- * 돼 있어서 화면이 깨지지 않는다. 촬영이 끝나면 숫자 요약만 서버에
+ * highlight(하이라이트 클립): 실시간 모드는 영상이 서버로 안 가므로 backend처럼
+ * ffmpeg로 편집할 수 없다. 대신 recording 구간을 MediaRecorder로 브라우저
+ * 메모리에만 녹화해 두고(clipRecorder.ts), 지표별 "눈에 띄는 구간"의 재생 범위
+ * (highlightRanges)를 계산해 blob URL과 함께 결과에 싣는다 — 실제 구간 재생은
+ * HighlightPlayer가 한다. 녹화가 안 되는 브라우저·오류면 highlight는 null로 남고
+ * 결과 화면은 "짚어서 보여줄 순간이 없다"로 정상 표시된다. 촬영이 끝나면 숫자 요약만 서버에
  * 저장하고(POST /analyze/gaze-blink/live — 영상은 안 보냄) 서버 이력 기준의
  * "직전 기록"으로 비교한다. 저장 실패·시간초과 시엔 localProgress(브라우저
  * 로컬) 이력으로 폴백.
@@ -70,7 +74,7 @@ const CALIBRATION_SEC = 5;
 /** 서버 저장 응답을 기다리는 최대 시간 — 결과 화면이 네트워크 때문에 오래 막히지 않게. */
 const SAVE_TIMEOUT_MS = 5000;
 
-export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'ready' | 'recording' | 'error';
+export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'ready' | 'recording' | 'rejected' | 'error';
 
 export interface CalibrationSummary {
   /** 캘리브레이션 5초 중 얼굴이 검출된 프레임 비율(0~1). */
@@ -90,6 +94,8 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
   const [calibrationSummary, setCalibrationSummary] = useState<CalibrationSummary | null>(null);
   // 촬영 종료 후 서버에 결과를 저장하는 동안 true (카메라는 이미 꺼진 상태)
   const [saving, setSaving] = useState(false);
+  // 촬영은 끝났지만 얼굴이 충분히 안 잡혀 결과를 버린 경우의 사유 (phase === 'rejected')
+  const [rejection, setRejection] = useState<CaptureRejection | null>(null);
 
   const finishedRef = useRef(false);
   const isRecordingRef = useRef(false);
@@ -99,6 +105,10 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
   const sessionStartRef = useRef(0);
   const elapsedSecRef = useRef(0);
   const recordingStartTRef = useRef(0);
+  // 촬영(recording) 구간 동안 처리한 프레임 수와 그중 얼굴이 검출된 프레임 수 — 품질 게이트용
+  const recordedFramesRef = useRef(0);
+  const detectedFramesRef = useRef(0);
+  const clipRecorderRef = useRef<ClipRecorder | null>(null);
 
   const calibBufferRef = useRef<[number, GazeBaseline | null][]>([]);
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
@@ -199,6 +209,9 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
           // recording이 시작된 뒤부터만 최종 결과에 반영 — 캘리브레이션·대기
           // 구간 값은 여기서 버려진다(위 함수 docstring 참고).
           if (isRecordingRef.current) {
+            recordedFramesRef.current += 1;
+            if (landmarks !== null) detectedFramesRef.current += 1;
+
             const blinkScore = computeBlinkBlendshapeScore(blendshapes);
             const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
             if (blink) blinksRef.current.push(blink);
@@ -244,6 +257,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       landmarkerRef.current?.close();
+      void clipRecorderRef.current?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -257,7 +271,10 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     exprFsmRef.current = createExpressionFsmState();
     exprSeriesRef.current = [];
     gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
+    recordedFramesRef.current = 0;
+    detectedFramesRef.current = 0;
     recordingStartTRef.current = elapsedSecRef.current;
+    clipRecorderRef.current = streamRef.current ? startClipRecorder(streamRef.current) : null;
     isRecordingRef.current = true;
     setPhase('recording');
   }
@@ -268,6 +285,10 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     isRecordingRef.current = false;
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    // 녹화는 트랙을 끄기 전에 멈춰야 마지막 조각까지 받을 수 있다
+    const recorder = clipRecorderRef.current;
+    clipRecorderRef.current = null;
+    const recordedBlob = recorder ? await recorder.stop() : null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     landmarkerRef.current?.close();
 
@@ -275,6 +296,16 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     flushExpression(exprFsmRef.current);
 
     const durationSec = Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
+
+    // 얼굴이 거의 안 잡힌 촬영은 저장·점수화하지 않고 다시 촬영하게 한다(quality.ts 참고).
+    // 로컬 이력(appendStage2Result)도 건드리지 않는다 — 신뢰할 수 없는 값이 "지난번 기록"이 되면 안 됨.
+    const rejected = checkCaptureQuality(recordedFramesRef.current, detectedFramesRef.current, durationSec);
+    if (rejected) {
+      setRejection(rejected);
+      setPhase('rejected');
+      return;
+    }
+
     const blinkResult = scoreBlinkRate(blinksRef.current.length, durationSec);
     const gazeResult = scoreGazeSegments(gazeFsmRef.current.segmentBuffer.committed);
     const expressionSummary = summarizeExpression(exprSeriesRef.current);
@@ -287,6 +318,11 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
       smileRatio: expressionSummary.smileRatio,
       tensionRatio: expressionSummary.tensionRatio,
     });
+
+    // 하이라이트: 녹화 파일 시각 = 세션 시각 - (녹화 시작이 세션 시작보다 늦은 만큼)
+    const clipOffsetSec = recorder ? (recorder.startedAtMs - sessionStartRef.current) / 1000 : 0;
+    const clipDurationSec = elapsedSecRef.current - clipOffsetSec;
+    const clipUrl = recordedBlob ? URL.createObjectURL(recordedBlob) : null;
 
     const result: GazeBlinkResult = {
       blink: {
@@ -316,6 +352,20 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
       previous: localPrevious,
     };
 
+    // 지표별 하이라이트 — 재생할 구간이 하나도 없으면 highlight는 null(결과 화면이 "짚어줄 순간 없음"으로 표시)
+    if (clipUrl) {
+      let used = false;
+      for (const metric of ['blink', 'gaze', 'expression'] as HighlightMetric[]) {
+        const ranges = buildHighlightRanges(pickHighlightIntervals(metric, result), clipOffsetSec, clipDurationSec);
+        if (ranges.length === 0) continue;
+        result[metric].highlight = clipUrl;
+        result[metric].highlightRanges = ranges;
+        used = true;
+      }
+      // 어떤 지표도 안 쓰면 blob을 들고 있을 이유가 없다
+      if (!used) URL.revokeObjectURL(clipUrl);
+    }
+
     // 결과를 서버(Stage2Result)에 저장하고, 서버 이력 기준의 "직전 기록"을 받아 비교에 쓴다.
     // 업로드 모드 이력과 합쳐지고 기기를 바꿔도 이어지며, 3단계 난이도·ai-agent도 읽을 수 있음.
     // 실패·시간초과·서버에 이력 없음이면 로컬 이력으로 폴백 — 결과 화면은 절대 안 막는다.
@@ -339,6 +389,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     elapsedSec,
     errorMessage,
     saving,
+    rejection,
     faceDetected,
     calibrationSummary,
     calibrationSec: CALIBRATION_SEC,

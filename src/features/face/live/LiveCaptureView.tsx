@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Box, Button, Group, Paper, Stack, Text } from '@/components/ui';
 import type { GazeBlinkResult } from '@/lib/api/types';
 import { useLiveFaceSession, type LivePhase } from './useLiveFaceSession';
+import { rejectionMessage } from './quality';
 
 const PHASE_LABEL: Record<LivePhase, string> = {
   idle: '준비 중…',
@@ -9,6 +10,7 @@ const PHASE_LABEL: Record<LivePhase, string> = {
   calibrating: '캘리브레이션 중 — 정면을 봐주세요',
   ready: '캘리브레이션 완료',
   recording: '촬영 중',
+  rejected: '다시 촬영이 필요해요',
   error: '오류',
 };
 
@@ -22,6 +24,18 @@ const PHASE_LABEL: Record<LivePhase, string> = {
  * 중 얼굴이 잘 인식됐는지 결과를 보여주고, 사용자가 직접 "촬영 시작"을
  * 눌러야 실제 촬영이 시작된다. */
 export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlinkResult) => void }) {
+  // 얼굴이 안 잡혀 결과를 버린 뒤 "다시 촬영"하면 세션(카메라·모델)을 통째로 새로 시작한다.
+  const [attempt, setAttempt] = useState(0);
+  return <LiveCaptureSession key={attempt} onComplete={onComplete} onRetry={() => setAttempt((a) => a + 1)} />;
+}
+
+function LiveCaptureSession({
+  onComplete,
+  onRetry,
+}: {
+  onComplete: (result: GazeBlinkResult) => void;
+  onRetry: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const {
     phase,
@@ -35,6 +49,7 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
     beginRecording,
     finish,
     saving,
+    rejection,
   } = useLiveFaceSession({ videoRef, onComplete });
 
   const calibrationLooksGood = (calibrationSummary?.detectedRatio ?? 0) >= 0.5;
@@ -95,6 +110,12 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
           </Alert>
         )}
 
+        {phase === 'rejected' && rejection && (
+          <Alert color="red" variant="light" p="sm" fz={13}>
+            {rejectionMessage(rejection)} 이번 촬영은 기록에 저장하지 않았어요.
+          </Alert>
+        )}
+
         {phase === 'error' && (
           <Alert color="red" variant="light" p="xs" fz={13}>
             {errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해주세요.'}
@@ -105,6 +126,10 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
           <Button fullWidth color="brand" radius="md" onClick={beginRecording}>
             촬영 시작
           </Button>
+        ) : phase === 'rejected' ? (
+          <Button fullWidth color="brand" radius="md" onClick={onRetry}>
+            다시 촬영하기
+          </Button>
         ) : (
           <Button fullWidth color="brand" radius="md" disabled={phase !== 'recording' || saving} onClick={finish}>
             {saving ? '결과 정리 중…' : '촬영 종료'}
@@ -113,6 +138,9 @@ export function LiveCaptureView({ onComplete }: { onComplete: (result: GazeBlink
 
         <Text fz={11} c="var(--rb-ink-faint)" style={{ textAlign: 'center' }}>
           정확한 분석을 위해 10초 이상 촬영을 권장해요. 최대 {maxCaptureSec / 60}분이 지나면 자동으로 종료돼요.
+        </Text>
+        <Text fz={11} c="var(--rb-ink-faint)" style={{ textAlign: 'center' }}>
+          결과 화면에서 장면을 다시 볼 수 있도록 촬영 영상을 이 브라우저에만 임시로 보관해요. 서버로 보내지 않아요.
         </Text>
       </Stack>
     </Paper>

@@ -38,7 +38,7 @@ push/PR 시 GitHub Actions에서 위 네 개(lint·typecheck·test·build)를 �
 
 ### 테스트 하네스
 
-지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 22개 파일 176개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`(저장·AI 전송 안내)·`QuestionView.record`(면접 기록 저장)·`PracticePage`(맞춤 연습) — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
+지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 25개 파일 197개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`(저장·AI 전송 안내)·`QuestionView.record`(면접 기록 저장)·`PracticePage`(맞춤 연습) — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
 
 `vitest.config.ts`를 `vite.config.ts`와 분리해둔 이유: vitest가 내부적으로 물고 있는 vite(rollup 기반)와 이 프로젝트의 vite(rolldown 기반, v8)의 Plugin 타입이 서로 안 맞아서 한 파일에 합치면 `tsc`가 타입 에러를 냄. 백엔드 쪽 계층별 테스트 설계(정확도 검증 하네스 포함)는 `backend/docs/TESTING.md` 참고.
 
@@ -81,7 +81,8 @@ src/
 - `headPose.ts` — 시선 판정에 필요한 머리 자세는 backend가 `cv2.solvePnP`로 계산하지만, 여기선 MediaPipe가 자체 제공하는 얼굴 변환 행렬을 씀(추가 WASM 불필요) — 알고리즘이 달라 임계값을 실기기로 재검증함.
 - `segmentBuffer.ts` — backend의 구간 병합(`_merge_short_segments`)은 "구간이 끝나야 짧았는지 안다"는 회고적 로직이라 실시간에 그대로 못 씀 — 상태 변화 후 0.3초 보류했다가 확정/흡수하는 지연 버퍼로 재설계(시선·표정 공용).
 - `useLiveFaceSession.ts`/`LiveCaptureView.tsx` — 위 로직들을 한 MediaPipe 세션으로 묶어서 5초 캘리브레이션 → 캘리브레이션 확인 → 실제 촬영(최대 3분) → 파일 업로드와 동일한 형태의 결과 객체 생성까지 담당.
-- 하이라이트 클립(영상에서 특정 순간만 잘라 보여주는 기능)은 실시간 모드에선 녹화본이 없어서 생성 못 함 — 항상 `null`, 결과 화면은 원래 이 경우를 "짚어줄 순간 없음"으로 처리하게 돼 있어서 그대로 재사용됨. 촬영이 끝나면 숫자 요약만 서버(`POST /analyze/gaze-blink/live`, 영상은 안 보냄)에 저장하고, 업로드 모드와 **같은 이력**(`Stage2Result`)에서 "직전 기록"을 받아 비교함 — 기기를 바꿔도 이어지고 3단계 난이도(추천 면접관)에도 반영됨. 저장 실패·시간초과·미로그인 시엔 브라우저 `localProgress`(로컬스토리지) 이력으로 폴백.
+- 하이라이트: 업로드 모드는 서버가 ffmpeg로 구간만 이어붙인 mp4를 만들지만, 실시간 모드는 영상이 서버로 안 가므로 **촬영 구간을 `MediaRecorder`로 브라우저 메모리에만 녹화**(`clipRecorder.ts`)하고, 지표별 재생 구간(`highlight.ts` — backend와 같은 규칙: 깜빡임 전부/시선 회피/표정 미소·긴장, 앞뒤 0.3초, 총 15초 상한, 겹치는 구간은 합침)을 계산해 `highlight`(blob URL)·`highlightRanges`로 결과에 싣는다. `HighlightPlayer`가 그 구간들만 이어서 재생(편집본을 만드는 게 아님)하고, 결과를 버리거나 화면을 떠나면 blob URL을 해제한다. webm은 길이 헤더가 없어 `duration`이 Infinity라 끝으로 한 번 이동시켜 길이를 계산시키는 보정을 넣었고, Chromium(헤드리스)에서 구간 이동·재생 정확도를 확인했다 — **Safari(mp4)·Firefox는 실기기 확인 필요**. 녹화 미지원·오류면 `highlight`는 `null`로 남고 결과 화면은 "짚어줄 순간 없음"으로 처리된다.
+- 품질 게이트(`quality.ts`): 촬영 중 얼굴 검출 프레임이 50% 미만이거나 프레임이 없으면 점수화·서버 저장·로컬 이력 기록을 모두 하지 않고 "다시 촬영하기"를 안내한다(backend `step2/quality.py`가 업로드 영상에 같은 기준을 422로 적용). 0.5는 실측 최적값이 아니라 보수적 기준이다. 촬영이 끝나면 숫자 요약만 서버(`POST /analyze/gaze-blink/live`, 영상은 안 보냄)에 저장하고, 업로드 모드와 **같은 이력**(`Stage2Result`)에서 "직전 기록"을 받아 비교함 — 기기를 바꿔도 이어지고 3단계 난이도(추천 면접관)에도 반영됨. 저장 실패·시간초과·미로그인 시엔 브라우저 `localProgress`(로컬스토리지) 이력으로 폴백.
 
 ## 화면
 

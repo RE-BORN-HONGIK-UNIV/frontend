@@ -34,6 +34,12 @@ export interface FeedbackResponse {
   source: 'llm' | 'template';
 }
 
+/** 실시간 모드의 하이라이트 재생 구간(초, 녹화 영상 기준). highlight가 blob URL일 때만 같이 온다. */
+export interface HighlightRange {
+  start: number;
+  end: number;
+}
+
 /** POST /analyze/gaze-blink — Step 2 (표정·시선) 분석 결과. */
 export interface GazeBlinkResult {
   blink: {
@@ -41,8 +47,10 @@ export interface GazeBlinkResult {
     status: string;
     score: number;
     events: { start: number; end: number }[];
-    /** 깜빡임 순간만 이어붙인 짧은 mp4 (data URL), 만들 구간이 없으면 null */
+    /** 깜빡임 순간만 이어붙인 짧은 mp4 (data URL), 만들 구간이 없으면 null.
+     * 실시간 모드에선 브라우저 녹화본의 blob URL이고, 재생할 구간은 highlightRanges에 있다. */
     highlight: string | null;
+    highlightRanges?: HighlightRange[];
   };
   gaze: {
     avg_fixation_sec: number;
@@ -50,6 +58,7 @@ export interface GazeBlinkResult {
     segments: { type: 'fixation' | 'aversion'; start: number; end: number }[];
     /** 시선을 피한 순간만 이어붙인 짧은 mp4 (data URL), 없으면 null */
     highlight: string | null;
+    highlightRanges?: HighlightRange[];
   };
   expression: {
     smile_score: number;
@@ -62,6 +71,7 @@ export interface GazeBlinkResult {
     segments: { type: 'smile' | 'tension' | 'neutral'; start: number; end: number }[];
     /** 미소·긴장 순간만 이어붙인 짧은 mp4 (data URL), 없으면 null */
     highlight: string | null;
+    highlightRanges?: HighlightRange[];
   };
   /** 로그인한 유저의 직전 2단계 기록 (서버 DB 조회) — 처음이면 null */
   previous: {

@@ -23,6 +23,7 @@ import { useAnalyzeGazeBlink } from '@/features/face/queries';
 import { ScoreTrack } from '@/features/face/ScoreTrack';
 import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
 import { GazeTimeline } from '@/features/face/GazeTimeline';
+import { HighlightPlayer } from '@/features/face/HighlightPlayer';
 import { LiveCaptureView } from '@/features/face/live/LiveCaptureView';
 import { localProgress, type Stage2Entry } from '@/features/progress/localProgress';
 import { stage2OverallScore } from '@/features/progress/stageProgress';
@@ -147,7 +148,7 @@ function ResultView({
         </Group>
 
         {highlight ? (
-          <video key={tab} src={highlight} controls style={{ width: '100%', borderRadius: 10, marginTop: 12, background: '#000' }} />
+          <HighlightPlayer key={tab} src={highlight} ranges={result[tab].highlightRanges} />
         ) : (
           <Box
             style={{
@@ -245,6 +246,15 @@ export default function FaceStage() {
       }),
     );
   }, [result]);
+
+  // 실시간 모드의 하이라이트 영상은 브라우저 메모리의 blob URL — 결과를 버리거나(다시 촬영)
+  // 화면을 떠날 때 해제한다. 세 지표가 같은 URL을 공유하므로 하나만 보면 된다.
+  useEffect(() => {
+    const url = liveResult?.blink.highlight ?? liveResult?.gaze.highlight ?? liveResult?.expression.highlight;
+    return () => {
+      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    };
+  }, [liveResult]);
 
   const reset = () => {
     setFile(null);
