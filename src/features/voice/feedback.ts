@@ -1,14 +1,21 @@
 import type { AnalyzeResult } from '@/lib/api/types';
 import { AXES, TRAINING_TIPS, type AxisKey } from './constants';
 
+/** 모델이 준비된(null이 아닌) 축만 [축, 점수]로 돌려준다. */
+export function readyScores(scores: AnalyzeResult['scores']): [AxisKey, number][] {
+  return (Object.entries(scores) as [AxisKey, number | null][]).filter(
+    (e): e is [AxisKey, number] => e[1] !== null,
+  );
+}
+
 export function overallScore(scores: AnalyzeResult['scores']): number {
-  const vals = Object.values(scores);
+  const vals = readyScores(scores).map(([, v]) => v);
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 }
 
 /** Deterministic coaching paragraph — shown until (or instead of) the LLM response. */
 export function buildFallbackFeedback(result: AnalyzeResult): string {
-  const entries = Object.entries(result.scores) as [AxisKey, number][];
+  const entries = readyScores(result.scores);
   const best = entries.reduce((a, b) => (a[1] >= b[1] ? a : b));
   const worst = entries.reduce((a, b) => (a[1] <= b[1] ? a : b));
   const bestAxis = AXES.find((a) => a.key === best[0])!;

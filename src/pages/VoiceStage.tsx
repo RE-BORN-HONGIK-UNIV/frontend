@@ -15,9 +15,9 @@ import {
 } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { ApiError } from '@/lib/api/client';
-import type { AnalyzeResult, CalibrationResult } from '@/lib/api/types';
-import { AXES, GUIDE_ITEMS, TRAINING_TIPS, scoreColor, type AxisKey } from '@/features/voice/constants';
-import { overallScore } from '@/features/voice/feedback';
+import type { AnalyzeResult, CalibrationResult, CnnLabel } from '@/lib/api/types';
+import { AXES, CNN_LABEL_NAMES, GUIDE_ITEMS, TRAINING_TIPS, scoreColor } from '@/features/voice/constants';
+import { overallScore, readyScores } from '@/features/voice/feedback';
 import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
 import { VoiceRadar } from '@/features/voice/VoiceRadar';
@@ -55,10 +55,13 @@ function Panel({ children }: { children: React.ReactNode }) {
 function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () => void }) {
   const { scores } = result;
   const ov = overallScore(scores);
-  const sorted = [...(Object.entries(scores) as [AxisKey, number][])].sort((a, b) => b[1] - a[1]);
+  const sorted = readyScores(scores).sort((a, b) => b[1] - a[1]);
   const strengths = sorted.slice(0, 2);
   const weaknesses = sorted.slice(-2).reverse();
   const worst = sorted[sorted.length - 1][0];
+  const pending = (Object.keys(CNN_LABEL_NAMES) as CnnLabel[])
+    .filter((k) => result.model_status[k] !== 'ready')
+    .map((k) => CNN_LABEL_NAMES[k]);
 
   const metrics = [
     { label: '음성 길이', value: result.pause_detail.total_duration_sec, unit: '초' },
@@ -92,20 +95,23 @@ function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () =>
         <Text fz={14} fw={600} c="var(--rb-primary-strong)">
           CNN 모델 직접 점수
         </Text>
-        <Group gap={6} mt={8} wrap="wrap">
-          {Object.entries(result.model_scores).map(([k, v]) => (
-            <Text
-              key={k}
-              fz={12}
-              style={{ background: 'rgba(255,255,255,0.7)', padding: '2px 10px', borderRadius: 20 }}
-            >
-              {k}: <strong>{v}점</strong>
+        <Stack gap={4} mt={8}>
+          {(Object.keys(CNN_LABEL_NAMES) as CnnLabel[]).map((k) => (
+            <Text key={k} fz={12}>
+              {CNN_LABEL_NAMES[k]}:{' '}
+              {result.model_status[k] === 'ready' ? (
+                <>
+                  준비됨 · 확률 <strong>{result.probabilities[k]}%</strong> · {result.detected[k] ? '있음' : '없음'}
+                </>
+              ) : (
+                '준비 중'
+              )}
             </Text>
           ))}
-        </Group>
-        {result.demo_mode && (
+        </Stack>
+        {pending.length > 0 && (
           <Text fz={11} c="var(--rb-ink-faint)" mt={6}>
-            ※ 모델 파일 없음 — 데모 모드 (CNN 3지표는 참고용)
+            ※ 준비 중인 모델: {pending.join(', ')}
           </Text>
         )}
       </Box>
@@ -116,6 +122,18 @@ function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () =>
         <Stack gap={8} mt={12}>
           {AXES.map((a) => {
             const v = scores[a.key];
+            if (v === null) {
+              return (
+                <Group key={a.key} gap={8} wrap="nowrap">
+                  <Text fz={13} fw={600} style={{ flex: '0 0 84px' }}>
+                    {a.label}
+                  </Text>
+                  <Text fz={12} c="var(--rb-ink-faint)">
+                    준비 중
+                  </Text>
+                </Group>
+              );
+            }
             return (
               <Group key={a.key} gap={8} wrap="nowrap">
                 <Text fz={13} fw={600} style={{ flex: '0 0 84px' }}>

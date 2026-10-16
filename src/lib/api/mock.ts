@@ -77,9 +77,11 @@ export const mockApi = {
   async analyze(): Promise<AnalyzeResult> {
     await delay();
     return {
-      scores: { stability: 78, fluency: 72, pause_ctrl: 65, continuity: 80, calm: 70 },
-      model_scores: { prolongation: 81, energy: 77, tremor: 67 },
-      probabilities: { tremor: 0.18, prolongation: 0.22, energy: 0.15 },
+      scores: { stability: 78, fluency: 72, pause_ctrl: 65, continuity: 80, calm: null },
+      model_scores: { prolongation: 80, energy: null, tremor: 78 },
+      probabilities: { tremor: 22, prolongation: 20, energy: null },
+      detected: { tremor: false, prolongation: false, energy: null },
+      model_status: { tremor: 'ready', prolongation: 'ready', energy: 'pending' },
       filler_detail: { filler_count: 4, sound_segment_count: 32, filler_ratio_pct: 12.5 },
       pause_detail: {
         pause_count: 9,
@@ -89,7 +91,7 @@ export const mockApi = {
         total_duration_sec: 45.2,
       },
       cnn_window_count: 14,
-      demo_mode: true,
+      demo_mode: false,
     };
   },
 

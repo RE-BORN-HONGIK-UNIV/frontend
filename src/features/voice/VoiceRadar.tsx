@@ -10,7 +10,11 @@ import type { AnalyzeScores } from '@/lib/api/types';
 import { AXES } from './constants';
 
 export function VoiceRadar({ scores }: { scores: AnalyzeScores }) {
-  const data = AXES.map((a) => ({ axis: a.label, value: scores[a.key] }));
+  // 모델이 아직 없는 축은 0으로 그리고 이름에 (준비 중)을 붙인다
+  const data = AXES.map((a) => {
+    const v = scores[a.key];
+    return { axis: v === null ? `${a.label} (준비 중)` : a.label, value: v ?? 0 };
+  });
 
   return (
     <div style={{ width: '100%', height: 300 }}>

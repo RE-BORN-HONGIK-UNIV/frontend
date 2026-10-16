@@ -109,7 +109,8 @@ export const api = {
       ? mockApi.feedback()
       : request<FeedbackResponse>('/analyze/feedback', {
           method: 'POST',
-          body: JSON.stringify(result),
+          // 모델이 아직 없는 축(null)은 빼고 보낸다
+          body: JSON.stringify({ ...result, scores: Object.fromEntries(Object.entries(result.scores).filter(([, v]) => v !== null)) }),
         }),
 
   analyzeGazeBlink: (file: File) => {

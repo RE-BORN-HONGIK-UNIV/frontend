@@ -1,4 +1,4 @@
-import type { AnalyzeScores } from '@/lib/api/types';
+import type { AnalyzeScores, CnnLabel } from '@/lib/api/types';
 
 export type AxisKey = keyof AnalyzeScores;
 
@@ -15,6 +15,12 @@ export const AXES: Axis[] = [
   { key: 'continuity', label: '발화 지속성', desc: '연장음 없이 적절한 속도 유지' },
   { key: 'calm', label: '발화 에너지', desc: '종합 불안 역산 지수' },
 ];
+
+export const CNN_LABEL_NAMES: Record<CnnLabel, string> = {
+  prolongation: '연장',
+  tremor: '떨림',
+  energy: '에너지',
+};
 
 export const TRAINING_TIPS: Record<AxisKey, string> = {
   stability:
