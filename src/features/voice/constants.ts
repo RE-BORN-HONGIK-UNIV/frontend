@@ -28,13 +28,14 @@ export const TRAINING_TIPS: Record<AxisKey, string> = {
   calm: '말하기 전 가벼운 스트레칭이나 심호흡으로 긴장을 풀고, 좋아하는 문장을 소리 내어 읽는 것부터 시작해보세요.',
 };
 
+// emoji: 체크 아이콘 대신 항목 내용을 한눈에 알아보게 하는 용도(장식이라 읽어주지 않음).
 export const GUIDE_ITEMS = [
-  { title: '조용한 환경', desc: '주변 소음이 없는 곳에서 녹음하세요.' },
-  { title: '마이크 근접', desc: '마이크와 10~20cm 거리를 유지하세요.' },
-  { title: '30초 이상', desc: '정확한 분석을 위해 30초 이상 발화하세요.' },
-  { title: '자연스럽게', desc: '평소 말하듯 자연스럽게 발화하세요.' },
-  { title: 'WAV 형식', desc: '음성 파일은 WAV 형식으로 준비하세요.' },
-  { title: '반복 연습', desc: '여러 번 녹음해서 변화를 확인해보세요.' },
+  { emoji: '🤫', title: '조용한 환경', desc: '주변 소음이 없는 곳에서 녹음하세요.' },
+  { emoji: '🎙️', title: '마이크 근접', desc: '마이크와 10~20cm 거리를 유지하세요.' },
+  { emoji: '⏱️', title: '30초 이상', desc: '정확한 분석을 위해 30초 이상 발화하세요.' },
+  { emoji: '😊', title: '자연스럽게', desc: '평소 말하듯 자연스럽게 발화하세요.' },
+  { emoji: '🎵', title: 'WAV 형식', desc: '음성 파일은 WAV 형식으로 준비하세요.' },
+  { emoji: '🔁', title: '반복 연습', desc: '여러 번 녹음해서 변화를 확인해보세요.' },
 ];
 
 export { scoreColor } from '@/lib/scoreColor';
