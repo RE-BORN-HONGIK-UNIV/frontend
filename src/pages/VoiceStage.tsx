@@ -276,7 +276,10 @@ function RecordOrUpload({
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 브라우저 음량 자동 조절·잡음 제거가 에너지 변화를 지우지 않게 끈다(학습 데이터는 손질 없는 녹음)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false },
+      });
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
