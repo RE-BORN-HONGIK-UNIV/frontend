@@ -60,7 +60,7 @@ function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () =>
   const weaknesses = sorted.slice(-2).reverse();
   const worst = sorted[sorted.length - 1][0];
   const pending = (Object.keys(CNN_LABEL_NAMES) as CnnLabel[])
-    .filter((k) => result.model_status[k] !== 'ready')
+    .filter((k) => result.model_status[k] === 'pending')
     .map((k) => CNN_LABEL_NAMES[k]);
 
   const metrics = [
@@ -99,9 +99,10 @@ function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () =>
           {(Object.keys(CNN_LABEL_NAMES) as CnnLabel[]).map((k) => (
             <Text key={k} fz={12}>
               {CNN_LABEL_NAMES[k]}:{' '}
-              {result.model_status[k] === 'ready' ? (
+              {result.model_status[k] !== 'pending' ? (
                 <>
-                  준비됨 · 확률 <strong>{result.probabilities[k]}%</strong> · {result.detected[k] ? '있음' : '없음'}
+                  {result.model_status[k] === 'reference' ? '참고용(시험 미통과)' : '준비됨'} · 확률{' '}
+                  <strong>{result.probabilities[k]}%</strong> · {result.detected[k] ? '있음' : '없음'}
                 </>
               ) : (
                 '준비 중'

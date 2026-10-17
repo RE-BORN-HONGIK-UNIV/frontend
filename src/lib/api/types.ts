@@ -18,7 +18,8 @@ export interface AnalyzeResult {
   probabilities: Record<CnnLabel, number | null>;
   /** 모델 설정의 기준선으로 내린 있음/없음. 모델이 없는 라벨은 null. */
   detected: Record<CnnLabel, boolean | null>;
-  model_status: Record<CnnLabel, 'ready' | 'pending'>;
+  /** reference: 붙어 있지만 시험을 통과하지 못한 참고용 모델(떨림 v1). */
+  model_status: Record<CnnLabel, 'ready' | 'reference' | 'pending'>;
   filler_detail: {
     filler_count: number;
     sound_segment_count: number;
