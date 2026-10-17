@@ -52,14 +52,6 @@ function getVideoDurationSec(file: File): Promise<number> {
   });
 }
 
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary-strong)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <Text fz={13} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '0.08em' }}>
@@ -293,7 +285,9 @@ export default function FaceStage() {
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
               {FACE_GUIDE_ITEMS.map((g) => (
                 <Stack key={g.title} gap={6} style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-line)', borderRadius: 12, padding: '14px 12px' }}>
-                  <Check />
+                  <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
+                    {g.emoji}
+                  </span>
                   <Text fz={13} fw={600} c="var(--rb-primary-strong)">
                     {g.title}
                   </Text>
