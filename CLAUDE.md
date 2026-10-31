@@ -39,9 +39,11 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 **둘 다 건드릴 일이 있으면 이 구조를 유지할 것** — vitest 업그레이드로 이 문제가
 해결됐는지 먼저 확인 후에만 합치기를 시도.
 
+1·2단계 대화 상대 "하루"(`src/features/haru/`)는 2026-10-31 판넬용 경량 웹에서 가져온 것 — README "하루" 섹션 참고.
+
 지금은 순수 로직 유닛테스트만 있음(`src/**/*.test.ts` — `combineAnxietyScore`,
 `getTier`, `scoreColor` 등 결정적 함수). `@testing-library/react` + jsdom은
-설치·설정(`src/test/setup.ts`)까지 끝났고 컴포넌트 테스트는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`·`QuestionView.record`·`PracticePage` 뿐 —
+설치·설정(`src/test/setup.ts`)까지 끝났고 컴포넌트 테스트는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`·`QuestionView.record`·`PracticePage`·`HaruProfileView` 뿐 —
 필요해지면 `*.test.tsx`로 추가.
 
 백엔드 쪽 계층별(순수 로직/정확도 검증/API 통합) 테스트 설계는

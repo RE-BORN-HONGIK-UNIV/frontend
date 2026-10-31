@@ -11,17 +11,22 @@ import { ReadyView } from '@/features/interview/views/ReadyView';
 import { QuestionView } from '@/features/interview/views/QuestionView';
 import { ResultView } from '@/features/interview/views/ResultView';
 import type { InterviewResult } from '@/features/interview/resultSummary';
+import { HaruProfileView } from '@/features/haru/HaruProfileView';
+import { loadHaruTalk, profileSourceItems } from '@/features/haru/store';
 
 /**
+ * about: "하루가 이렇게 이해했어요" 카드(1·2단계에서 하루와 나눈 대답이 이 기기에 있을 때만) →
  * intro: 면접관 소개·선택 → test: 기기 점검 → ready: 면접관 인사·진행 안내
  * → question: 면접 질문 → result
  * 예열 질문은 따로 두지 않고, 첫 질문을 가벼운 질문으로 시작해 면접 안에서 자연스럽게 풀어감.
  * 3단계는 실전 단계라 첫 질문도 분석 점수에 포함함.
  */
-type Step = 'intro' | 'test' | 'ready' | 'question' | 'result';
+type Step = 'about' | 'intro' | 'test' | 'ready' | 'question' | 'result';
 
 export default function InterviewStage() {
-  const [step, setStep] = useState<Step>('intro');
+  const [step, setStep] = useState<Step>(() => (profileSourceItems(loadHaruTalk()).length ? 'about' : 'intro'));
+  // 사용자가 카드에서 확인한 자기 이야기 — 기본 질문의 소재로 서버에 넘긴다(없으면 빈 목록)
+  const [aboutMe, setAboutMe] = useState<string[]>([]);
   // IntroView에서 유저가 최종 선택한 면접관 tier. 이후 음성·질문 난이도 모두 이 값 기준
   const [tier, setTier] = useState<DifficultyTier>('standard');
   // 면접을 끝까지 마친 뒤 결과 화면에 넘겨줄 이번 면접의 질문·답변 (면접 중 메모리에 모아둔 것)
@@ -67,9 +72,9 @@ export default function InterviewStage() {
         <PageHeader
           back="/dashboard"
           eyebrow="3단계 · 실전 면접 시뮬레이션"
-          title={step === 'intro' ? '면접 시뮬레이터' : ''}
+          title={step === 'intro' || step === 'about' ? '면접 시뮬레이터' : ''}
           subtitle={
-            step === 'intro'
+            step === 'intro' || step === 'about'
               ? '1,2단계 진단 결과를 바탕으로 난이도가 조절된 실전 면접을 진행합니다.'
               : undefined
           }
@@ -77,6 +82,15 @@ export default function InterviewStage() {
       )}
 
       <Box style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px 0' }}>
+        {step === 'about' && (
+          <HaruProfileView
+            onNext={(lines) => {
+              setAboutMe(lines);
+              setStep('intro');
+            }}
+          />
+        )}
+
         {step === 'intro' && <IntroView onStart={handleIntroStart} />}
 
         {step === 'test' && <MediaTestView media={media} onNext={() => setStep('ready')} />}
@@ -87,6 +101,7 @@ export default function InterviewStage() {
           <QuestionView
             stream={media.stream}
             tier={tier}
+            aboutMe={aboutMe}
             onAllDone={(r) => {
               // 끝까지 마친 면접만 완료로 기록 (대시보드 3단계 카드·진행률에 반영)
               localProgress.markStage3Done(tier);

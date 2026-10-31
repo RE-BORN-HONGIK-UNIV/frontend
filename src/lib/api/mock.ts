@@ -5,6 +5,9 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
+  HaruProfileResponse,
+  HaruReplyRequest,
+  HaruReplyResponse,
   InterviewSessionSummary,
   LatestResponse,
   LiveSaveResponse,
@@ -235,5 +238,17 @@ export const mockApi = {
         overallScore: 55,
       },
     };
+  },
+
+  async haruReply(body: HaruReplyRequest): Promise<HaruReplyResponse> {
+    await delay();
+    const nods = ['그렇군요, 이야기해 줘서 고마워요.', '좋아요, 잘 들었어요.', '아, 그랬군요.'];
+    const nod = nods[body.index % nods.length];
+    return { say: body.next ? `${nod} ${body.next}` : '오늘 이야기 나눠 줘서 고마워요.', retry: false, source: 'fallback' };
+  },
+
+  async haruProfile(items: { label: string; answer: string }[]): Promise<HaruProfileResponse> {
+    await delay();
+    return { items: items.map((it) => ({ label: it.label, value: it.answer.slice(0, 40) })), source: 'fallback' };
   },
 };

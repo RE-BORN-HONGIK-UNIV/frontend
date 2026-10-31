@@ -7,6 +7,9 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
+  HaruProfileResponse,
+  HaruReplyRequest,
+  HaruReplyResponse,
   InterviewSessionSummary,
   LatestResponse,
   LiveSavePayload,
@@ -110,6 +113,18 @@ export const api = {
           method: 'POST',
           body: JSON.stringify(result),
         }),
+
+  /** 1·2단계 하루 대화 — 방금 대답에 한 문장 반응 + 다음 질문으로 잇는 말. 서버가 AI를 못 쓰면 정해 둔 문장을 준다. */
+  haruReply: (body: HaruReplyRequest) =>
+    USE_MOCK
+      ? mockApi.haruReply(body)
+      : request<HaruReplyResponse>('/haru/reply', { method: 'POST', body: JSON.stringify(body) }),
+
+  /** "하루가 이렇게 이해했어요" 카드 — 1·2단계 대답을 항목별로 짧게 정리(서버에 저장하지 않음). */
+  haruProfile: (items: { label: string; question: string; answer: string }[]) =>
+    USE_MOCK
+      ? mockApi.haruProfile(items)
+      : request<HaruProfileResponse>('/haru/profile', { method: 'POST', body: JSON.stringify({ items }) }),
 
   /** 실시간 촬영 결과 저장 — 2단계 이력(Stage2Result)에 쌓이고, 저장 직전 기록을 돌려준다. */
   saveLiveGazeBlink: (payload: LiveSavePayload) =>

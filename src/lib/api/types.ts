@@ -156,6 +156,31 @@ export interface CoachNoteResponse {
 }
 
 /** POST /interview/practice-hint — 맞춤 연습의 힌트 (AI가 만들었거나 일반 힌트) */
+/** POST /haru/reply — 하루(1·2단계 대화 상대)의 반응 한마디. care: 위기 신호가 있어 AI로 보내지 않은 경우. */
+export interface HaruReplyRequest {
+  question: string;
+  answer: string;
+  next: string | null;
+  retried: boolean;
+  index: number;
+  history: { ai: boolean; text: string }[];
+}
+export interface HaruReplyResponse {
+  say: string;
+  retry: boolean;
+  source: 'llm' | 'fallback' | 'care';
+}
+
+/** POST /haru/profile — "하루가 이렇게 이해했어요" 카드 항목. */
+export interface HaruProfileItem {
+  label: string;
+  value: string;
+}
+export interface HaruProfileResponse {
+  items: HaruProfileItem[];
+  source: 'llm' | 'fallback' | 'care';
+}
+
 export interface PracticeHintResponse {
   hint: { opening: string; steps: string[] };
   source: 'llm' | 'fallback';

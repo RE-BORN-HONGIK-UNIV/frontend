@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Badge,
@@ -18,7 +19,7 @@ import { FACE_GUIDE_ITEMS, METRIC_TABS, type MetricKey } from '@/features/face/c
 import { ScoreTrack } from '@/features/face/ScoreTrack';
 import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
 import { GazeTimeline } from '@/features/face/GazeTimeline';
-import { LiveCaptureView } from '@/features/face/live/LiveCaptureView';
+import { HaruCallView } from '@/features/face/live/HaruCallView';
 import { localProgress, type Stage2Entry } from '@/features/progress/localProgress';
 import { stage2OverallScore } from '@/features/progress/stageProgress';
 
@@ -77,6 +78,7 @@ function ResultView({
   onReset: () => void;
 }) {
   const [tab, setTab] = useState<MetricKey>('blink');
+  const navigate = useNavigate();
 
   const metrics = useMemo(() => extractMetrics(result), [result]);
   const comparisonText = COMPARISON_BUILDERS[tab](metrics, previous);
@@ -87,7 +89,7 @@ function ResultView({
   return (
     <Stack gap={20}>
       <Button variant="default" radius="md" onClick={onReset} fullWidth>
-        ↺ 다시 촬영하기
+        ↺ 하루와 다시 통화하기
       </Button>
 
       {!previous && (
@@ -130,7 +132,7 @@ function ResultView({
             }}
           >
             <Text fz={13} c="var(--rb-ink-faint)">
-              이번 촬영에서는 따로 짚어서 보여드릴 순간이 없었어요.
+              이번 통화에서는 따로 짚어서 보여드릴 순간이 없었어요.
             </Text>
           </Box>
         )}
@@ -177,6 +179,10 @@ function ResultView({
         </>
       )}
 
+      <Button fullWidth radius="md" onClick={() => navigate('/interview')}>
+        하루가 정리한 이야기 보고 3단계로 가기 →
+      </Button>
+
       {tab === 'blink' && (
         <>
           <SectionLabel>점수 위치</SectionLabel>
@@ -197,6 +203,7 @@ function ResultView({
 export default function FaceStage() {
   // 2단계는 실시간 촬영만 지원한다 — 예전 "영상 업로드" 모드(POST /analyze/gaze-blink)는
   // 2026-10-31 팀 결정으로 폐기. 얼굴 영상을 서버로 보내지 않는 실시간 모드 하나로 통일.
+  // 촬영은 하루와 영상 통화하는 동안 뒤에서 한다(HaruCallView — 경량 웹 2단계 화면을 가져옴).
   const [result, setResult] = useState<GazeBlinkResult | null>(null);
   const previous: Stage2Entry | null = result?.previous ?? null;
 
@@ -217,9 +224,9 @@ export default function FaceStage() {
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
         back="/dashboard"
-        eyebrow="2단계 · 표정·시선 분석"
+        eyebrow="2단계 · 하루와 영상 통화"
         title="페이스 터치"
-        subtitle="웹캠으로 촬영하면 시선 처리·눈 깜빡임·표정을 지난 세션과 비교해서 보여드려요."
+        subtitle="하루와 영상 통화하는 동안 시선 처리·눈 깜빡임·표정을 살펴보고, 지난 세션과 비교해서 보여드려요."
       />
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
@@ -242,8 +249,8 @@ export default function FaceStage() {
               ))}
             </SimpleGrid>
 
-            <SectionLabel>실시간 촬영</SectionLabel>
-            <LiveCaptureView onComplete={setResult} />
+            <SectionLabel>하루와 영상 통화</SectionLabel>
+            <HaruCallView onComplete={setResult} />
           </Stack>
         )}
       </Box>
