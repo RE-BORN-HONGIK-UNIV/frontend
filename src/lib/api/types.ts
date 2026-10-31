@@ -30,6 +30,17 @@ export interface AnalyzeResult {
   };
   cnn_window_count: number;
   demo_mode: boolean;
+  /*
+   * ── 최종 리포트의 "준비 중" 칸을 채울 값 (아직 서버가 안 줌) ──────────────────
+   * 백엔드가 /analyze 응답에 아래 이름으로 넣어 주면 리포트(features/report/buildReport.ts)가 바로 그린다.
+   * 없으면 그 칸은 "준비 중"으로 보인다. 지어낸 값을 보여 주지 않기 위해 프론트에서 추정하지 않는다.
+   */
+  /** 소리를 길게 늘인 순간 — text: 늘인 말(예: "저어"), start/end: 녹음 안 초 */
+  prolong_detail?: { events: { text: string; start: number; end: number }[] };
+  /** 한 문장 안 목소리 크기를 문장 처음→끝으로 나눈 평균(0~100, 보통 10칸). 끝이 흐려지는지 보는 막대 */
+  energy_detail?: { sentence_bars: number[] };
+  /** 시간 순 목소리 떨림 정도(0~1, CNN 조각마다). 0에 가까울수록 고름 */
+  tremor_detail?: { curve: number[] };
 }
 
 /** POST /analyze/feedback — LLM coaching paragraph, or null (falls back to template). */
@@ -67,6 +78,8 @@ export interface GazeBlinkResult {
     /** 미소·긴장 순간만 이어붙인 짧은 mp4 (data URL), 없으면 null */
     highlight: string | null;
   };
+  /** 질문별 값 (아직 안 만듦 — 통화 중 질문이 바뀐 시각으로 나누면 계산 가능). 있으면 리포트가 질문별 막대로 그린다 */
+  per_question?: { blink_per_min: number[]; gaze_avg_sec: number[] };
   /** 로그인한 유저의 직전 2단계 기록 (서버 DB 조회) — 처음이면 null */
   previous: {
     at: string;

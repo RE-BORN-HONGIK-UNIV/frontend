@@ -109,3 +109,48 @@
   .rb-report .rows li p { grid-column: 1 / -1; grid-row: 2; }
 }
 .rb-report .sample-note { background: var(--rp-warm-bg); color: var(--rp-warm-ink); border-radius: 12px; padding: 12px 16px; font-size: 14px; line-height: 1.6; }
+/* ── 아직 값이 없는 칸("준비 중")과, 값이 오면 그려질 칸들 ── */
+.rb-report .chip.n { background: var(--rp-bg); color: var(--rp-ink-3); border: 1px solid var(--rp-line); }
+.rb-report .pending { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding: 16px; border: 1px dashed var(--rp-line-2); border-radius: 12px; background: var(--rp-bg); font-size: 14px; color: var(--rp-ink-3); line-height: 1.5; }
+.rb-report .note { font-size: 13px; color: var(--rp-ink-3); margin-top: 8px; }
+.rb-report .rows li { grid-template-columns: 140px 1fr 96px auto; }
+.rb-report .spark { display: flex; align-items: flex-end; gap: 5px; height: 30px; }
+.rb-report .spark i { flex: 1; border-radius: 3px 3px 0 0; background: var(--rp-accent); }
+.rb-report .spark i.none { height: 100%; background: none; border: 1px dashed var(--rp-line-2); border-radius: 3px; }
+.rb-report .sparkl { display: flex; gap: 5px; font-size: 10.5px; color: var(--rp-ink-3); margin-top: 2px; }
+.rb-report .sparkl span { flex: 1; text-align: center; }
+.rb-report .five .wide { grid-column: 1 / -1; }
+.rb-report .mo { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.rb-report .mo li { display: flex; justify-content: space-between; align-items: center; background: var(--rp-bg); border-radius: 10px; padding: 10px 14px; font-size: 15px; }
+.rb-report .mo li span { font-size: 13px; color: var(--rp-ink-3); }
+.rb-report .mo li q { quotes: none; font-weight: 700; }
+.rb-report .mo li q u { text-decoration: underline wavy var(--rp-warm); text-underline-offset: 4px; }
+.rb-report .en { display: flex; align-items: flex-end; gap: 4px; height: 70px; margin-top: 14px; padding: 0 4px; border-bottom: 1px solid var(--rp-line); }
+.rb-report .en i { flex: 1; background: color-mix(in srgb, var(--rp-accent) 55%, transparent); border-radius: 3px 3px 0 0; }
+.rb-report .trc { width: 100%; height: 84px; margin-top: 14px; display: block; }
+.rb-report .hist { display: flex; align-items: flex-end; gap: 6px; height: 84px; margin-top: 8px; }
+.rb-report .hist div { flex: 1; text-align: center; font-size: 11px; color: var(--rp-ink-3); }
+.rb-report .hist i { display: block; border-radius: 4px 4px 0 0; background: var(--rp-accent); margin-bottom: 4px; }
+.rb-report .emo { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.rb-report .emo li { display: grid; grid-template-columns: 70px 1fr 40px; gap: 10px; align-items: center; font-size: 13px; color: var(--rp-ink-2); }
+.rb-report .emo .b { height: 8px; border-radius: 4px; background: var(--rp-bg); overflow: hidden; }
+.rb-report .emo .b i { display: block; height: 100%; background: var(--rp-line-2); }
+.rb-report .emo li.s .b i { background: var(--rp-smile); }
+.rb-report .emo li.t .b i { background: var(--rp-warm); }
+.rb-report .emo b { text-align: right; font-variant-numeric: tabular-nums; }
+.rb-report .lbl { font-size: 13px; font-weight: 700; color: var(--rp-ink-3); margin: 0 0 8px; }
+.rb-report .script { font-size: 16px; line-height: 1.95; background: var(--rp-surface); border: 1px solid var(--rp-line); border-radius: 12px; padding: 14px 16px; }
+.rb-report .script .f { background: var(--rp-warm-bg); color: var(--rp-warm-ink); border-radius: 4px; padding: 1px 4px; font-weight: 600; }
+.rb-report .script .l { text-decoration: underline wavy var(--rp-warm); text-underline-offset: 4px; }
+.rb-report .script .ps { display: inline-block; font-size: 12px; font-weight: 700; background: var(--rp-bg); color: var(--rp-ink-2); border-radius: 999px; padding: 0 8px; margin: 0 3px; vertical-align: 1px; }
+.rb-report .script .lk { background: var(--rp-accent-soft); border-radius: 4px; padding: 1px 3px; }
+.rb-report .keys { display: flex; gap: 14px; font-size: 12.5px; color: var(--rp-ink-3); margin-top: 10px; flex-wrap: wrap; }
+.rb-report .keys span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -2px; }
+.rb-report .keys .k1::before { background: var(--rp-warm-bg); }
+.rb-report .keys .k2::before { border-bottom: 2px solid var(--rp-warm); height: 8px; }
+.rb-report .keys .k3::before { background: var(--rp-bg); border-radius: 999px; border: 1px solid var(--rp-line-2); }
+.rb-report .keys .k4::before { background: var(--rp-accent-soft); }
+@media (max-width: 560px) {
+  .rb-report .rows li { grid-template-columns: 1fr auto; }
+  .rb-report .rows li > div { grid-column: 1 / -1; grid-row: 3; }
+}

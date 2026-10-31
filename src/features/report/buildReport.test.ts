@@ -125,3 +125,41 @@ describe('이번 연습 정리', () => {
     expect(s.next).toEqual(['오래 멈추기', '표정 풀기']);
   });
 });
+
+describe('아직 값이 없는 칸 (값이 오면 그려짐)', () => {
+  it('서버가 안 주면 null → 화면은 "준비 중"', () => {
+    const r = buildVoiceReport({ at: 'x', result: analyze() });
+    expect(r.prolong).toBeNull();
+    expect(r.energy).toBeNull();
+    expect(r.tremor).toBeNull();
+    expect(r.habits[0].flow).toEqual([80, null, null]);
+    const f = buildFaceReport({ at: 'x', result: gaze() });
+    expect(f.blink.perQ).toBeNull();
+    expect(f.gaze.perQ).toBeNull();
+  });
+
+  it('서버가 정해 둔 이름으로 주면 그대로 채운다', () => {
+    const r = buildVoiceReport(
+      {
+        at: 'x',
+        result: analyze({
+          prolong_detail: { events: [{ text: '저어', start: 63, end: 63.5 }] },
+          energy_detail: { sentence_bars: [80, 70, 60] },
+          tremor_detail: { curve: [0.2, 1.4, -1] },
+        }),
+      },
+      { stage3: analyze({ scores: { stability: 70, fluency: 50, pause_ctrl: 60, continuity: 80, calm: 70 } }) },
+    );
+    expect(r.prolong?.items).toEqual([{ word: '저어', at: '1:03' }]);
+    expect(r.energy?.line).toContain('처음의 75%');
+    expect(r.tremor?.curve).toEqual([0.2, 1, 0]); // 0~1 밖은 잘라냄
+    expect(r.habits[0].flow).toEqual([80, null, 70]);
+  });
+
+  it('질문별 값과 표정 비율', () => {
+    const f = buildFaceReport({ at: 'x', result: { ...gaze(), per_question: { blink_per_min: [20, 25], gaze_avg_sec: [3, 4] } } });
+    expect(f.blink.perQ).toEqual([20, 25]);
+    expect(f.gaze.perQ).toEqual([3, 4]);
+    expect(f.expr.emo).toEqual({ smile: 12, neutral: 82, tension: 6 });
+  });
+});

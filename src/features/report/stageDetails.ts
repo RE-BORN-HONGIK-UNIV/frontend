@@ -12,6 +12,14 @@ export interface StageDetails {
   /** turnStarts: 녹음 파일 안에서 대답 하나하나가 시작된 시각(초) — "첫마디" 문구 판단용 */
   stage1?: { at: string; result: AnalyzeResult; turnStarts?: number[] };
   stage2?: { at: string; result: GazeBlinkResult };
+  /*
+   * ── 아직 만들지 않는 값 (리포트의 "준비 중" 칸) ──
+   * 2·3단계 대답 목소리도 1단계처럼 분석하게 되면 여기에 저장한다 → 말하기 습관의 1→2→3단계 흐름 막대가 채워짐.
+   */
+  stage2Voice?: { at: string; result: AnalyzeResult };
+  stage3Voice?: { at: string; result: AnalyzeResult };
+  /** 3단계 질문별로 받아쓴 대답에 표시를 입힌 글 — [f:음](말버릇) [l:저어는](소리 늘이기) [p:3초 멈춤] [k:바라보며 말한 부분] */
+  stage3Marks?: { question: string; script: string }[];
 }
 
 const KEY = 'rb.report.details';
@@ -24,7 +32,11 @@ export function loadStageDetails(): StageDetails {
   try {
     const raw = localStorage.getItem(KEY);
     const rec = raw ? (JSON.parse(raw) as StageDetails & { owner?: string }) : null;
-    if (rec && rec.owner === owner()) return { stage1: rec.stage1, stage2: rec.stage2 };
+    if (rec && rec.owner === owner()) {
+      const { owner: _owner, ...details } = rec;
+      void _owner;
+      return details;
+    }
   } catch {
     /* 깨졌거나 못 읽으면 없는 것으로 */
   }

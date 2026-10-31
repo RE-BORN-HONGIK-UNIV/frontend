@@ -21,6 +21,47 @@ import './report.css';
 const rich = (t: string) => t.split(/\*\*(.+?)\*\*/).map((s, i) => (i % 2 ? <b key={i}>{s}</b> : s));
 const Tag = ({ c }: { c: Chip }) => <span className={`chip ${c.tone}`}>{c.text}</span>;
 
+/**
+ * 아직 값이 없는 칸 — 경량 웹 리포트에 있던 칸을 자리만 잡아 둔다. 서버(또는 분석)가 값을 주기 시작하면
+ * 이 자리에 바로 그려진다(buildReport의 null 필드). 예시 값을 채워 넣지 않는다.
+ */
+function Pending({ children }: { children: ReactNode }) {
+  return (
+    <div className="pending">
+      <span className="chip n">준비 중</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+/** 1→2→3단계 흐름 막대. 값이 없는 단계는 점선 빈 막대 */
+function Spark({ flow }: { flow: (number | null)[] }) {
+  return (
+    <div>
+      <div className="spark" aria-hidden>
+        {flow.map((v, i) => (v === null ? <i key={i} className="none" /> : <i key={i} style={{ height: `${Math.max(8, v)}%` }} />))}
+      </div>
+      <div className="sparkl">
+        {['1단계', '2단계', '3단계'].map((n) => (
+          <span key={n}>{n}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 받아쓴 대답에 표시 입히기 (경량 웹과 같은 표기): [f:말버릇] [l:늘인 소리] [p:긴 멈춤] [k:바라보며 말한 부분] */
+const MARK: Record<string, string> = { f: 'f', l: 'l', p: 'ps', k: 'lk' };
+function Script({ t }: { t: string }) {
+  const p = t.split(/\[([flpk]):([^\]]+)\]/);
+  const out: ReactNode[] = [];
+  for (let i = 0; i < p.length; i += 3) {
+    out.push(p[i]);
+    if (i + 2 < p.length) out.push(<span key={i} className={MARK[p[i + 1]]}>{p[i + 2]}</span>);
+  }
+  return <div className="script">{out}</div>;
+}
+
 /** 이 기기에 남긴 1·2단계 세부값 → 없으면 서버의 최신 요약 점수로 대신 (기기를 바꾼 경우) */
 function useStageReports(given?: StageDetails) {
   const local = useMemo(() => given ?? loadStageDetails(), [given]);
@@ -45,13 +86,14 @@ function useStageReports(given?: StageDetails) {
     };
   }, [local, given]);
 
+  const others = { stage2: local.stage2Voice?.result, stage3: local.stage3Voice?.result };
   const voice: VoiceReport | null = local.stage1
-    ? buildVoiceReport(local.stage1)
+    ? buildVoiceReport(local.stage1, others)
     : s1
-      ? buildVoiceReport({ at: s1.at, latest: s1 })
+      ? buildVoiceReport({ at: s1.at, latest: s1 }, others)
       : null;
   const face: FaceReport | null = local.stage2 ? buildFaceReport(local.stage2) : s2 ? buildFaceReport({ at: s2.at, latest: s2 }) : null;
-  return { voice, face, loading };
+  return { voice, face, loading, marks: local.stage3Marks ?? null };
 }
 
 /**
@@ -79,7 +121,7 @@ export function FinalReport({
   /** 제목 위 안내 (예시 화면 표시 등) */
   notice?: ReactNode;
 }) {
-  const { voice, face, loading } = useStageReports(details);
+  const { voice, face, loading, marks } = useStageReports(details);
   const summary = buildSummary(voice, face);
   const [today] = useState(() => (date ? new Date(date) : new Date()).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }));
   const name = auth.name;
@@ -138,9 +180,48 @@ export function FinalReport({
           <h2>실전 면접 돌아보기</h2>
         </div>
         <p className="sub">면접관과 나눈 질문과 대답을 다시 보고, 다음 한 걸음을 골라요. 대답 내용은 평가하지 않아요.</p>
+        <div className="card" style={{ marginTop: 18 }}>
+          <h3>질문별 말버릇·멈춤 표시</h3>
+          <p className="k">받아쓴 대답 위에 "음, 어"·소리 늘이기·긴 멈춤이 나온 곳을 표시해요</p>
+          {marks && marks.length ? (
+            <>
+              {marks.map((m, i) => (
+                <div key={i} style={{ marginTop: 14 }}>
+                  <p className="lbl">
+                    Q{i + 1}. {m.question}
+                  </p>
+                  <Script t={m.script} />
+                </div>
+              ))}
+              <div className="keys">
+                <span className="k1">말버릇</span>
+                <span className="k2">소리 늘이기</span>
+                <span className="k3">긴 멈춤</span>
+                <span className="k4">면접관을 바라보며 말한 부분</span>
+              </div>
+            </>
+          ) : (
+            <Pending>3단계 대답 목소리를 분석하게 되면 질문마다 표시가 보여요.</Pending>
+          )}
+        </div>
         <div style={{ marginTop: 18 }}>{interview}</div>
       </section>
     </main>
+  );
+}
+
+/** 질문별 막대 (Q1~Qn) */
+function PerQBars({ values, unit }: { values: number[]; unit: string }) {
+  const max = Math.max(...values, 1);
+  return (
+    <div className="hist">
+      {values.map((v, i) => (
+        <div key={i}>
+          <i style={{ height: `${(v / max) * 60}px` }} title={`Q${i + 1} ${v}${unit}`} />
+          Q{i + 1}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -186,14 +267,25 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
                     <small>{h.easy}</small>
                   </b>
                   <p>{h.line}</p>
+                  <Spark flow={h.flow} />
                   <Tag c={h.chip} />
                 </li>
               ))}
             </ul>
           </div>
 
-          {(voice.fillers || voice.pauses) && (
+          {voice.habits[0].flow.slice(1).every((v) => v === null) && (
+            <p className="note">막대는 1→2→3단계 흐름이에요. 지금은 1단계 목소리만 살펴봐서 2·3단계 막대는 비어 있어요.</p>
+          )}
+          {(
             <div className="five">
+              {!voice.fillers && (
+                <div className="card">
+                  <h3>"음, 어" 같은 말</h3>
+                  <p className="k">발화 유창성</p>
+                  <Pending>어떤 말이 몇 번, 어디서 나왔는지는 이 기기에서 1단계를 다시 하면 보여요.</Pending>
+                </div>
+              )}
               {voice.fillers && (
                 <div className="card">
                   <h3>
@@ -241,6 +333,90 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
                   <p className="d">{rich(voice.pauses.line)}</p>
                 </div>
               )}
+              {!voice.pauses && (
+                <div className="card">
+                  <h3>오래 멈추기</h3>
+                  <p className="k">침묵 조절력</p>
+                  <Pending>언제 몇 초 멈췄는지는 이 기기에서 1단계를 다시 하면 보여요.</Pending>
+                </div>
+              )}
+
+              <div className="card">
+                <h3>
+                  소리 늘이기 {voice.prolong && <Tag c={voice.prolong.chip} />}
+                </h3>
+                <p className="k">발화 지속성 · 한 소리를 길게 늘인 순간</p>
+                {voice.prolong ? (
+                  <>
+                    <ul className="mo">
+                      {voice.prolong.items.map((it, i) => (
+                        <li key={i}>
+                          <q>
+                            <u>{it.word}</u>
+                          </q>
+                          <span>{it.at}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="d">{rich(voice.prolong.line)}</p>
+                  </>
+                ) : (
+                  <Pending>"저어는"처럼 늘인 말과 그 시각을 보여 드릴 예정이에요.</Pending>
+                )}
+              </div>
+
+              <div className="card">
+                <h3>
+                  끝까지 또렷하게 {voice.energy && <Tag c={voice.energy.chip} />}
+                </h3>
+                <p className="k">발화 에너지 · 한 문장 안에서 목소리 크기</p>
+                {voice.energy ? (
+                  <>
+                    <div className="en" aria-hidden>
+                      {voice.energy.bars.map((v, i) => (
+                        <i key={i} style={{ height: `${v}%` }} />
+                      ))}
+                    </div>
+                    <div className="tickl">
+                      <span>문장 처음</span>
+                      <span>문장 끝</span>
+                    </div>
+                    <p className="d">{rich(voice.energy.line)}</p>
+                  </>
+                ) : (
+                  <Pending>문장 끝으로 갈수록 목소리가 작아지는지 막대로 보여 드릴 예정이에요.</Pending>
+                )}
+              </div>
+
+              <div className="card wide">
+                <h3>
+                  목소리 떨림 {voice.tremor && <Tag c={voice.tremor.chip} />}
+                </h3>
+                <p className="k">음성 안정성 · 대화하는 동안 목소리가 얼마나 고르게 나왔는지</p>
+                {voice.tremor ? (
+                  <>
+                    <svg className="trc" viewBox="0 0 600 84" preserveAspectRatio="none" aria-hidden>
+                      <rect x="0" y="0" width="600" height="30" fill="var(--rp-warm-bg)" />
+                      <polyline
+                        points={voice.tremor.curve
+                          .map((c, i, a) => `${(i / (a.length - 1)) * 600},${(80 - c * 76).toFixed(1)}`)
+                          .join(' ')}
+                        fill="none"
+                        stroke="var(--rp-accent)"
+                        strokeWidth="2.5"
+                      />
+                    </svg>
+                    <div className="tickl">
+                      <span>대화 처음</span>
+                      <span>위 칸에 가까울수록 많이 흔들림</span>
+                      <span>대화 끝</span>
+                    </div>
+                    <p className="d">{rich(voice.tremor.line)}</p>
+                  </>
+                ) : (
+                  <Pending>대화하는 동안 목소리가 언제 흔들렸는지 선으로 보여 드릴 예정이에요.</Pending>
+                )}
+              </div>
             </div>
           )}
 
@@ -301,6 +477,12 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
                   <span style={{ width: `${((hi - lo) / MAX) * 100}%`, color: 'var(--rp-accent-ink)', fontWeight: 700 }}>편안한 범위</span>
                   <span style={{ width: `${((MAX - hi) / MAX) * 100}%` }}>자주</span>
                 </div>
+                <p className="what" style={{ marginTop: 18 }}>질문별 1분 깜빡임</p>
+                {face.blink.perQ ? (
+                  <PerQBars values={face.blink.perQ} unit="번" />
+                ) : (
+                  <Pending>하루의 질문마다 몇 번 깜빡였는지 보여 드릴 예정이에요.</Pending>
+                )}
               </div>
             )}
           </div>
@@ -326,6 +508,12 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
                   <span>바라본 시간</span>
                   <span className="a">다른 곳을 본 시간</span>
                 </div>
+                <p className="what" style={{ marginTop: 18 }}>질문별 평균 눈 맞춤</p>
+                {face.gaze.perQ ? (
+                  <PerQBars values={face.gaze.perQ} unit="초" />
+                ) : (
+                  <Pending>하루의 질문마다 얼마나 오래 바라봤는지 보여 드릴 예정이에요.</Pending>
+                )}
               </div>
             )}
           </div>
@@ -363,6 +551,25 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
                   <span className="t">굳은 순간</span>
                   <span className="n">평소 표정</span>
                 </div>
+                {face.expr.emo && (
+                  <ul className="emo">
+                    {(
+                      [
+                        ['s', '미소', face.expr.emo.smile],
+                        ['n', '평소 표정', face.expr.emo.neutral],
+                        ['t', '굳은 순간', face.expr.emo.tension],
+                      ] as const
+                    ).map(([k, label, pct]) => (
+                      <li key={k} className={k}>
+                        <span>{label}</span>
+                        <div className="b">
+                          <i style={{ width: `${pct}%` }} />
+                        </div>
+                        <b>{pct}%</b>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <p className="d" style={{ fontSize: 13.5 }}>
                   미소는 많을수록 좋은 게 아니에요. 인사나 가벼운 이야기처럼 어울리는 순간에 자연스럽게 나오면 충분해요.
                 </p>

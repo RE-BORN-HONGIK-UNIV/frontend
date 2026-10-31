@@ -72,12 +72,25 @@ export const FIRST_WORDS_SEC = 3;
 export interface VoiceReport {
   at: string;
   v: number[];
-  habits: { key: AxisKey; name: string; easy: string; line: string; chip: Chip }[];
+  /** flow: 1·2·3단계 이 축의 값(0~100). 2·3단계 목소리 분석이 아직 없으면 null → 막대가 "준비 중" 모양 */
+  habits: { key: AxisKey; name: string; easy: string; line: string; chip: Chip; flow: (number | null)[] }[];
   /** 세부 목록 — 이 기기에서 분석했고 서버가 위치 목록을 준 경우에만 */
   fillers: { chip: Chip; count: number; words: [string, number][]; ticks: number[]; line: string } | null;
   pauses: { chip: Chip; count: number; marks: { left: number; width: number; label: string }[]; line: string } | null;
   spokenSec: number | null;
   tip: string | null;
+  /* ↓ 서버가 값을 주기 전까지 null → 화면은 "준비 중" 칸 (types.ts AnalyzeResult의 *_detail 참고) */
+  prolong: { chip: Chip; items: { word: string; at: string }[]; line: string } | null;
+  energy: { chip: Chip; bars: number[]; line: string } | null;
+  tremor: { chip: Chip; curve: number[]; line: string } | null;
+}
+
+const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+
+/** 다른 단계 목소리 분석(아직 없음) — 있으면 말하기 습관 흐름 막대에 쓴다 */
+export interface VoiceFlowSources {
+  stage2?: AnalyzeResult;
+  stage3?: AnalyzeResult;
 }
 
 type Stage1Source = { at: string; result: AnalyzeResult; turnStarts?: number[] } | { at: string; latest: Stage1Latest };
@@ -85,7 +98,7 @@ type Stage1Source = { at: string; result: AnalyzeResult; turnStarts?: number[] }
 const pct = (x: number, total: number) => Math.max(0, Math.min(100, (x / total) * 100));
 const sec = (x: number) => `${(Math.round(x * 10) / 10).toString()}초`;
 
-export function buildVoiceReport(src: Stage1Source): VoiceReport {
+export function buildVoiceReport(src: Stage1Source, others: VoiceFlowSources = {}): VoiceReport {
   const scores: Record<AxisKey, number> =
     'result' in src
       ? src.result.scores
@@ -94,7 +107,14 @@ export function buildVoiceReport(src: Stage1Source): VoiceReport {
   const habits = VOICE_AXES.map((key) => {
     const tier = scoreTier(scores[key]);
     const c = AXIS_COPY[key];
-    return { key, name: c.name, easy: c.easy, line: c.line[tier], chip: { tone: TONE[tier], text: c.chip[tier] } };
+    return {
+      key,
+      name: c.name,
+      easy: c.easy,
+      line: c.line[tier],
+      chip: { tone: TONE[tier], text: c.chip[tier] },
+      flow: [scores[key], others.stage2?.scores[key] ?? null, others.stage3?.scores[key] ?? null],
+    };
   });
   const worst = VOICE_AXES.reduce((a, b) => (scores[b] < scores[a] ? b : a));
   const tip = scoreTier(scores[worst]) === 'good' ? null : TRAINING_TIPS[worst];
@@ -102,6 +122,9 @@ export function buildVoiceReport(src: Stage1Source): VoiceReport {
   let fillers: VoiceReport['fillers'] = null;
   let pauses: VoiceReport['pauses'] = null;
   let spokenSec: number | null = null;
+  let prolong: VoiceReport['prolong'] = null;
+  let energy: VoiceReport['energy'] = null;
+  let tremor: VoiceReport['tremor'] = null;
   if ('result' in src) {
     const r = src.result;
     const total = r.pause_detail.total_duration_sec || 0;
@@ -140,21 +163,62 @@ export function buildVoiceReport(src: Stage1Source): VoiceReport {
           : '오래 멈춘 순간 없이 이어서 말했어요.',
       };
     }
+
+    // ↓ 아직 서버가 안 주는 값들 — 오면 그대로 그린다
+    const pro = r.prolong_detail?.events;
+    if (pro) {
+      prolong = {
+        chip: { tone: habits[3].chip.tone, text: `${habits[3].chip.text} · ${pro.length}번` },
+        items: pro.slice(0, 4).map((e) => ({ word: e.text, at: mmss(e.start) })),
+        line: pro.length ? '생각을 고를 때 소리를 늘이는 경우가 많아요. 늘이는 대신 입을 닫고 1초 쉬어 봐요.' : '소리를 늘이지 않고 또박또박 이어 갔어요.',
+      };
+    }
+    const bars = r.energy_detail?.sentence_bars;
+    if (bars && bars.length >= 2 && bars[0] > 0) {
+      const keep = Math.round((bars[bars.length - 1] / bars[0]) * 100);
+      energy = {
+        chip: habits[4].chip,
+        bars: bars.map((b) => Math.max(0, Math.min(100, b))),
+        line: `문장 끝에서도 목소리가 **처음의 ${keep}%** 정도로 유지됐어요.`,
+      };
+    }
+    const curve = r.tremor_detail?.curve;
+    if (curve && curve.length >= 2) {
+      tremor = {
+        chip: habits[0].chip,
+        curve: curve.map((c) => Math.max(0, Math.min(1, c))),
+        line: habits[0].line,
+      };
+    }
   }
 
-  return { at: src.at, v: VOICE_AXES.map((k) => Math.max(0.05, Math.min(1, scores[k] / 100))), habits, fillers, pauses, spokenSec, tip };
+  return {
+    at: src.at,
+    v: VOICE_AXES.map((k) => Math.max(0.05, Math.min(1, scores[k] / 100))),
+    habits,
+    fillers,
+    pauses,
+    spokenSec,
+    tip,
+    prolong,
+    energy,
+    tremor,
+  };
 }
 
 export interface FaceReport {
   at: string;
-  blink: { chip: Chip; big: string | null; ratePerMin: number | null; line: string };
-  gaze: { chip: Chip; big: string | null; line: string; segments: GazeBlinkResult['gaze']['segments'] | null };
+  /** perQ: 질문별 값 — 아직 계산하지 않아서 null이면 "준비 중" */
+  blink: { chip: Chip; big: string | null; ratePerMin: number | null; line: string; perQ: number[] | null };
+  gaze: { chip: Chip; big: string | null; line: string; segments: GazeBlinkResult['gaze']['segments'] | null; perQ: number[] | null };
   expr: {
     chip: Chip;
     smilePct: number | null;
     tensionPct: number | null;
     line: string;
     segments: GazeBlinkResult['expression']['segments'] | null;
+    /** 미소·평소·굳은 순간이 차지한 비율(%) — 지금 값으로 계산 */
+    emo: { smile: number; neutral: number; tension: number } | null;
   };
   summary: { good: string[]; next: string[] };
 }
@@ -196,9 +260,9 @@ export function buildFaceReport(src: Stage2Source): FaceReport {
   if (!('result' in src)) {
     return {
       at: src.at,
-      blink: { chip: { tone: TONE[tier.blink], text: words(BLINK_WORDS, status.blink) }, big: null, ratePerMin: null, line: '세부 기록은 2단계를 했던 기기에서 볼 수 있어요.' },
-      gaze: { chip: { tone: TONE[tier.gaze], text: GAZE_CHIP[tier.gaze] }, big: null, line: '', segments: null },
-      expr: { chip: { tone: TONE[tier.expr], text: words(EXPR_WORDS, status.expr) }, smilePct: null, tensionPct: null, line: '', segments: null },
+      blink: { chip: { tone: TONE[tier.blink], text: words(BLINK_WORDS, status.blink) }, big: null, ratePerMin: null, line: '세부 기록은 2단계를 했던 기기에서 볼 수 있어요.', perQ: null },
+      gaze: { chip: { tone: TONE[tier.gaze], text: GAZE_CHIP[tier.gaze] }, big: null, line: '', segments: null, perQ: null },
+      expr: { chip: { tone: TONE[tier.expr], text: words(EXPR_WORDS, status.expr) }, smilePct: null, tensionPct: null, line: '', segments: null, emo: null },
       summary,
     };
   }
@@ -213,12 +277,14 @@ export function buildFaceReport(src: Stage2Source): FaceReport {
       big: `1분에 ${Math.round(r.blink.rate_per_min)}번`,
       ratePerMin: r.blink.rate_per_min,
       line: COMPARISON_BUILDERS.blink(m, prev),
+      perQ: r.per_question?.blink_per_min ?? null,
     },
     gaze: {
       chip: { tone: TONE[tier.gaze], text: GAZE_CHIP[tier.gaze] },
       big: `평균 ${sec(r.gaze.avg_fixation_sec)}`,
       line: COMPARISON_BUILDERS.gaze(m, prev),
       segments: r.gaze.segments,
+      perQ: r.per_question?.gaze_avg_sec ?? null,
     },
     expr: {
       chip: { tone: TONE[tier.expr], text: words(EXPR_WORDS, status.expr) },
@@ -226,6 +292,11 @@ export function buildFaceReport(src: Stage2Source): FaceReport {
       tensionPct: Math.round(r.expression.tension_ratio * 100),
       line: COMPARISON_BUILDERS.expression(m, prev),
       segments: r.expression.segments,
+      emo: (() => {
+        const smile = Math.round(r.expression.smile_ratio * 100);
+        const tension = Math.round(r.expression.tension_ratio * 100);
+        return { smile, tension, neutral: Math.max(0, 100 - smile - tension) };
+      })(),
     },
     summary,
   };

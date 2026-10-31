@@ -1,3 +1,4 @@
+import type { AnalyzeResult } from '@/lib/api/types';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import type { StageDetails } from './stageDetails';
 
@@ -6,6 +7,19 @@ import type { StageDetails } from './stageDetails';
  * 보여 주려고 만든 값이고, 화면에도 "예시"라고 크게 표시한다. 실제 리포트(/report, 3단계 결과)에는 쓰지 않는다.
  * 숫자는 각 분석이 실제로 내는 형태(채움말 위치, 긴 멈춤 초, 깜빡임 횟수, 구간)를 그대로 따른다.
  */
+/** 흐름 막대용 다른 단계 목소리 분석 예시 — 점수만 쓰고 나머지는 비워 둔다 */
+function voiceAt(scores: AnalyzeResult['scores']): AnalyzeResult {
+  return {
+    scores,
+    model_scores: {},
+    probabilities: { tremor: 0, prolongation: 0, energy: 0 },
+    filler_detail: { filler_count: 0, sound_segment_count: 0, filler_ratio_pct: 0 },
+    pause_detail: { pause_count: 0, anxious_pause_count: 0, anxious_pause_total_sec: 0, anxious_pause_ratio: 0, total_duration_sec: 0 },
+    cnn_window_count: 0,
+    demo_mode: false,
+  };
+}
+
 export const SAMPLE_DETAILS: StageDetails = {
   stage1: {
     at: '2026-10-31T10:00:00Z',
@@ -39,8 +53,26 @@ export const SAMPLE_DETAILS: StageDetails = {
       },
       cnn_window_count: 10,
       demo_mode: false,
+      // ↓ 아직 서버가 안 주는 값 — 예시 화면에서만 "값이 오면 이렇게 보인다"를 보여 주려고 넣음
+      prolong_detail: {
+        events: [
+          { text: '저어', start: 33, end: 33.6 },
+          { text: '그으', start: 84, end: 84.5 },
+        ],
+      },
+      energy_detail: { sentence_bars: [88, 92, 90, 86, 88, 84, 85, 82, 80, 81] },
+      tremor_detail: { curve: [0.5, 0.42, 0.55, 0.62, 0.68, 0.7, 0.73, 0.76, 0.74, 0.79, 0.77, 0.79, 0.78].map((v) => 1 - v) },
     },
   },
+  stage2Voice: { at: '2026-10-31T10:10:00Z', result: voiceAt({ stability: 78, fluency: 64, pause_ctrl: 66, continuity: 86, calm: 76 }) },
+  stage3Voice: { at: '2026-10-31T10:32:00Z', result: voiceAt({ stability: 82, fluency: 58, pause_ctrl: 82, continuity: 88, calm: 78 }) },
+  stage3Marks: [
+    {
+      question: '간단히 자기소개를 해 주시겠어요?',
+      script:
+        '[f:음] 저는 [l:저어는] 요리하는 걸 좋아하는 사람이에요. [f:음] 요즘은 [f:약간] 영상을 보면서 집에서 반찬을 만들어 보고 있고요, [p:3초 멈춤] [k:그러면서 순서를 정해서 하나씩 끝내는 게 재미있다는 걸 알게 됐어요.]',
+    },
+  ],
   stage2: {
     at: '2026-10-31T10:10:00Z',
     result: {
@@ -74,6 +106,7 @@ export const SAMPLE_DETAILS: StageDetails = {
         ],
       },
       previous: { at: '2026-10-24T10:00:00Z', blinkRatePerMin: 19, avgFixationSec: 2.4, smileRatio: 0.12, tensionRatio: 0.09 },
+      per_question: { blink_per_min: [28, 21, 19, 22], gaze_avg_sec: [2.1, 3.4, 4.0, 3.8] },
     },
   },
 };
