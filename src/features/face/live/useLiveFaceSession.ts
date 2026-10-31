@@ -3,6 +3,7 @@ import type { GazeBlinkResult } from '@/lib/api/types';
 import { localProgress } from '@/features/progress/localProgress';
 import { api } from '@/lib/api/client';
 import { buildLiveSavePayload } from './savePayload';
+import { splitByQuestion } from './perQuestion';
 import { MAX_CAPTURE_SEC } from '@/features/face/constants';
 import {
   createBlinkFsmState,
@@ -80,9 +81,11 @@ export interface CalibrationSummary {
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
   onComplete: (result: GazeBlinkResult) => void;
+  /** 촬영 중 질문이 바뀐 시각들(촬영 시작부터 초) — 주면 결과에 질문별 깜빡임·눈 맞춤(per_question)을 붙인다 */
+  getQuestionStarts?: () => number[];
 }
 
-export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionOptions) {
+export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: UseLiveFaceSessionOptions) {
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -316,6 +319,17 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
       previous: localPrevious,
     };
 
+    // 하루와 통화한 경우: 질문이 바뀐 시각으로 깜빡임·시선을 나눠 질문별 값을 붙인다(최종 리포트의 질문별 막대)
+    const starts = getQuestionStarts?.() ?? [];
+    if (starts.length) {
+      result.per_question = splitByQuestion(
+        blinksRef.current,
+        gazeFsmRef.current.segmentBuffer.committed,
+        starts.map((s) => recordingStartTRef.current + s),
+        elapsedSecRef.current,
+      );
+    }
+
     // 결과를 서버(Stage2Result)에 저장하고, 서버 이력 기준의 "직전 기록"을 받아 비교에 쓴다.
     // 업로드 모드 이력과 합쳐지고 기기를 바꿔도 이어지며, 3단계 난이도·ai-agent도 읽을 수 있음.
     // 실패·시간초과·서버에 이력 없음이면 로컬 이력으로 폴백 — 결과 화면은 절대 안 막는다.
@@ -346,5 +360,7 @@ export function useLiveFaceSession({ videoRef, onComplete }: UseLiveFaceSessionO
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,
     finish,
+    /** 지금이 촬영 시작부터 몇 초인지 (질문이 바뀐 시각을 적을 때). 촬영 중이 아니면(3분이 지나 끝남 등) null */
+    recordingNowSec: () => (isRecordingRef.current ? Math.max(0, elapsedSecRef.current - recordingStartTRef.current) : null),
   };
 }

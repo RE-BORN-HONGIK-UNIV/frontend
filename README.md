@@ -93,7 +93,7 @@ src/
 - **최종 통합 리포트** (`features/report/`, 3단계 결과 자리): 1·2단계는 단계마다 결과를 따로 보여 주지 않고, 3단계를 마치면 한 장에 모은다 — 이번 연습 정리 → 1 말하기 습관(오각형·채움말 위치·긴 멈춤) → 2 시선과 표정(깜빡임 범위·시선/표정 흐름) → 3 실전 면접 돌아보기(기존 3단계 결과 화면 그대로). 화면은 경량 웹 리포트를 옮겼고 **값은 전부 실제 분석 결과**(경량 웹은 고정 예시였음). 점수 숫자(0~100)는 보이지 않고 상태 칩의 세 구간(`scoreTier`, `scoreColor`와 같은 75/55 경계)에만 쓴다. 값이 없는 칸(문장 끝 에너지 막대·떨림 곡선·질문별 음성 표시)은 만들지 않음. 1·2단계 세부값은 분석 직후 이 기기에 남기고(`stageDetails.ts`), 없으면 서버 요약 점수로 칩만 그림.
 - **리포트의 "준비 중" 칸** — 경량 웹 리포트에 있던 칸은 값이 없어도 자리를 잡아 두고 "준비 중"으로 보인다(예시 값을 채우지 않음). 아래 이름으로 값이 들어오면 코드 수정 없이 바로 그려진다 (`lib/api/types.ts`, `features/report/stageDetails.ts` 주석 참고):
   - 1단계 `/analyze` 응답: `prolong_detail.events`(소리 늘이기), `energy_detail.sentence_bars`(문장 끝 에너지 막대), `tremor_detail.curve`(떨림 곡선)
-  - 2단계 결과: `per_question.blink_per_min` / `per_question.gaze_avg_sec`(질문별 깜빡임·눈 맞춤)
+  - ~~2단계 결과: `per_question`(질문별 깜빡임·눈 맞춤)~~ → 채움: 하루와 통화 중 질문이 바뀐 시각으로 기존 깜빡임·시선을 나눔(`face/live/perQuestion.ts`)
   - 리포트 저장값: `stage2Voice` / `stage3Voice`(2·3단계 대답 목소리 분석 → 1→2→3단계 흐름 막대), `stage3Marks`(질문별 말버릇·멈춤 표시, `[f:음] [l:저어] [p:3초 멈춤] [k:…]` 표기)
   - `/report/sample`에는 이 값들까지 예시로 넣어 두어서, 다 채워졌을 때의 모습을 볼 수 있다.
 - 하루의 반응 한마디는 `POST /haru/reply`(Claude, 실패하면 정해 둔 공감 문장), 목소리는 `/interview/tts`의 `tier: 'haru'`(Typecast, 실패하면 브라우저 목소리), 대답 받아쓰기는 브라우저 음성 인식(크롬·엣지)이 먼저고 비면 그 대답 녹음을 서버 Whisper(`/interview/transcribe`)로 — 3단계와 같은 방식.

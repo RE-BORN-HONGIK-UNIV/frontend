@@ -33,7 +33,9 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
   const [callOn, setCallOn] = useState(false);
   const [talkDone, setTalkDone] = useState(false);
   const [pip, setPip] = useState(false);
-  const s = useLiveFaceSession({ videoRef, onComplete: setResult });
+  // 하루가 새 질문을 시작한 시각들(촬영 시작부터 초) — 결과를 질문별로 나누는 데 쓴다
+  const questionStartsRef = useRef<number[]>([]);
+  const s = useLiveFaceSession({ videoRef, onComplete: setResult, getQuestionStarts: () => questionStartsRef.current });
   // 하루와의 주고받기 — 통화가 연결되면(callOn) 첫 질문을 읽기 시작한다
   const t = useHaruTalk(
     STAGE2_QUESTIONS,
@@ -53,6 +55,15 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
   useEffect(() => {
     if (talkDone && result) onComplete(result);
   }, [talkDone, result, onComplete]);
+
+  // 질문 번호가 바뀔 때마다(같은 질문을 다시 묻는 건 제외) 그 시각을 적는다.
+  // 3분이 지나 촬영이 끝난 뒤의 질문은 표정·시선 기록이 없으니 적지 않는다(질문별 막대도 그 전 질문까지만)
+  useEffect(() => {
+    if (!callOn) return;
+    const now = s.recordingNowSec();
+    if (now !== null && questionStartsRef.current.length === t.index) questionStartsRef.current.push(now);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 질문 번호가 바뀔 때만 적는다
+  }, [callOn, t.index]);
 
   const startCall = () => {
     s.beginRecording();
