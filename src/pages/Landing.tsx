@@ -6,6 +6,8 @@ import { RebornWordmark } from '@/components/RebornWordmark';
 import { Reveal } from '@/components/Reveal';
 import { SectionBadge } from '@/components/SectionBadge';
 import { SiteNavLinks } from '@/components/SiteNavLinks';
+import { HaruAvatar, TileTag } from '@/features/haru/HaruAvatar';
+import { Pentagon } from '@/features/report/Pentagon';
 
 const MAXW = 1120;
 
@@ -107,8 +109,106 @@ function Nav() {
   );
 }
 
+/**
+ * 히어로 오른쪽의 앱 화면 미리보기 — 경량 웹(판넬 OVERVIEW용) 메인 화면의 .shot/.float 모양을 다시 만든 것.
+ * 넘김본엔 이 부분의 CSS(styles.css .home .shot, .float.me, .float.rs)만 있고 JSX가 없어서, CSS와 화면 캡처를 보고
+ * 같은 구성으로 옮겼다: 브라우저 창 안의 하루 영상 통화 + 왼쪽 아래 "내 대답" + 오른쪽 위 "결과 미리보기"(오각형).
+ * 실제로 동작하는 화면이 아니라 그림이라 버튼은 누를 수 없다. 좁은 화면에서는 떠 있는 두 카드를 숨긴다(경량 웹과 같음).
+ */
+function HeroPreview({ compact }: { compact: boolean }) {
+  const float: React.CSSProperties = {
+    position: 'absolute',
+    background: 'var(--rb-surface)',
+    borderRadius: 14,
+    boxShadow: '0 14px 30px rgba(21,24,28,.14)',
+    padding: '12px 14px',
+    fontSize: 13,
+    zIndex: 1,
+  };
+  return (
+    <div
+      role="img"
+      aria-label="앱 화면 예시: 하루와 영상 통화하며 대답하고, 결과를 오각형으로 미리 보는 모습"
+      style={{ position: 'relative', width: '100%', maxWidth: 560, margin: '0 auto' }}
+    >
+      <div
+        aria-hidden
+        style={{
+          position: 'relative',
+          borderRadius: 18,
+          background: 'var(--rb-surface-tint)',
+          border: '1px solid var(--rb-line)',
+          boxShadow: '0 30px 60px rgba(21,24,28,.12)',
+          padding: compact ? '32px 18px 18px' : '40px 34px 24px',
+        }}
+      >
+        <div style={{ position: 'absolute', top: 14, left: 16, display: 'flex', gap: 6 }}>
+          {[0, 1, 2].map((i) => (
+            <i key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--rb-line-strong)' }} />
+          ))}
+        </div>
+        <HaruAvatar phase="ready" glow={false} style={{ boxShadow: '0 0 0 4px #cfc4f3' }}>
+          <TileTag top>● 연결됨 · 01:12</TileTag>
+          <TileTag>하루</TileTag>
+        </HaruAvatar>
+        <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 17, margin: '16px 0 12px', color: 'var(--rb-ink)' }}>
+          요즘 해 보고 싶은 일이 있어요?
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              background: 'var(--rb-primary)',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: 14,
+              borderRadius: 999,
+              padding: '10px 18px',
+            }}
+          >
+            하루를 보며 대답하기
+          </span>
+          <i style={{ width: 40, height: 40, borderRadius: '50%', background: '#e5484d' }} />
+        </div>
+      </div>
+
+      {!compact && (
+        <>
+          <div aria-hidden style={{ ...float, left: -40, bottom: 64, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'var(--rb-primary)',
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
+              <svg width="18" height="16" viewBox="0 0 18 16" fill="#fff">
+                {[2, 6, 10, 14].map((x, i) => (
+                  <rect key={x} x={x - 1} y={[5, 2, 4, 6][i]} width="2.4" height={[6, 12, 8, 4][i]} rx="1.2" />
+                ))}
+              </svg>
+            </span>
+            <div style={{ lineHeight: 1.4 }}>
+              <b style={{ display: 'block', color: 'var(--rb-ink)' }}>내 대답</b>
+              <span style={{ color: 'var(--rb-ink-faint)' }}>말로 대답해요</span>
+            </div>
+          </div>
+          <div aria-hidden style={{ ...float, right: -40, top: 28, width: 220 }}>
+            <h5 style={{ fontSize: 12, color: 'var(--rb-ink-faint)', margin: '0 0 2px', fontWeight: 600 }}>결과 미리보기</h5>
+            <Pentagon v={[0.8, 0.62, 0.7, 0.78, 0.74]} size={190} labels={['안정성', '유창성', '침묵 조절', '지속성', '에너지']} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Hero() {
   const isMobile = useMediaQuery('(max-width: 48em)');
+  // 좁은 화면(태블릿 이하)에선 왼쪽 글·오른쪽 미리보기를 위아래로 쌓는다
+  const stacked = useMediaQuery('(max-width: 62em)');
   return (
     <Box
       component="section"
@@ -150,7 +250,19 @@ function Hero() {
         />
       </Box>
 
-      <Stack align="flex-start" gap={26} style={{ position: 'relative', maxWidth: 720 }}>
+      {/* 왼쪽: 로고·소개·시작 버튼(왼쪽 정렬) / 오른쪽: 앱 화면 미리보기 — 경량 웹 메인 화면 배치를 따름 */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: MAXW,
+          display: 'grid',
+          gridTemplateColumns: stacked ? '1fr' : '1fr 1.1fr',
+          gap: stacked ? 56 : 40,
+          alignItems: 'center',
+        }}
+      >
+        <Stack align="flex-start" gap={26} style={{ position: 'relative', minWidth: 0 }}>
         <RebornWordmark size={isMobile ? 60 : 96} />
         <Box fz={isMobile ? 17 : 20} c="var(--rb-ink-soft)" fw={500}>
           다시, 나의 목소리로.
@@ -182,7 +294,10 @@ function Hero() {
             3단계 과정 보기 →
           </Anchor>
         </Group>
-      </Stack>
+        </Stack>
+
+        <HeroPreview compact={stacked} />
+      </div>
 
       <Box mt={60} style={{ position: 'relative' }}>
         <svg width="26" height="40" viewBox="0 0 26 40" fill="none" aria-hidden="true">
