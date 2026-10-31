@@ -13,6 +13,8 @@ export function useAnswerRecorder(recording: boolean) {
   const chunksRef = useRef<Blob[]>([]);
   const spokenMsRef = useRef(0);
   const sinceRef = useRef<number | null>(null);
+  // 녹음 파일 안에서 대답마다 시작한 시각(초) — 멈춰 둔 시간은 파일에 안 들어가므로 말한 시간만 누적해서 잰다
+  const turnStartsRef = useRef<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +43,7 @@ export function useAnswerRecorder(recording: boolean) {
     const rec = recRef.current;
     if (!rec || rec.state === 'inactive') return;
     if (recording && rec.state === 'paused') {
+      turnStartsRef.current.push(spokenMsRef.current / 1000);
       rec.resume();
       sinceRef.current = Date.now();
     } else if (!recording && rec.state === 'recording') {
@@ -52,7 +55,7 @@ export function useAnswerRecorder(recording: boolean) {
 
   /** 녹음을 끝내고 파일을 돌려준다. 마이크를 못 썼거나 녹음된 게 없으면 null. */
   const finish = () =>
-    new Promise<{ file: File; spokenSec: number } | null>((resolve) => {
+    new Promise<{ file: File; spokenSec: number; turnStarts: number[] } | null>((resolve) => {
       const rec = recRef.current;
       if (!rec || rec.state === 'inactive') return resolve(null);
       if (sinceRef.current) spokenMsRef.current += Date.now() - sinceRef.current;
@@ -62,7 +65,11 @@ export function useAnswerRecorder(recording: boolean) {
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
         // 사파리는 webm 대신 mp4(aac)로 녹음함 — 백엔드는 확장자로 형식을 거르므로 맞춰 준다
         const name = blob.type.includes('mp4') ? 'haru-talk.m4a' : 'haru-talk.webm';
-        resolve(blob.size ? { file: new File([blob], name, { type: blob.type }), spokenSec: spokenMsRef.current / 1000 } : null);
+        resolve(
+          blob.size
+            ? { file: new File([blob], name, { type: blob.type }), spokenSec: spokenMsRef.current / 1000, turnStarts: turnStartsRef.current }
+            : null,
+        );
       };
       rec.stop();
     });

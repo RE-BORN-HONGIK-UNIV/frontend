@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Group,
   LoadingBar,
   Paper,
   SimpleGrid,
@@ -13,15 +12,15 @@ import {
 } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { ApiError } from '@/lib/api/client';
-import type { AnalyzeResult, CalibrationResult } from '@/lib/api/types';
-import { AXES, GUIDE_ITEMS, TRAINING_TIPS, scoreColor, type AxisKey } from '@/features/voice/constants';
+import type { CalibrationResult } from '@/lib/api/types';
+import { GUIDE_ITEMS } from '@/features/voice/constants';
 import { overallScore } from '@/features/voice/feedback';
 import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
-import { VoiceRadar } from '@/features/voice/VoiceRadar';
-import { Step1FeedbackCoach } from '@/features/voice/Step1FeedbackCoach';
+import { saveStage1Detail } from '@/features/report/stageDetails';
 import { CalibrationStep } from '@/features/voice/CalibrationStep';
 import { HaruChat } from '@/features/haru/HaruChat';
+import { linkStyle } from '@/features/haru/styles';
 import { STAGE1_QUESTIONS } from '@/features/haru/script';
 import { saveStageAnswers } from '@/features/haru/store';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
@@ -53,192 +52,12 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── result view  ────────────────────── */
-
-function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () => void }) {
-  const navigate = useNavigate();
-  const { scores } = result;
-  const ov = overallScore(scores);
-  const sorted = [...(Object.entries(scores) as [AxisKey, number][])].sort((a, b) => b[1] - a[1]);
-  const strengths = sorted.slice(0, 2);
-  const weaknesses = sorted.slice(-2).reverse();
-  const worst = sorted[sorted.length - 1][0];
-
-  const metrics = [
-    { label: '음성 길이', value: result.pause_detail.total_duration_sec, unit: '초' },
-    {
-      label: '채움말 / 전체 구간',
-      value: `${result.filler_detail.filler_count}/${result.filler_detail.sound_segment_count}`,
-      unit: '개',
-    },
-    {
-      label: '불안 멈춤 / 전체 멈춤',
-      value: `${result.pause_detail.anxious_pause_count}/${result.pause_detail.pause_count}`,
-      unit: '개',
-    },
-    { label: '음성 떨림 지수', value: result.probabilities.tremor, unit: '%' },
-  ];
-
-  return (
-    <Stack gap={20}>
-      <Button variant="default" radius="md" onClick={onReset} fullWidth>
-        ↺ 하루와 다시 이야기하기
-      </Button>
-
-      <Box
-        style={{
-          border: '1.5px solid var(--rb-line-strong)',
-          background: 'var(--rb-primary-tint)',
-          borderRadius: 12,
-          padding: '12px 16px',
-        }}
-      >
-        <Text fz={14} fw={600} c="var(--rb-primary-strong)">
-          CNN 모델 직접 점수
-        </Text>
-        <Group gap={6} mt={8} wrap="wrap">
-          {Object.entries(result.model_scores).map(([k, v]) => (
-            <Text
-              key={k}
-              fz={12}
-              style={{ background: 'rgba(255,255,255,0.7)', padding: '2px 10px', borderRadius: 20 }}
-            >
-              {k}: <strong>{v}점</strong>
-            </Text>
-          ))}
-        </Group>
-        {result.demo_mode && (
-          <Text fz={11} c="var(--rb-ink-faint)" mt={6}>
-            ※ 모델 파일 없음 — 데모 모드 (CNN 3지표는 참고용)
-          </Text>
-        )}
-      </Box>
-
-      <SectionLabel>발화 역량 오각형 분석</SectionLabel>
-      <Panel>
-        <VoiceRadar scores={scores} />
-        <Stack gap={8} mt={12}>
-          {AXES.map((a) => {
-            const v = scores[a.key];
-            return (
-              <Group key={a.key} gap={8} wrap="nowrap">
-                <Text fz={13} fw={600} style={{ flex: '0 0 84px' }}>
-                  {a.label}
-                </Text>
-                <Box style={{ flex: 1, height: 5, background: 'var(--rb-line)', borderRadius: 4 }}>
-                  <Box
-                    style={{
-                      width: `${v}%`,
-                      height: '100%',
-                      borderRadius: 4,
-                      background: scoreColor(v),
-                    }}
-                  />
-                </Box>
-                <Text fz={13} fw={700} style={{ flex: '0 0 30px', textAlign: 'right', color: scoreColor(v) }}>
-                  {v}
-                </Text>
-              </Group>
-            );
-          })}
-          <Group justify="space-between" mt={6} pt={10} style={{ borderTop: '1px solid var(--rb-line)' }}>
-            <Text fz={13} c="var(--rb-ink-soft)">
-              종합 점수
-            </Text>
-            <Text fz={22} fw={700} style={{ color: scoreColor(ov) }}>
-              {ov}
-              <Text component="span" fz={13} c="var(--rb-ink-faint)">
-                {' '}
-                / 100
-              </Text>
-            </Text>
-          </Group>
-        </Stack>
-      </Panel>
-
-      <SectionLabel>상세 측정 지표</SectionLabel>
-      <Panel>
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing={10}>
-          {metrics.map((m) => (
-            <Stack key={m.label} gap={4} align="center" ta="center" style={{ background: 'var(--rb-bg)', borderRadius: 10, padding: '12px 8px' }}>
-              <Text fz={11} c="var(--rb-ink-faint)">
-                {m.label}
-              </Text>
-              <Text fz={20} fw={600}>
-                {m.value ?? '–'}
-              </Text>
-              <Text fz={11} c="var(--rb-ink-faint)">
-                {m.unit}
-              </Text>
-            </Stack>
-          ))}
-        </SimpleGrid>
-      </Panel>
-
-      <SectionLabel>맞춤 피드백</SectionLabel>
-      <Panel>
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={12}>
-          <Stack gap={8}>
-            <Text fz={13} fw={700} c="#1e8a57">
-              ✓ 강점
-            </Text>
-            {strengths.map(([key, val]) => {
-              const axis = AXES.find((a) => a.key === key)!;
-              return (
-                <Box key={key} style={{ background: '#f0fbf5', border: '1px solid #8dddb5', borderRadius: 10, padding: '10px 12px' }}>
-                  <Text fz={13} fw={600}>
-                    {axis.label} <Text component="span" c="#1e8a57">{val}점</Text>
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-soft)" mt={2}>
-                    {axis.desc}
-                  </Text>
-                </Box>
-              );
-            })}
-          </Stack>
-          <Stack gap={8}>
-            <Text fz={13} fw={700} c="#b07a00">
-              ! 보완점
-            </Text>
-            {weaknesses.map(([key, val]) => {
-              const axis = AXES.find((a) => a.key === key)!;
-              return (
-                <Box key={key} style={{ background: '#fffbea', border: '1px solid #f5e17a', borderRadius: 10, padding: '10px 12px' }}>
-                  <Text fz={13} fw={600}>
-                    {axis.label} <Text component="span" c="#b07a00">{val}점</Text>
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-soft)" mt={2}>
-                    {axis.desc}
-                  </Text>
-                </Box>
-              );
-            })}
-          </Stack>
-        </SimpleGrid>
-
-        <Step1FeedbackCoach result={result} />
-
-        <Box style={{ background: 'var(--rb-primary-tint)', border: '1px solid var(--rb-line)', borderRadius: 10, padding: '12px 14px', marginTop: 10 }}>
-          <Text fz={12} fw={700} c="var(--rb-primary-strong)" mb={4}>
-            다음 훈련 제안
-          </Text>
-          <Text fz={13} style={{ lineHeight: 1.7 }}>
-            {TRAINING_TIPS[worst]}
-          </Text>
-        </Box>
-      </Panel>
-
-      <Button fullWidth radius="md" onClick={() => navigate('/face')}>
-        2단계 하루와 영상 통화하러 가기 →
-      </Button>
-    </Stack>
-  );
-}
-
 /* ── 하루와 목소리 대화 (경량 웹 1단계에서 가져옴) ─────────────────── */
 
 /** 하루와 대화하면서, 사용자가 말하는 구간만 이어 녹음해 둔다. 대화가 끝나면 녹음 파일을 넘긴다. */
-function HaruVoiceTalk({ onFinished }: { onFinished: (rec: { file: File; spokenSec: number } | null) => void }) {
+type TalkRecording = Awaited<ReturnType<ReturnType<typeof useAnswerRecorder>['finish']>>;
+
+function HaruVoiceTalk({ onFinished }: { onFinished: (rec: TalkRecording) => void }) {
   const finishRef = useRef<ReturnType<typeof useAnswerRecorder>['finish'] | null>(null);
   const talk = useHaruTalk(STAGE1_QUESTIONS, (answers) => {
     saveStageAnswers(1, answers);
@@ -268,10 +87,16 @@ export default function VoiceStage() {
   const [noAudio, setNoAudio] = useState(false);
   const [talkKey, setTalkKey] = useState(0);
   const analyze = useAnalyze();
+  const navigate = useNavigate();
   const result = analyze.data ?? null;
+  const turnStartsRef = useRef<number[]>([]);
 
+  // 분석이 끝나면: 대시보드용 완료 메모 + 최종 리포트(3단계 뒤)에 쓸 세부값을 이 기기에 남긴다.
+  // 1단계 결과는 여기서 따로 보여 주지 않고 3단계 뒤 통합 리포트에서 한 번에 보여 준다(경량 웹 흐름).
   useEffect(() => {
-    if (result) localProgress.markStage1Done(overallScore(result.scores));
+    if (!result) return;
+    localProgress.markStage1Done(overallScore(result.scores));
+    saveStage1Detail(result, turnStartsRef.current);
   }, [result]);
 
   const reset = () => {
@@ -282,9 +107,10 @@ export default function VoiceStage() {
     analyze.reset();
   };
 
-  const handleTalkFinished = (rec: { file: File; spokenSec: number } | null) => {
+  const handleTalkFinished = (rec: TalkRecording) => {
     setTalkDone(true);
     if (!rec) return setNoAudio(true);
+    turnStartsRef.current = rec.turnStarts;
     analyze.mutate({ file: rec.file, calibration });
   };
 
@@ -294,13 +120,11 @@ export default function VoiceStage() {
         back="/dashboard"
         eyebrow="1단계 · 하루와 목소리 대화"
         title="보이스 터치"
-        subtitle="하루와 편하게 이야기하면, 대답한 목소리를 5가지 지표로 살펴보고 함께 연습할 부분을 짚어줍니다."
+        subtitle="하루와 편하게 이야기해요. 대답한 목소리는 3단계까지 마친 뒤 최종 리포트에서 함께 살펴봐요."
       />
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
-        {result ? (
-          <ResultView result={result} onReset={reset} />
-        ) : !calibration ? (
+        {!calibration ? (
           <Stack gap={20}>
             <SectionLabel>분석 전 체크리스트</SectionLabel>
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
@@ -344,10 +168,23 @@ export default function VoiceStage() {
                   </Text>
                   {analyze.isPending && (
                     <>
-                      <LoadingBar label="대답한 목소리 살펴보는 중" />
+                      <LoadingBar label="대답한 목소리 정리하는 중" />
                       <Text fz={12} c="var(--rb-ink-faint)">
-                        30초~2분 정도 걸려요
+                        30초~2분 정도 걸려요. 결과는 3단계를 마친 뒤 최종 리포트에서 함께 보여 드려요.
                       </Text>
+                    </>
+                  )}
+                  {result && (
+                    <>
+                      <Text fz={13} c="var(--rb-ink-soft)">
+                        목소리 정리가 끝났어요. 결과는 3단계를 마친 뒤 최종 리포트에서 함께 보여 드려요.
+                      </Text>
+                      <Button radius="md" onClick={() => navigate('/face')}>
+                        2단계 하루와 영상 통화하러 가기 →
+                      </Button>
+                      <button type="button" onClick={reset} style={linkStyle}>
+                        하루와 다시 이야기할래요
+                      </button>
                     </>
                   )}
                   {(noAudio || analyze.isError) && (

@@ -16,6 +16,8 @@ export interface AnalyzeResult {
     filler_count: number;
     sound_segment_count: number;
     filler_ratio_pct: number;
+    /** 점수에 반영된 채움말이 언제 나왔는지 (2026-10 추가 — 그 전 서버는 안 줌) */
+    events?: { text: string; start: number; end: number }[];
   };
   pause_detail: {
     pause_count: number;
@@ -23,6 +25,8 @@ export interface AnalyzeResult {
     anxious_pause_total_sec: number;
     anxious_pause_ratio: number;
     total_duration_sec: number;
+    /** 긴 멈춤이 언제 몇 초였는지 (2026-10 추가 — 그 전 서버는 안 줌) */
+    long_pauses?: { start: number; end: number; duration: number }[];
   };
   cnn_window_count: number;
   demo_mode: boolean;

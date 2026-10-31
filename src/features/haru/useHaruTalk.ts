@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api/client';
+import { transcribeAnswer } from '@/features/interview/api';
+import { startClip, type AnswerClip } from './answerClip';
 import { fallbackLine, type HaruQuestion } from './script';
 import { listen, speak, stopSpeak } from './speech';
 import type { HaruAnswer } from './store';
@@ -18,6 +20,7 @@ export function mergeAnswer(prev: string, next: string): string {
 /**
  * 하루와의 주고받기 한 단계 — 경량 웹 Flow.tsx의 useTalk에서 옮김.
  * 말하기(speak) → 기다림(ready: 사용자가 "말하기"를 누름) → 듣기(listen) → 반응 만드는 중(think) → 다음 말.
+ * 받아쓰기는 브라우저 음성 인식이 먼저, 그게 비었으면 그 대답 녹음을 서버 Whisper로 대신 받아쓴다(3단계와 같은 방식).
  * 반응은 서버(POST /haru/reply)가 만들고, 실패하면 정해 둔 공감 한마디 + 다음 질문으로 넘어간다.
  * 서버가 retry를 주면 같은 질문을 쉬운 말로 한 번만 다시 묻는다.
  * 마지막 질문 뒤 마무리 인사까지 읽으면 phase='done'이 되고 onDone(질문별 대답)을 부른다.
@@ -35,15 +38,27 @@ export function useHaruTalk(questions: HaruQuestion[], onDone: (answers: HaruAns
   const alive = useRef(true);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  // Whisper 대체용: 마이크 스트림은 처음 말할 때 한 번 열어 두고, 대답마다 클립을 새로 녹음한다
+  const micRef = useRef<Promise<MediaStream | null> | null>(null);
+  const clipRef = useRef<Promise<AnswerClip | null> | null>(null);
 
   const stopEar = () => {
     ear.current?.stop();
     ear.current = null;
   };
+  /** 지금 녹음 중인 대답 클립을 끝내고 돌려준다(없으면 null) */
+  const takeClip = async () => {
+    const clip = await clipRef.current;
+    clipRef.current = null;
+    return clip ? clip.stop() : null;
+  };
   const start = () => {
     setLive('');
     setPhase('listen');
     ear.current = listen(setLive);
+    micRef.current ??= navigator.mediaDevices?.getUserMedia({ audio: true }).catch(() => null) ?? Promise.resolve(null);
+    void takeClip(); // 처음부터 다시 말하는 경우 이전 클립은 버린다
+    clipRef.current = micRef.current.then((stream) => (stream ? startClip(stream) : null));
   };
   const ask = (line: string) => {
     const my = ++turn.current;
@@ -71,6 +86,8 @@ export function useHaruTalk(questions: HaruQuestion[], onDone: (answers: HaruAns
       alive.current = false;
       stopEar();
       stopSpeak();
+      void takeClip();
+      void micRef.current?.then((s) => s?.getTracks().forEach((t) => t.stop()));
     };
   }, []);
 
@@ -82,11 +99,15 @@ export function useHaruTalk(questions: HaruQuestion[], onDone: (answers: HaruAns
   /** 대답 끝(skip이면 대답하지 않고 넘어가기) */
   const finish = async (skip = false) => {
     stopEar();
-    const answer = skip ? '' : live.trim();
+    setPhase('think');
+    const clip = await takeClip();
+    let answer = skip ? '' : live.trim();
+    // 브라우저 받아쓰기가 비었으면 이 대답 녹음을 Whisper로 (실패하면 빈 글 — 하루는 "말로 대답했어요"로 받음)
+    if (!skip && !answer && clip) answer = (await transcribeAnswer(clip)).trim();
+    if (!alive.current) return;
     answersRef.current[cur.i] = mergeAnswer(answersRef.current[cur.i], answer);
     const lines = [...log, { ai: false, text: skip ? '(넘어갔어요)' : answer || '(말로 대답했어요)' }];
     setLog(lines);
-    setPhase('think');
     const last = cur.i + 1 >= questions.length;
     const next = last ? null : questions[cur.i + 1].q;
     const r = skip
@@ -124,6 +145,7 @@ export function useHaruTalk(questions: HaruQuestion[], onDone: (answers: HaruAns
   /** 하루 말 다시 듣기 */
   const replay = () => {
     stopEar();
+    void takeClip();
     ask(cur.line);
   };
 

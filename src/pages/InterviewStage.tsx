@@ -12,6 +12,7 @@ import { QuestionView } from '@/features/interview/views/QuestionView';
 import { ResultView } from '@/features/interview/views/ResultView';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import { HaruProfileView } from '@/features/haru/HaruProfileView';
+import { FinalReport } from '@/features/report/FinalReport';
 import { loadHaruTalk, profileSourceItems } from '@/features/haru/store';
 
 /**
@@ -81,7 +82,7 @@ export default function InterviewStage() {
         />
       )}
 
-      <Box style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px 0' }}>
+      <Box style={{ maxWidth: step === 'result' ? 1072 : 960, margin: '0 auto', padding: '20px 16px 0' }}>
         {step === 'about' && (
           <HaruProfileView
             onNext={(lines) => {
@@ -111,14 +112,20 @@ export default function InterviewStage() {
           />
         )}
 
+        {/* 3단계를 마치면 1·2·3단계를 한 장에 모은 최종 리포트(경량 웹 흐름). 3단계 부분은 기존 결과 화면 그대로 */}
         {step === 'result' && result && (
-          <ResultView
-            result={result}
-            tier={tier}
-            onRetry={() => {
-              setResult(null);
-              setStep('intro'); // 면접관 선택부터 다시 (카메라·마이크 연결은 유지됨)
-            }}
+          <FinalReport
+            answeredCount={result.turns.filter((t) => t.answer.trim()).length}
+            interview={
+              <ResultView
+                result={result}
+                tier={tier}
+                onRetry={() => {
+                  setResult(null);
+                  setStep('intro'); // 면접관 선택부터 다시 (카메라·마이크 연결은 유지됨)
+                }}
+              />
+            }
           />
         )}
       </Box>
