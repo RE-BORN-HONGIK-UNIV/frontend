@@ -108,3 +108,4 @@
   .rb-report .rows li { grid-template-columns: 1fr auto; }
   .rb-report .rows li p { grid-column: 1 / -1; grid-row: 2; }
 }
+.rb-report .sample-note { background: var(--rp-warm-bg); color: var(--rp-warm-ink); border-radius: 12px; padding: 12px 16px; font-size: 14px; line-height: 1.6; }

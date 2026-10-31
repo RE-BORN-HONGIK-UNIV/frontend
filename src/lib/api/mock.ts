@@ -8,6 +8,7 @@ import type {
   HaruProfileResponse,
   HaruReplyRequest,
   HaruReplyResponse,
+  InterviewSessionDetail,
   InterviewSessionSummary,
   LatestResponse,
   LiveSaveResponse,
@@ -205,6 +206,11 @@ export const mockApi = {
         care: null,
       },
     };
+  },
+
+  async getInterviewSession(): Promise<InterviewSessionDetail> {
+    await delay();
+    throw new Error('mock: 면접 기록 없음');
   },
 
   async listInterviewSessions(): Promise<{ sessions: InterviewSessionSummary[] }> {

@@ -14,7 +14,7 @@ import {
   type VoiceReport,
 } from './buildReport';
 import { Pentagon } from './Pentagon';
-import { loadStageDetails } from './stageDetails';
+import { loadStageDetails, type StageDetails } from './stageDetails';
 import './report.css';
 
 /** 글 안의 **굵게**를 굵은 글씨로 (경량 웹과 같은 표기) */
@@ -22,14 +22,14 @@ const rich = (t: string) => t.split(/\*\*(.+?)\*\*/).map((s, i) => (i % 2 ? <b k
 const Tag = ({ c }: { c: Chip }) => <span className={`chip ${c.tone}`}>{c.text}</span>;
 
 /** 이 기기에 남긴 1·2단계 세부값 → 없으면 서버의 최신 요약 점수로 대신 (기기를 바꾼 경우) */
-function useStageReports() {
-  const local = useMemo(() => loadStageDetails(), []);
+function useStageReports(given?: StageDetails) {
+  const local = useMemo(() => given ?? loadStageDetails(), [given]);
   const [s1, setS1] = useState<Stage1Latest | null>(null);
   const [s2, setS2] = useState<GazeBlinkLatest | null>(null);
-  const [loading, setLoading] = useState(!local.stage1 || !local.stage2);
+  const [loading, setLoading] = useState(!given && (!local.stage1 || !local.stage2));
 
   useEffect(() => {
-    if (local.stage1 && local.stage2) return;
+    if (given || (local.stage1 && local.stage2)) return;
     let cancelled = false;
     Promise.all([
       local.stage1 ? null : api.latestStage1().then((r) => r.result).catch(() => null),
@@ -43,7 +43,7 @@ function useStageReports() {
     return () => {
       cancelled = true;
     };
-  }, [local]);
+  }, [local, given]);
 
   const voice: VoiceReport | null = local.stage1
     ? buildVoiceReport(local.stage1)
@@ -62,22 +62,39 @@ function useStageReports() {
  *
  * 값은 전부 실제 분석 결과다(경량 웹은 고정 예시였음). 없는 값은 칸을 만들지 않고, 단계 기록이 없으면 하러 가는 링크를 둔다.
  */
-export function FinalReport({ answeredCount, interview }: { answeredCount: number; interview: ReactNode }) {
-  const { voice, face, loading } = useStageReports();
+export function FinalReport({
+  answeredCount,
+  interview,
+  details,
+  date,
+  notice,
+}: {
+  /** 3단계에서 대답한 질문 수 — 3단계 기록이 없으면 null */
+  answeredCount: number | null;
+  interview: ReactNode;
+  /** 1·2단계 값을 직접 넘길 때(예시 화면). 없으면 이 기기 기록 → 서버 요약 순으로 읽는다 */
+  details?: StageDetails;
+  /** 리포트 날짜 (다시 보기: 그 면접을 한 날). 없으면 오늘 */
+  date?: string;
+  /** 제목 위 안내 (예시 화면 표시 등) */
+  notice?: ReactNode;
+}) {
+  const { voice, face, loading } = useStageReports(details);
   const summary = buildSummary(voice, face);
-  const [today] = useState(() => new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }));
+  const [today] = useState(() => (date ? new Date(date) : new Date()).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }));
   const name = auth.name;
 
   return (
     <main className="rb-report">
+      {notice}
       <header>
         <h1>
           {name ? `${name} 님의` : '나의'} <em>연습 리포트</em>
         </h1>
         <div className="meta">
-          <span className="t">3단계 완료</span>
+          <span className="t">{answeredCount === null ? '3단계 전' : '3단계 완료'}</span>
           <span>{today}</span>
-          <span>실전 면접 질문 {answeredCount}개에 대답</span>
+          {answeredCount !== null && <span>실전 면접 질문 {answeredCount}개에 대답</span>}
         </div>
       </header>
 

@@ -10,6 +10,7 @@ import type {
   HaruProfileResponse,
   HaruReplyRequest,
   HaruReplyResponse,
+  InterviewSessionDetail,
   InterviewSessionSummary,
   LatestResponse,
   LiveSavePayload,
@@ -188,6 +189,12 @@ export const api = {
       : request<{ message: string }>(`/interview/sessions/${sessionId}`, { method: 'DELETE' }),
 
   /** 내 면접 목록(최신순) — 대시보드 완료 표시용. */
+  /** 면접 1회 상세 — 최종 리포트 다시 보기에서 3단계 질문·답변을 불러올 때 */
+  getInterviewSession: (sessionId: number) =>
+    USE_MOCK
+      ? mockApi.getInterviewSession()
+      : request<InterviewSessionDetail>(`/interview/sessions/${sessionId}`),
+
   listInterviewSessions: () =>
     USE_MOCK
       ? mockApi.listInterviewSessions()

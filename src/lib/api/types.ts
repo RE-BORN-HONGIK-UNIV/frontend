@@ -128,6 +128,11 @@ export interface InterviewSessionSummary {
   turnCount: number;
 }
 
+/** GET /interview/sessions/<id> — 면접 1회 상세 (질문·답변 텍스트 포함, 본인 것만) */
+export interface InterviewSessionDetail extends InterviewSessionSummary {
+  turns: { id: number; order: number; kind: 'main' | 'follow_up'; question: string; answer: string | null; askedAt: string; answeredAt: string | null }[];
+}
+
 /** 면접 직후 코치 노트 — 서버(coach/)가 만들고 검증한 것. 카드(다음 한 걸음)는 서버 코드가 정한 4종류. */
 export type CoachCardKind = 'again' | 'light_practice' | 'daily_mission' | 'rest';
 
