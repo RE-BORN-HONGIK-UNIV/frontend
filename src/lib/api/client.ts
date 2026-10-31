@@ -7,7 +7,6 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
-  GazeBlinkResult,
   InterviewSessionSummary,
   LatestResponse,
   LiveSavePayload,
@@ -112,14 +111,7 @@ export const api = {
           body: JSON.stringify(result),
         }),
 
-  analyzeGazeBlink: (file: File) => {
-    if (USE_MOCK) return mockApi.analyzeGazeBlink();
-    const fd = new FormData();
-    fd.append('file', file);
-    return request<GazeBlinkResult>('/analyze/gaze-blink', { method: 'POST', body: fd });
-  },
-
-  /** 실시간 촬영 결과 저장 — 업로드 모드와 같은 이력(Stage2Result)에 쌓이고, 저장 직전 기록을 돌려준다. */
+  /** 실시간 촬영 결과 저장 — 2단계 이력(Stage2Result)에 쌓이고, 저장 직전 기록을 돌려준다. */
   saveLiveGazeBlink: (payload: LiveSavePayload) =>
     USE_MOCK
       ? mockApi.saveLiveGazeBlink()

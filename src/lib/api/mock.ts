@@ -5,7 +5,6 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
-  GazeBlinkResult,
   InterviewSessionSummary,
   LatestResponse,
   LiveSaveResponse,
@@ -235,47 +234,6 @@ export const mockApi = {
         expressionScore: 55, expressionStatus: '보통',
         overallScore: 55,
       },
-    };
-  },
-
-  async analyzeGazeBlink(): Promise<GazeBlinkResult> {
-    await delay();
-    return {
-      blink: {
-        rate_per_min: 18,
-        status: '정상',
-        score: 82,
-        events: [{ start: 2.1, end: 2.3 }, { start: 9.0, end: 9.2 }],
-        highlight: null,
-      },
-      gaze: {
-        avg_fixation_sec: 3.6,
-        score: 74,
-        segments: [
-          { type: 'fixation', start: 0, end: 3.5 },
-          { type: 'aversion', start: 3.5, end: 3.8 },
-          { type: 'fixation', start: 3.8, end: 12 },
-        ],
-        highlight: null,
-      },
-      expression: {
-        smile_score: 45,
-        tension_score: 30,
-        score: 68,
-        status: '보통',
-        smile_ratio: 0.12,
-        tension_ratio: 0.08,
-        frame_count: 450,
-        segments: [
-          { type: 'neutral', start: 0, end: 4 },
-          { type: 'smile', start: 4, end: 6 },
-          { type: 'neutral', start: 6, end: 9 },
-          { type: 'tension', start: 9, end: 10.5 },
-          { type: 'neutral', start: 10.5, end: 15 },
-        ],
-        highlight: null,
-      },
-      previous: null,
     };
   },
 };
