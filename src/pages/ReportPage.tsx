@@ -32,7 +32,7 @@ async function loadLatestInterview(): Promise<Latest> {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
-      <PageHeader back="/dashboard" eyebrow="최종 리포트" title="" />
+      <PageHeader eyebrow="최종 리포트" title="" />
       <Box style={{ maxWidth: 1072, margin: '0 auto', padding: '20px 16px 0' }}>{children}</Box>
     </Box>
   );

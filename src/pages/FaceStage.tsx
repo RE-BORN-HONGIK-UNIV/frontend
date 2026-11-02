@@ -54,7 +54,6 @@ export default function FaceStage() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        back="/dashboard"
         eyebrow="2단계 · 하루와 영상 통화"
         title="페이스 터치"
         subtitle="하루와 영상 통화해요. 시선·눈 깜빡임·표정은 3단계까지 마친 뒤 최종 리포트에서 함께 살펴봐요."

@@ -117,7 +117,6 @@ export default function VoiceStage() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        back="/dashboard"
         eyebrow="1단계 · 하루와 목소리 대화"
         title="보이스 터치"
         subtitle="하루와 편하게 이야기해요. 대답한 목소리는 3단계까지 마친 뒤 최종 리포트에서 함께 살펴봐요."

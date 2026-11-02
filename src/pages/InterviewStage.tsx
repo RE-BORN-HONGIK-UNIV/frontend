@@ -71,7 +71,6 @@ export default function InterviewStage() {
       ) : (
         // PageHeader는 title이 필수라 intro가 아닐 땐 빈 문자열로 넘겨서 제목 줄만 비움
         <PageHeader
-          back="/dashboard"
           eyebrow="3단계 · 실전 면접 시뮬레이션"
           title={step === 'intro' || step === 'about' ? '면접 시뮬레이터' : ''}
           subtitle={

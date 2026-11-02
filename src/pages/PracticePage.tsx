@@ -77,7 +77,7 @@ function PracticeScreen({ question, previousAnswer }: { question: string; previo
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
-      <PageHeader back="/dashboard" eyebrow="맞춤 연습" title="한 번 더 해볼까요?" subtitle="힌트를 보면서 천천히, 편하게 말해봐요." />
+      <PageHeader eyebrow="맞춤 연습" title="한 번 더 해볼까요?" subtitle="힌트를 보면서 천천히, 편하게 말해봐요." />
 
       <Stack gap={20} style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px 0' }}>
         {/* 질문 */}
