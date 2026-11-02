@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom';
 import { Box, Button } from '@/components/ui';
-import { PageHeader } from '@/components/PageHeader';
+import { RebornWordmark } from '@/components/RebornWordmark';
+import { SiteNavLinks } from '@/components/SiteNavLinks';
 
 /**
  * 자주 묻는 질문 (/faq) — 로그인 없이 볼 수 있다. 메뉴의 "자주 묻는 질문"이 여기로 온다.
@@ -52,6 +54,30 @@ const FAQ: { q: string[]; a: string[] }[] = [
   },
 ];
 
+/**
+ * 맨 위 메뉴줄 — 메인 화면(Landing.tsx의 Nav)과 같은 모양: 왼쪽 로고, 오른쪽 메뉴, 아래 테두리.
+ * "뒤로" 줄이 붙는 PageHeader 대신 메인과 똑같은 한 줄만 둔다. 메인의 Nav에서 여백·로고 크기를 바꾸면 여기도 같은 숫자로 맞출 것.
+ */
+function FaqNav() {
+  return (
+    <header
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr auto',
+        alignItems: 'center',
+        padding: '20px 40px',
+        borderBottom: '1px solid var(--rb-line)',
+        background: 'var(--rb-surface)',
+      }}
+    >
+      <Link to="/" aria-label="메인 화면으로">
+        <RebornWordmark size={36} animate={false} />
+      </Link>
+      <SiteNavLinks />
+    </header>
+  );
+}
+
 /** 말풍선 하나. who: Q(왼쪽, 흰색) / A(오른쪽, 초록) */
 function Bubble({ who, children }: { who: 'Q' | 'A'; children: string }) {
   const isQ = who === 'Q';
@@ -81,7 +107,7 @@ function Bubble({ who, children }: { who: 'Q' | 'A'; children: string }) {
 export default function FaqPage() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 72 }}>
-      <PageHeader back="/" title="" />
+      <FaqNav />
 
       <Box style={{ maxWidth: 760, margin: '0 auto', padding: '32px 16px 0' }}>
         {/* 큰 "FAQ" 제목 + 오른쪽 "자주 묻는 질문" + 밑줄 */}
