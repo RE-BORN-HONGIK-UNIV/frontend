@@ -11,6 +11,7 @@ import { NotFound } from '@/pages/stubs';
 import InterviewStage from '@/pages/InterviewStage';
 import PracticePage from '@/pages/PracticePage';
 import ReportPage, { SampleReportPage } from '@/pages/ReportPage';
+import FaqPage from '@/pages/FaqPage';
 import CommunityPage from '@/pages/CommunityPage';
 import CommunityPostPage from '@/pages/CommunityPostPage';
 import { LiveFaceSpike } from '@/features/face/live/Spike';
@@ -76,6 +77,8 @@ export const router = createBrowserRouter([
       },
       // 예시 리포트 — 로그인 없이 리포트 모양 확인용(판넬·팀). 값은 예시이고 화면에 그렇게 표시됨
       { path: '/report/sample', element: <SampleReportPage /> },
+      // 자주 묻는 질문 — 로그인 없이 볼 수 있음 (메뉴 "자주 묻는 질문")
+      { path: '/faq', element: <FaqPage /> },
       {
         path: '/community',
         element: (
