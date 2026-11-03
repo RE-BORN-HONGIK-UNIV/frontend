@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Box, Group, SimpleGrid, Stack } from '@/components/ui';
+import { Anchor, Box, Button, Group, SimpleGrid, Stack } from '@/components/ui';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { RebornWordmark } from '@/components/RebornWordmark';
 import { Reveal } from '@/components/Reveal';
@@ -265,7 +265,7 @@ function Hero() {
         <Stack align="flex-start" gap={26} style={{ position: 'relative', minWidth: 0 }}>
         <RebornWordmark size={isMobile ? 60 : 96} />
         <Box fz={isMobile ? 17 : 20} c="var(--rb-ink-soft)" fw={500}>
-          천천히 한 걸음씩, 함께 걸어요.
+          다시, 나의 목소리로.
         </Box>
         <Box style={{ width: 64, height: 3, borderRadius: 2, background: 'var(--rb-primary)' }} />
         <Box
@@ -280,16 +280,20 @@ function Hero() {
           }}
         >
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.95, color: 'var(--rb-ink)' }}>
-            하고 싶은 말이 마음에 머무는 순간을, 판단 없는 공간에서 천천히 연습합니다. 하루와의 대화부터 실전
-            면접까지, 사람 앞에 선 나로{' '}
-            <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>다시 태어나도록</strong> 함께
-            나아갑니다.
+            발화 불안으로 목소리 내기 어려운 순간을, 판단 없는 공간에서 천천히 연습합니다. 음성·표정·대화를 AI가
+            분석해{' '}
+            <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>세 단계</strong>로, 다시
+            사람 앞에 설 수 있도록 함께 나아갑니다.
           </p>
         </Box>
-        {/* 로그인 없이 시작 — 대시보드는 PrivateRoute가 게스트로 바로 열어 준다. 마우스를 올리면 진해짐(index.css .rb-start-cta) */}
-        <Link to="/dashboard" className="rb-start-cta">
-          <span className="rb-start-cta__box">무료로 시작하기</span>
-        </Link>
+        <Group gap={18} mt={4}>
+          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+            무료로 시작하기
+          </Button>
+          <Anchor href="#steps" c="var(--rb-ink-soft)" fz={14} fw={500} underline="never">
+            3단계 과정 보기 →
+          </Anchor>
+        </Group>
         </Stack>
 
         <HeroPreview compact={stacked} />
@@ -555,6 +559,9 @@ function FinalCta() {
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
             로그인 없이 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
           </p>
+          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+            무료로 시작하기
+          </Button>
         </Stack>
       </Reveal>
     </Box>

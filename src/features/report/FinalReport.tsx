@@ -445,12 +445,7 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
         <span className="no">2</span>
         <h2>시선과 표정</h2>
       </div>
-      <p className="sub">{face?.scope ?? '2단계에서 하루와 영상 통화하는 동안 카메라로 살펴봤어요. 영상은 저장하지 않았어요.'}</p>
-      {face?.caution && (
-        <p className="note" role="note">
-          {face.caution}
-        </p>
-      )}
+      <p className="sub">2단계에서 하루와 영상 통화하는 동안 카메라로 살펴봤어요. 영상은 저장하지 않았어요.</p>
       {!face ? (
         <Missing stage="2단계" path="/face" loading={loading} />
       ) : (

@@ -98,16 +98,6 @@ export function flushSegmentBuffer(state: SegmentBufferState): Segment | null {
 }
 
 /** backend _merge_short_segments의 1:1 포팅 — 동등성 검증(배치 vs 스트리밍)용. */
-/**
- * 측정을 잠시 멈출 때(2단계: 하루가 말하는 동안 등) — 지금 구간을 마지막 프레임 시각에서 닫고,
- * 확정 전 후보(pending)도 버린다. 다시 step하면 새 구간부터 시작해서, 멈춘 동안의 시간이 구간에 안 들어간다.
- */
-export function pauseSegmentBuffer(state: SegmentBufferState): Segment | null {
-  const closed = flushSegmentBuffer(state);
-  state.pendingType = null;
-  return closed;
-}
-
 export function mergeShortSegmentsBatch(segments: Segment[], minDuration = 0.3): Segment[] {
   if (segments.length === 0) return segments;
   const merged: Segment[] = [{ ...segments[0] }];

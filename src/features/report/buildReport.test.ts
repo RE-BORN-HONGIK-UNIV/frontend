@@ -198,23 +198,3 @@ describe('아직 값이 없는 칸 (값이 오면 그려짐)', () => {
     expect(f.expr.emo).toEqual({ smile: 12, neutral: 82, tension: 6 });
   });
 });
-
-
-describe('2단계 — 어떻게 쟀는지와 얼굴이 자주 벗어났을 때 안내', () => {
-  it('대답하는 동안만 쟀으면 그렇게 말하고, 얼굴이 잘 보였으면 안내가 없다', () => {
-    const r = buildFaceReport({ at: 'x', result: { ...gaze(), measured_scope: 'answer', face_visible_ratio: 0.95 } });
-    expect(r.scope).toContain('대답하는 동안');
-    expect(r.caution).toBeNull();
-  });
-
-  it('잰 동안 얼굴이 잡힌 비율이 70% 미만이면 결과를 그대로 믿기 어렵다고 알린다', () => {
-    const r = buildFaceReport({ at: 'x', result: { ...gaze(), measured_scope: 'answer', face_visible_ratio: 0.6 } });
-    expect(r.caution).toContain('얼굴이 카메라에서 벗어난');
-  });
-
-  it('예전 기록(비율 없음)은 안내 없이 원래 문구', () => {
-    const r = buildFaceReport({ at: 'x', result: gaze() });
-    expect(r.scope).not.toContain('대답하는 동안');
-    expect(r.caution).toBeNull();
-  });
-});
