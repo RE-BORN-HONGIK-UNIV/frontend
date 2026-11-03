@@ -18,7 +18,7 @@ import { overallScore } from '@/features/voice/feedback';
 import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
 import { saveStage1Detail } from '@/features/report/stageDetails';
-import { CalibrationStep } from '@/features/voice/CalibrationStep';
+import { CalibrationStep, CheckRow } from '@/features/voice/CalibrationStep';
 import { HaruChat } from '@/features/haru/HaruChat';
 import { linkStyle } from '@/features/haru/styles';
 import { STAGE1_QUESTIONS } from '@/features/haru/script';
@@ -32,6 +32,14 @@ function Check() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary-strong)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3z" />
     </svg>
   );
 }
@@ -81,6 +89,8 @@ function HaruVoiceTalk({ onFinished }: { onFinished: (rec: TalkRecording) => voi
 /* ── page ────────────────────────────────────────────────── */
 
 export default function VoiceStage() {
+  // checked: 마이크 확인(캘리브레이션)이 끝난 값, calibration: "1단계 시작하기"를 눌러 대화에 넘긴 값
+  const [checked, setChecked] = useState<CalibrationResult | null>(null);
   const [calibration, setCalibration] = useState<CalibrationResult | null>(null);
   // 하루와 대화를 마쳤는지, 녹음이 비었는지(마이크를 못 썼거나 대답을 다 넘김)
   const [talkDone, setTalkDone] = useState(false);
@@ -100,6 +110,7 @@ export default function VoiceStage() {
   }, [result]);
 
   const reset = () => {
+    setChecked(null);
     setCalibration(null);
     setTalkDone(false);
     setNoAudio(false);
@@ -124,32 +135,73 @@ export default function VoiceStage() {
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {!calibration ? (
-          <Stack gap={20}>
-            <SectionLabel>분석 전 체크리스트</SectionLabel>
-            <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
+          <Stack gap={16}>
+            {/* 위: 가장 중요한 체크리스트 3개 */}
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={10}>
               {GUIDE_ITEMS.map((g) => (
-                <Stack key={g.title} gap={6} style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-line)', borderRadius: 12, padding: '14px 12px' }}>
+                <Stack key={g.title} gap={6} style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-line)', borderRadius: 12, padding: '14px 14px' }}>
                   <Check />
-                  <Text fz={13} fw={600} c="var(--rb-primary-strong)">
+                  <Text fz={14} fw={700} c="var(--rb-primary-strong)">
                     {g.title}
                   </Text>
-                  <Text fz={11} c="var(--rb-ink-soft)" style={{ lineHeight: 1.5 }}>
+                  <Text fz={12} c="var(--rb-ink-soft)" style={{ lineHeight: 1.5 }}>
                     {g.desc}
                   </Text>
                 </Stack>
               ))}
             </SimpleGrid>
 
-            <Alert color="brand" variant="light" p="sm" fz={13}>
-              하루가 대답에 맞춰 반응할 수 있게, 대답은 글로 받아써서(크롬은 Google 음성 인식 사용) AI로 보내요.
-              대답 목소리는 분석에만 쓰고 저장하지 않아요. 하루와 나눈 이야기는 3단계 면접 질문을 만들 때 쓰도록 이
-              기기에만 남겨 두고, 3단계 시작 화면에서 언제든 지울 수 있어요.
-            </Alert>
+            {/* 아래: 경량 웹 1단계 시작 화면 — 마이크 확인(캘리브레이션) + 개인정보 안내 + 시작 버튼 */}
+            <Box
+              style={{
+                background: 'var(--rb-surface)',
+                border: '1px solid var(--rb-line)',
+                borderRadius: 24,
+                padding: 'clamp(22px, 5vw, 40px)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.05)',
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontFamily: 'var(--rb-font-display)',
+                  fontSize: 'clamp(24px, 4.5vw, 34px)',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--rb-ink)',
+                }}
+              >
+                시작하기 전에 <span style={{ color: 'var(--rb-primary)' }}>마이크</span>만 확인할게요
+              </h2>
+              <Text fz={15} c="var(--rb-ink-soft)" mt={10}>
+                브라우저가 마이크를 써도 되는지 물어보면 &quot;허용&quot;을 눌러 주세요. 크롬·엣지에서 가장 잘 돼요.
+              </Text>
 
-            <SectionLabel>마이크 캘리브레이션</SectionLabel>
-            <Panel>
-              <CalibrationStep onComplete={setCalibration} />
-            </Panel>
+              <Stack gap={12} mt={24}>
+                <CalibrationStep onComplete={setChecked} />
+                <CheckRow icon={<ShieldIcon />} title="녹음은 분석이 끝나면 바로 지워요">
+                  <Text fz={13} c="var(--rb-ink-soft)" mt={4} style={{ lineHeight: 1.6 }}>
+                    하루가 대답에 맞춰 반응할 수 있게 대답은 글로 받아써서(크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈
+                    이야기는 3단계 면접 질문을 만들 때 쓰도록 이 기기에만 남고, 3단계 시작 화면에서 지울 수 있어요. 카메라는
+                    2단계에서 따로 물어볼게요.
+                  </Text>
+                </CheckRow>
+              </Stack>
+
+              <Box mt={24} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <Text fz={13} c="var(--rb-ink-soft)">
+                  하루의 질문 {STAGE1_QUESTIONS.length}개 · 5분쯤 걸려요
+                </Text>
+                <Button radius="md" size="lg" disabled={!checked} onClick={() => checked && setCalibration(checked)}>
+                  1단계 시작하기
+                </Button>
+              </Box>
+              {!checked && (
+                <Text fz={12} c="var(--rb-ink-faint)" mt={8} ta="right">
+                  마이크 확인을 마치면 시작할 수 있어요.
+                </Text>
+              )}
+            </Box>
           </Stack>
         ) : (
           <Stack gap={20}>
