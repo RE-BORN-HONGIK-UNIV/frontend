@@ -77,6 +77,7 @@ export function CommunityShell({
               <RebornWordmark size={36} animate={false} />
             </Link>
           </Group>
+          <Group gap={32}>
           <SiteNavLinks active="community" />
           <Group gap={14}>
             <Text fz={14} c="var(--rb-ink-soft)">
@@ -95,6 +96,7 @@ export function CommunityShell({
             </Anchor>
           </Group>
         </Group>
+      </Group>
       </Box>
 
       <Box style={{ padding: '28px 28px 0' }}>

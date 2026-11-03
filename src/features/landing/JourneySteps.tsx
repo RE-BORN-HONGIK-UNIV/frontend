@@ -13,7 +13,7 @@ import { Pentagon } from '@/features/report/Pentagon';
 const STEPS: { title: string; desc: string; mock: () => ReactNode; label: string }[] = [
   {
     title: '목소리로 가볍게 이야기해요',
-    desc: '이력서나 자료는 필요 없어요. 이름, 요즘 관심사처럼 편한 이야기부터 말로 나눠요. 하루의 말은 채팅처럼 글로도 보여요.',
+    desc: '이름, 요즘 관심사처럼 편한 이야기부터 하루와 대화해요. 하루의 말은 채팅처럼 글로도 보여요.',
     mock: () => <ChatMock />,
     label: '하루와 채팅처럼 목소리로 대화하는 화면 예시',
   },

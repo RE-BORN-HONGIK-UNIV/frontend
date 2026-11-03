@@ -156,7 +156,7 @@ export default function Dashboard() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        eyebrow={<Badge variant="light" color="brand">AI 기반 디지털 재활 솔루션</Badge>}
+        eyebrow={<Badge variant="light" color="brand">내 속도로 하는 AI 면접 연습</Badge>}
         title={`안녕하세요, ${name} 님 🌱`}
         subtitle="오늘도 당신의 속도로, 천천히 나아가요"
         rightExtra={

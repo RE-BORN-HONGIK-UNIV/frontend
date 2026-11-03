@@ -8,6 +8,7 @@ import { SectionBadge } from '@/components/SectionBadge';
 import { SiteNavLinks } from '@/components/SiteNavLinks';
 import { HaruAvatar, TileTag } from '@/features/haru/HaruAvatar';
 import { Pentagon } from '@/features/report/Pentagon';
+import { JourneySteps} from '@/features/landing/JourneySteps';
 
 const MAXW = 1120;
 
@@ -45,24 +46,6 @@ function StepIcon({ kind }: { kind: 'voice' | 'gaze' | 'chat' }) {
   );
 }
 
-function WhyIcon({ kind }: { kind: 'pace' | 'heart' | 'chart' }) {
-  const stroke = kind === 'heart' ? 'var(--rb-primary-deep)' : 'var(--rb-primary-strong)';
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {kind === 'pace' && (
-        <>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" />
-        </>
-      )}
-      {kind === 'heart' && (
-        <path d="M12 20s-7-4.4-9.3-8.5C1 8 3 4.5 6.5 4.5c2 0 3.5 1.2 4.5 2.5 1-1.3 2.5-2.5 4.5-2.5C19 4.5 21 8 19.3 11.5 17 15.6 12 20 12 20z" />
-      )}
-      {kind === 'chart' && <polygon points="12,3 21,9.8 17.5,20.5 6.5,20.5 3,9.8" />}
-    </svg>
-  );
-}
-
 function IconTile({ children, deep = false }: { children: ReactNode; deep?: boolean }) {
   return (
     <Box
@@ -89,9 +72,9 @@ function Nav() {
       component="header"
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr auto 1fr',
+        gridTemplateColumns: '1fr auto',
         alignItems: 'center',
-        padding: '20px 40px',
+        padding: '20px 30px',
         borderBottom: '1px solid var(--rb-line)',
         background: 'var(--rb-surface)',
         position: 'relative',
@@ -104,7 +87,6 @@ function Nav() {
        * 링크 그룹이 오른쪽 끝으로 쏠려버렸음. */}
       <RebornWordmark size={36} animate={false} />
       <SiteNavLinks />
-      <Box />
     </Box>
   );
 }
@@ -190,9 +172,9 @@ function HeroPreview({ compact }: { compact: boolean }) {
                 ))}
               </svg>
             </span>
-            <div style={{ lineHeight: 1.4 }}>
+            <div style={{ lineHeight: 1.5 }}>
               <b style={{ display: 'block', color: 'var(--rb-ink)' }}>내 대답</b>
-              <span style={{ color: 'var(--rb-ink-faint)' }}>말로 대답해요</span>
+              <span style={{ color: '#767b74' }}>말로 대답해요</span>
             </div>
           </div>
           <div aria-hidden style={{ ...float, right: -40, top: 28, width: 220 }}>
@@ -218,7 +200,7 @@ function Hero() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '120px 24px 92px',
+        padding: '120px 30px 92px',
         minHeight: 720,
       }}
     >
@@ -255,7 +237,10 @@ function Hero() {
         style={{
           position: 'relative',
           width: '100%',
-          maxWidth: MAXW,
+          maxWidth: 'none',
+          paddingLeft: 64,
+          paddingRight: 64,
+          boxSizing: 'border-box',
           display: 'grid',
           gridTemplateColumns: stacked ? '1fr' : '1fr 1.1fr',
           gap: stacked ? 56 : 40,
@@ -265,76 +250,37 @@ function Hero() {
         <Stack align="flex-start" gap={26} style={{ position: 'relative', minWidth: 0 }}>
         <RebornWordmark size={isMobile ? 60 : 96} />
         <Box fz={isMobile ? 17 : 20} c="var(--rb-ink-soft)" fw={500}>
-          다시, 나의 목소리로.
+          천천히 한 걸음씩, 함께 걸어요.
         </Box>
-        <Box style={{ width: 64, height: 3, borderRadius: 2, background: 'var(--rb-primary)' }} />
+        <Box style={{ width: 100, height: 3, borderRadius: 2, background: 'var(--rb-primary)' }} />
         <Box
           style={{
             background: 'rgba(255,255,255,0.72)',
             backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(100px)',
             border: '1px solid var(--rb-line)',
-            borderRadius: 24,
-            padding: '24px 30px',
+            borderRadius: 19,
+            padding: '25px 30px',
             maxWidth: 620,
           }}
         >
-          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.95, color: 'var(--rb-ink)' }}>
-            발화 불안으로 목소리 내기 어려운 순간을, 판단 없는 공간에서 천천히 연습합니다. 음성·표정·대화를 AI가
-            분석해{' '}
-            <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>세 단계</strong>로, 다시
-            사람 앞에 설 수 있도록 함께 나아갑니다.
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5, color: 'var(--rb-ink)' }}>
+            하고 싶은 말이 마음에 머무는 순간을, 판단 없는 공간에서 천천히 연습합니다. 하루와의 대화부터 실전 면접까지, 사람 앞에 선 나로{' '}
+            <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>다시 태어나도록</strong> 함께 나아갑니다.
           </p>
         </Box>
-        <Group gap={18} mt={4}>
-          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
-            무료로 시작하기
-          </Button>
-          <Anchor href="#steps" c="var(--rb-ink-soft)" fz={14} fw={500} underline="never">
-            3단계 과정 보기 →
-          </Anchor>
+        <Group gap={10} mt={2}>
+          <Link to="/dashboard" className="rb-start-cta">
+  <span className="rb-start-cta__box">무료로 시작하기</span>
+</Link>
         </Group>
         </Stack>
 
         <HeroPreview compact={stacked} />
       </div>
-
-      <Box mt={60} style={{ position: 'relative' }}>
-        <svg width="26" height="40" viewBox="0 0 26 40" fill="none" aria-hidden="true">
-          <rect x="1.5" y="1.5" width="23" height="37" rx="11.5" stroke="var(--rb-ink-faint)" strokeWidth="1.5" />
-          <circle cx="13" cy="11" r="3" fill="var(--rb-ink-faint)" />
-        </svg>
-      </Box>
     </Box>
   );
 }
-
-const STEPS = [
-  {
-    tag: 'STEP 1',
-    deep: false,
-    icon: 'voice' as const,
-    title: '음성 정밀 진단',
-    desc: '30초 발화를 올리면 떨림·유창성·침묵 조절 등 5가지 지표를 오각형 그래프로 진단합니다.',
-    soon: false,
-  },
-  {
-    tag: 'STEP 2',
-    deep: true,
-    icon: 'gaze' as const,
-    title: '표정·시선 분석',
-    desc: '표정과 시선 처리를 분석해 비언어적 소통 습관을 함께 살펴봅니다.',
-    soon: true,
-  },
-  {
-    tag: 'STEP 3',
-    deep: false,
-    icon: 'chat' as const,
-    title: '실전 모의 면접',
-    desc: '앞 단계 결과에 맞춘 난이도로 AI와 모의 면접을 진행하고 대화 흐름을 되짚어봅니다.',
-    soon: true,
-  },
-];
 
 function Steps() {
   return (
@@ -343,147 +289,40 @@ function Steps() {
       id="steps"
       style={{
         padding: '96px 24px',
-        background: 'var(--rb-surface-tint)',
+        background: '#f5f5f4',
         borderTop: '1px solid var(--rb-line)',
         borderBottom: '1px solid var(--rb-line)',
       }}
     >
-      <Stack style={panel} gap={32}>
+      <Stack style={panel} gap={20}>
         <Reveal>
           <Stack align="center" gap={16} ta="center">
-            <SectionBadge>여정</SectionBadge>
-            <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              세 단계로, 나만의 속도로
+            <SectionBadge>STEP</SectionBadge>
+            <h2 style={{ margin: 0, fontSize: 39, fontWeight: 700, letterSpacing: '-0.02em' }}>
+              세 단계, 나만의 속도로
             </h2>
-            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)', maxWidth: 520 }}>
-              한 번에 다 하지 않아도 괜찮아요. 준비되는 만큼, 다음 단계로.
+            <p style={{ margin: 0, fontSize: 17, lineHeight: 1.8, color: 'var(--rb-ink-soft)', maxWidth: 520 }}>
+              하루에 다 하지 않아도 괜찮아요. 준비되는 만큼, 다음 단계로.
             </p>
           </Stack>
         </Reveal>
 
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={20}>
-          {STEPS.map((s, i) => (
-            <Reveal key={s.tag} delay={i * 90}>
-              <Stack gap={14} style={card} className="rb-card-hover">
-                <Group justify="space-between">
-                  <span
-                    style={{
-                      padding: '4px 11px',
-                      borderRadius: 999,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      background: s.deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
-                      color: s.deep ? 'var(--rb-primary-deep)' : 'var(--rb-primary-strong)',
-                    }}
-                  >
-                    {s.tag}
-                  </span>
-                  {s.soon && (
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        background: 'var(--rb-bg)',
-                        color: 'var(--rb-ink-faint)',
-                        border: '1px solid var(--rb-line)',
-                      }}
-                    >
-                      준비 중
-                    </span>
-                  )}
-                </Group>
-                <IconTile deep={s.deep}>
-                  <StepIcon kind={s.icon} />
-                </IconTile>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{s.title}</h3>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-                  {s.desc}
-                </p>
-              </Stack>
-            </Reveal>
-          ))}
-        </SimpleGrid>
+        <JourneySteps />
       </Stack>
     </Box>
   );
 }
-
-const WHY = [
-  {
-    icon: 'pace' as const,
-    deep: false,
-    title: '나의 속도로',
-    desc: '정답도 제한 시간도 없어요. 오늘은 한 문장만 말해도 충분합니다.',
-  },
-  {
-    icon: 'heart' as const,
-    deep: true,
-    title: '판단하지 않는 피드백',
-    desc: '잘잘못을 따지는 대신, 다음에 함께 연습할 것만 부드럽게 짚어줍니다.',
-  },
-  {
-    icon: 'chart' as const,
-    deep: false,
-    title: '작은 변화를 기록',
-    desc: '매번의 발화가 오각형 그래프로 쌓여, 나아지는 모습이 눈에 보입니다.',
-  },
-];
-
-function Why() {
-  return (
-    <Box component="section" id="why" style={{ padding: '96px 24px', background: 'var(--rb-bg)' }}>
-      <Stack style={panel} gap={36}>
-        <Reveal>
-          <Stack align="center" gap={16} ta="center">
-            <SectionBadge>왜 Re-born</SectionBadge>
-            <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              혼자여도, 괜찮아요
-            </h2>
-          </Stack>
-        </Reveal>
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={28}>
-          {WHY.map((w, i) => (
-            <Reveal key={w.title} delay={i * 90}>
-              <Stack align="center" ta="center" gap={12}>
-                <Box
-                  style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 14,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: w.deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
-                  }}
-                >
-                  <WhyIcon kind={w.icon} />
-                </Box>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{w.title}</h3>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-                  {w.desc}
-                </p>
-              </Stack>
-            </Reveal>
-          ))}
-        </SimpleGrid>
-      </Stack>
-    </Box>
-  );
-}
-
+  
 // 이 플랫폼이 누구를 위한 곳인지 먼저 알려주는 섹션. 진단·평가로 들리는 표현("~증상", "~장애")은
 // 피하고, 사용자가 "나도 해당되네" 하고 편하게 느낄 수 있는 상황 묘사만 쓴다.
 // 강조(bold)할 부분은 [본문, 강조] 쌍으로 나눠서 적는다.
 const AUDIENCE: [string, string, string][] = [
-  ['사람 앞에서 말하려면 ', '가슴이 먼저 뛰는', ' 사람'],
+  ['사람 앞에 서면 ', '하고 싶은 말이 맴도는', ' 사람'],
   ['말하다가 ', '머릿속이 하얘져서', ' 멈춘 적이 있는 사람'],
   ['밖에 나가기가 부담돼서 ', '집에서 혼자', ' 시작해보고 싶은 사람'],
-  ['내 목소리와 표정이 어떤지 ', '부담 없이', ' 살펴보고 싶은 사람'],
-  ['면접이나 발표 전에 ', '실전처럼 연습', '해보고 싶은 사람'],
-  ['한 번에 다 하기엔 막막하지만 ', '내 속도로 한 걸음씩', ' 가고 싶은 사람'],
+  ['내 목소리와 표정이 어떤지 ', '부담 없이', ' 확인해보고 싶은 사람'],
+  ['면접이나 발표 전에 ', '실전처럼 연습', '이 필요한 사람'],
+  ['한 번에 다 해야 한다는 압박 대신 ', '한 단계씩', ' 연습하고 싶은 사람'],
 ];
 
 function Audience() {
@@ -491,18 +330,18 @@ function Audience() {
     <Box component="section" style={{ padding: '96px 24px', background: 'var(--rb-bg)' }}>
       <Stack style={{ maxWidth: MAXW, margin: '0 auto' }} gap={40}>
         <Reveal>
-          <Stack align="center" gap={16} ta="center">
-            <SectionBadge>이런 분께</SectionBadge>
+          <Stack align="center" gap={10} ta="center">
+            <SectionBadge>WHO</SectionBadge>
             <h2 style={{ margin: 0, fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em', wordBreak: 'keep-all' }}>
-              이런 분들이라면 잘 찾아오셨어요
+              이런 분들을 환영해요
             </h2>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)', maxWidth: 520, wordBreak: 'keep-all' }}>
-              말하는 게 어렵고 사람 앞이 부담스러웠던 분, 집 밖으로 나서기 막막했던 분을 환영해요.
+              사람을 대면해 말하는 것이 부담스러웠던 분, 집 밖으로 나서기 막막했던 분을 환영해요.
             </p>
           </Stack>
         </Reveal>
 
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={20}>
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={30}>
           {AUDIENCE.map(([before, em, after], i) => (
             <Reveal key={em} delay={i * 70}>
               <Box
@@ -511,16 +350,16 @@ function Audience() {
                   ...card,
                   height: '100%',
                   boxSizing: 'border-box',
-                  padding: '26px 28px',
-                  fontSize: 15,
-                  lineHeight: 1.85,
+                  padding: '28px 30px',
+                  fontSize: 17,
+                  lineHeight: 1.0,
                   color: 'var(--rb-ink)',
                   wordBreak: 'keep-all',
                   border: '1px solid var(--rb-line)',
                 }}
               >
                 {before}
-                <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>{em}</strong>
+                <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 800 }}>{em}</strong>
                 {after}
               </Box>
             </Reveal>
@@ -539,7 +378,6 @@ function FinalCta() {
       style={{
         padding: '96px 24px',
         textAlign: 'center',
-        borderTop: '1px solid var(--rb-line)',
         background: 'var(--rb-surface-tint)',
       }}
     >
@@ -554,14 +392,11 @@ function FinalCta() {
               letterSpacing: '-0.01em',
             }}
           >
-            지금, 첫 걸음을 떼보세요
-          </h2>
-          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-            로그인 없이 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
-          </p>
-          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
-            무료로 시작하기
-          </Button>
+            지금, 첫 걸음을 시작해보세요.
+            </h2>
+            <p style={{margin:0, fontSize: 15, lineHeight:1.8, color:'var(--rb-ink-soft)'}}>
+              로그인 없이 바로 1단계 음성 진단을 시작할 수 있어요. 단계를 나눠서 훈련할 수 있어요.
+            </p>
         </Stack>
       </Reveal>
     </Box>
@@ -668,7 +503,6 @@ export default function Landing() {
       <Hero />
       <Audience />
       <Steps />
-      <Why />
       <FinalCta />
       <Footer />
     </Box>

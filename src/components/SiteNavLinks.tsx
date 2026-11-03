@@ -14,16 +14,6 @@ export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
     <Group gap={32} visibleFrom="sm">
       <Anchor
         component={Link}
-        to="/dashboard"
-        fz={14}
-        underline="never"
-        c={active === 'training' ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}
-        fw={active === 'training' ? 700 : 400}
-      >
-        훈련
-      </Anchor>
-      <Anchor
-        component={Link}
         to="/community"
         fz={14}
         underline="never"
@@ -34,8 +24,8 @@ export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
       </Anchor>
       {/* 절대경로 + 해시로 둬서 다른 페이지에서 눌러도 랜딩의 #contact로 이동 —
        * 기존엔 "#contact"만 있어서 랜딩이 아닌 페이지에선 아무 데도 안 움직였음 */}
-      <Anchor href="/#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
-        문의
+      <Anchor component={Link} to ="/faq" c="var(--rb-ink-soft)" fz={14} underline="never">
+        자주 묻는 질문
       </Anchor>
     </Group>
   );

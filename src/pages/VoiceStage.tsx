@@ -115,7 +115,7 @@ export default function VoiceStage() {
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={1} />
 
-      <Box style={{ maxWidth: calibration && !talkDone ? TALK_MAXW : MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
+      <Box style={{ maxWidth: calibration && !talkDone ? TALK_MAXW : MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
         {!calibration ? (
           <Stack gap={16}>
             {/* 위: 가장 중요한 체크리스트 3개 */}

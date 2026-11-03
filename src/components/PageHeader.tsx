@@ -35,6 +35,7 @@ export function PageHeader({
         <Link to="/">
           <RebornWordmark size={36} animate={false} />
         </Link>
+        <Group gap={32}>
         <SiteNavLinks active="training" />
         {authed && (
           <Group gap={14}>
@@ -54,6 +55,7 @@ export function PageHeader({
             </Anchor>
           </Group>
         )}
+      </Group>
       </Group>
 
       <Box style={{ padding: '4px 40px 26px' }}>
