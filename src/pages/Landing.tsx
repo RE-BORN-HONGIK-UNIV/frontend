@@ -287,13 +287,9 @@ function Hero() {
           </p>
         </Box>
         <Group gap={18} mt={4}>
-          <Button component={Link} to="/signup" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
             무료로 시작하기
           </Button>
-          {/* 로그인 없이 시작 — 대시보드는 PrivateRoute가 게스트로 바로 열어 준다 */}
-          <Anchor component={Link} to="/dashboard" c="var(--rb-primary-strong)" fz={14} fw={600} underline="never">
-            로그인 없이 시작하기
-          </Anchor>
           <Anchor href="#steps" c="var(--rb-ink-soft)" fz={14} fw={500} underline="never">
             3단계 과정 보기 →
           </Anchor>
@@ -561,9 +557,9 @@ function FinalCta() {
             지금, 첫 걸음을 떼보세요
           </h2>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-            회원가입하면 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
+            로그인 없이 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
           </p>
-          <Button component={Link} to="/signup" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
             무료로 시작하기
           </Button>
         </Stack>

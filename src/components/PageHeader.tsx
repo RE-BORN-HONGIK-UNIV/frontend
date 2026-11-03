@@ -38,7 +38,7 @@ export function PageHeader({
         {authed && (
           <Group gap={14}>
             <Text fz={14} c="var(--rb-ink-soft)">
-              {auth.isGuest ? '게스트로 이용 중' : `${auth.name || '회원'}님`}
+              {auth.name || '회원'}님
             </Text>
             {/* 게스트는 다시 로그인할 방법이 없어 로그아웃하면 기록을 잃는다 — 로그아웃 대신 로그인으로 */}
             <Anchor

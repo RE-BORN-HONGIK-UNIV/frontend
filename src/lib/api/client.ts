@@ -81,6 +81,12 @@ export const api = {
   startGuest: () =>
     USE_MOCK ? mockApi.startGuest() : request<LoginResponse>('/api/guest', { method: 'POST' }),
 
+  /** 웹에서 불러 줄 이름 — 계정(User.nickname)에 저장돼 훈련 끝까지·다른 기기에서도 유지된다 */
+  setNickname: (nickname: string) =>
+    USE_MOCK
+      ? mockApi.setNickname(nickname)
+      : request<{ name: string }>('/api/me/nickname', { method: 'PUT', body: JSON.stringify({ nickname }) }),
+
   signup: (payload: SignupPayload) =>
     USE_MOCK
       ? mockApi.signup()

@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Box, Loader } from '@/components/ui';
 import { auth } from '@/lib/auth';
 import { startGuestOnce } from '@/features/auth/mutations';
+import { NicknameGate } from '@/features/auth/NicknameGate';
 
 /**
  * 로그인한 사람(또는 게스트)만 들어가는 화면. 로그인하지 않았으면 로그인 화면으로 보내지 않고 게스트로 바로
@@ -25,7 +26,7 @@ export function PrivateRoute({ children }: { children: ReactNode }) {
     };
   }, [state]);
 
-  if (state === 'ready') return <>{children}</>;
+  if (state === 'ready') return <NicknameGate>{children}</NicknameGate>;
   if (state === 'failed') return <Navigate to="/login" replace state={{ from: location.pathname, guestFailed: true }} />;
   return (
     <Box style={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}>

@@ -2,6 +2,7 @@ const TOKEN_KEY = 'rb.token';
 const NAME_KEY = 'rb.name';
 const EMAIL_KEY = 'rb.email';
 const GUEST_KEY = 'rb.guest';
+const NICK_KEY = 'rb.nick';
 
 function get(k: string) {
   try {
@@ -42,6 +43,15 @@ export const auth = {
   get isGuest() {
     return get(GUEST_KEY) === 'true';
   },
+  /** 게스트가 아직 불러 줄 이름(닉네임)을 정하지 않음 → NicknameGate가 이름 입력 창을 띄운다 */
+  get needsNickname() {
+    return get(GUEST_KEY) === 'true' && get(NICK_KEY) !== 'true';
+  },
+  /** 서버(PUT /api/me/nickname)에 저장한 뒤 화면에 쓸 이름도 바꾼다 */
+  setNickname(nickname: string) {
+    set(NAME_KEY, nickname);
+    set(NICK_KEY, 'true');
+  },
   signIn(token: string, name: string, email?: string, guest = false) {
     set(TOKEN_KEY, token);
     set(NAME_KEY, name);
@@ -49,11 +59,13 @@ export const auth = {
     else del(EMAIL_KEY);
     if (guest) set(GUEST_KEY, 'true');
     else del(GUEST_KEY);
+    del(NICK_KEY);
   },
   signOut() {
     del(TOKEN_KEY);
     del(NAME_KEY);
     del(EMAIL_KEY);
     del(GUEST_KEY);
+    del(NICK_KEY);
   },
 };
