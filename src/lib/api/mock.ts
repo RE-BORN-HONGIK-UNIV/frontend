@@ -72,6 +72,16 @@ export const mockApi = {
     return { token: 'mock-token', name: '목업 사용자' };
   },
 
+  async startGuest(): Promise<LoginResponse> {
+    await delay();
+    return { token: 'mock-guest-token', name: '게스트', guest: true };
+  },
+
+  async setNickname(nickname: string): Promise<{ name: string }> {
+    await delay();
+    return { name: nickname.trim() };
+  },
+
   async signup(): Promise<{ message: string }> {
     await delay();
     return { message: '회원가입이 완료됐어요. (mock)' };

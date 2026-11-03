@@ -287,7 +287,7 @@ function Hero() {
           </p>
         </Box>
         <Group gap={18} mt={4}>
-          <Button component={Link} to="/signup" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
             무료로 시작하기
           </Button>
           <Anchor href="#steps" c="var(--rb-ink-soft)" fz={14} fw={500} underline="never">
@@ -557,9 +557,9 @@ function FinalCta() {
             지금, 첫 걸음을 떼보세요
           </h2>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: 'var(--rb-ink-soft)' }}>
-            회원가입하면 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
+            로그인 없이 바로 1단계 음성 진단을 시작할 수 있어요. 작게 말해도 괜찮습니다.
           </p>
-          <Button component={Link} to="/signup" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
+          <Button component={Link} to="/dashboard" color="brand" radius="xl" size="md" styles={{ root: { fontWeight: 700 } }}>
             무료로 시작하기
           </Button>
         </Stack>

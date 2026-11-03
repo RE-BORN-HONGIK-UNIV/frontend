@@ -224,6 +224,8 @@ export interface LatestResponse<T> {
 export interface LoginResponse {
   token: string;
   name: string;
+  /** POST /api/guest(로그인 없이 시작)일 때만 true */
+  guest?: boolean;
 }
 
 export interface SignupPayload {

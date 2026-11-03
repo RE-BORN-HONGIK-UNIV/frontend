@@ -51,6 +51,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   const data: unknown = await res.json().catch(() => ({}));
+  if (res.status === 401 && auth.token && path !== '/api/login') {
+    // 토큰이 만료됐거나(로그인 7일·게스트 30일) 서버가 모르는 토큰 — 저장된 토큰만 보고 로그인 상태로
+    // 두면 화면은 로그인된 것처럼 보이는데 저장·조회가 전부 실패한다. 토큰을 지우고 다시 시작하게 한다.
+    // 게스트는 다시 로그인할 방법이 없으니 새로고침(PrivateRoute가 새 게스트로 시작), 회원은 로그인 화면으로.
+    const wasGuest = auth.isGuest;
+    auth.signOut();
+    if (wasGuest) window.location.reload();
+    else window.location.assign('/login?expired=1');
+  }
   if (!res.ok) {
     const message =
       (data as { error?: string; detail?: string }).error ?? res.statusText;
@@ -67,6 +76,16 @@ export const api = {
           method: 'POST',
           body: JSON.stringify({ email, password }),
         }),
+
+  /** 로그인 없이 시작 — 서버가 이름 없는 게스트 계정을 만들어 토큰을 준다(backend POST /api/guest) */
+  startGuest: () =>
+    USE_MOCK ? mockApi.startGuest() : request<LoginResponse>('/api/guest', { method: 'POST' }),
+
+  /** 웹에서 불러 줄 이름 — 계정(User.nickname)에 저장돼 훈련 끝까지·다른 기기에서도 유지된다 */
+  setNickname: (nickname: string) =>
+    USE_MOCK
+      ? mockApi.setNickname(nickname)
+      : request<{ name: string }>('/api/me/nickname', { method: 'PUT', body: JSON.stringify({ nickname }) }),
 
   signup: (payload: SignupPayload) =>
     USE_MOCK
