@@ -732,3 +732,117 @@ a {
     white-space: nowrap;
   }
 }
+
+/* 1단계 하루와 목소리 대화(HaruChat) — 경량 웹 배치: 왼쪽 하루 칸, 오른쪽 대화 칸 + 하단 마이크 바 */
+.rb-haru-talk {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: 24px;
+  height: min(74dvh, 720px);
+  min-height: 480px;
+}
+.rb-haru-talk__haru,
+.rb-haru-talk__chat {
+  background: var(--rb-surface);
+  border: 1px solid var(--rb-line);
+  border-radius: 24px;
+}
+.rb-haru-talk__haru {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 32px 28px;
+  text-align: center;
+}
+.rb-haru-talk__haru > [role='img'] { max-width: 190px; }
+.rb-haru-talk__who { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rb-haru-talk__hint { margin-top: 14px; font-size: 14px; line-height: 1.6; color: var(--rb-ink-soft); max-width: 9em; }
+.rb-haru-talk__chat { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.rb-haru-talk__log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 36px 40px;
+}
+.rb-haru-talk__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 40px;
+  border-top: 1px solid var(--rb-line);
+}
+.rb-haru-talk__aside { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; margin-left: auto; }
+.rb-haru-talk__mic {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: var(--rb-primary-strong);
+  color: var(--rb-surface);
+  box-shadow: 0 0 0 7px var(--rb-primary-tint);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.rb-haru-talk__mic:hover:not(:disabled) { background: var(--rb-primary-deep); }
+.rb-haru-talk__mic:focus-visible { outline: 3px solid var(--rb-primary); outline-offset: 6px; }
+.rb-haru-talk__mic[data-listening] { box-shadow: 0 0 0 7px color-mix(in srgb, var(--rb-primary) 35%, transparent); }
+/* 듣는 중: 버튼 둘레로 물결이 퍼진다 */
+.rb-haru-talk__mic[data-listening]::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  animation: rbMicPulse 1.6s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes rbMicPulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rb-primary) 45%, transparent); }
+  100% { box-shadow: 0 0 0 18px color-mix(in srgb, var(--rb-primary) 0%, transparent); }
+}
+/* 소리 막대 5개 — 가운데가 가장 크고, 차례로 오르내린다 */
+.rb-wave { display: flex; align-items: center; gap: 4px; height: 28px; }
+.rb-wave i {
+  display: block;
+  width: 5px;
+  height: 100%;
+  border-radius: 3px;
+  background: currentColor;
+  transform-origin: center;
+  animation: rbWave 1s ease-in-out infinite;
+}
+.rb-wave i:nth-child(1) { height: 40%; animation-delay: -0.4s; }
+.rb-wave i:nth-child(2) { height: 70%; animation-delay: -0.2s; }
+.rb-wave i:nth-child(3) { height: 100%; animation-delay: 0s; }
+.rb-wave i:nth-child(4) { height: 70%; animation-delay: -0.6s; }
+.rb-wave i:nth-child(5) { height: 40%; animation-delay: -0.8s; }
+@keyframes rbWave {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-wave i, .rb-haru-talk__mic[data-listening]::after { animation: none; }
+}
+.rb-haru-talk__mic:disabled { cursor: not-allowed; opacity: 0.45; }
+@media (max-width: 760px) {
+  /* 좁은 화면: 하루 칸을 위에 가로로 작게, 대화 칸이 아래 */
+  .rb-haru-talk { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: calc(100dvh - 190px); min-height: 440px; gap: 12px; }
+  .rb-haru-talk__haru { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 14px 16px; text-align: left; border-radius: 18px; }
+  .rb-haru-talk__haru > [role='img'] { max-width: 64px; flex: 0 0 64px; }
+  .rb-haru-talk__who { align-items: flex-start; }
+  .rb-haru-talk__who strong { font-size: 17px !important; }
+  .rb-haru-talk__hint { margin-top: 2px; max-width: none; font-size: 12px; }
+  .rb-haru-talk__chat { border-radius: 18px; }
+  .rb-haru-talk__log { padding: 18px 16px; }
+  .rb-haru-talk__bar { padding: 14px 16px; gap: 12px; }
+  .rb-haru-talk__aside { margin-left: 0; width: 100%; justify-content: space-between; }
+}

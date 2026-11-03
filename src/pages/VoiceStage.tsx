@@ -27,20 +27,14 @@ import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
 
 const MAXW = 720;
+/** 하루와 대화하는 동안은 경량 웹처럼 하루 칸 + 대화 칸 두 칸이라 더 넓게 */
+const TALK_MAXW = 1180;
 
 function ShieldIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3z" />
     </svg>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text fz={13} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '0.08em' }}>
-      {children}
-    </Text>
   );
 }
 
@@ -67,14 +61,14 @@ function HaruVoiceTalk({ onFinished }: { onFinished: (rec: TalkRecording) => voi
   finishRef.current = recorder.finish;
 
   return (
-    <Panel>
-      <HaruChat talk={talk} />
+    <Stack gap={12}>
       {recorder.error && (
-        <Alert color="gray" variant="light" mt={12} p="xs" fz={13}>
+        <Alert color="gray" variant="light" p="xs" fz={13}>
           마이크를 쓸 수 없어서 목소리 분석은 못 해요. 대화는 계속할 수 있어요.
         </Alert>
       )}
-    </Panel>
+      <HaruChat talk={talk} />
+    </Stack>
   );
 }
 
@@ -121,7 +115,7 @@ export default function VoiceStage() {
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={1} />
 
-      <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
+      <Box style={{ maxWidth: calibration && !talkDone ? TALK_MAXW : MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {!calibration ? (
           <Stack gap={16}>
             {/* 위: 가장 중요한 체크리스트 3개 */}
@@ -181,7 +175,6 @@ export default function VoiceStage() {
           </Stack>
         ) : (
           <Stack gap={20}>
-            <SectionLabel>하루와 이야기하기</SectionLabel>
             {!talkDone ? (
               <HaruVoiceTalk key={talkKey} onFinished={handleTalkFinished} />
             ) : (
