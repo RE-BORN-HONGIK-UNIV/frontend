@@ -119,6 +119,14 @@ export default function VoiceStage() {
         {!calibration ? (
           <Stack gap={16}>
             {/* 위: 가장 중요한 체크리스트 3개 */}
+                        <div>
+              <Text fz={15} fw={700} c="var(--rb-ink)">
+                시작 전에 확인해요
+              </Text>
+              <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
+                준비된 것을 눌러 체크해 보세요. 다 못 해도 시작할 수 있어요.
+              </Text>
+            </div>
             <GuideChecklist items={GUIDE_ITEMS} />
 
             {/* 아래: 경량 웹 1단계 시작 화면 — 마이크 확인(캘리브레이션) + 개인정보 안내 + 시작 버튼 */}

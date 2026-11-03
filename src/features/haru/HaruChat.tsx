@@ -7,23 +7,29 @@ type Talk = ReturnType<typeof useHaruTalk>;
 
 const STATUS = { speak: '말하고 있어요', ready: '기다리고 있어요', listen: '듣고 있어요', think: '생각하고 있어요', done: '대화를 마쳤어요' };
 
-function Bubble({ ai, label, children, live }: { ai: boolean; label: string; children: ReactNode; live?: boolean }) {
-  return (
+/**
+ * 말풍선 한 줄 — 카카오톡처럼: 하루 메시지는 왼쪽에 프로필 사진·이름, 내 대답은 오른쪽.
+ * first: 같은 사람이 연달아 보낸 메시지 중 첫 번째 — 사진·이름·말풍선 꼬리는 첫 번째에만 붙는다.
+ * 시간은 표시하지 않는다.
+ */
+function Bubble({ ai, first, children, live }: { ai: boolean; first: boolean; children: ReactNode; live?: boolean }) {
+  const bubble = (
     <div
-      style={{
-        alignSelf: ai ? 'flex-start' : 'flex-end',
-        maxWidth: '78%',
-        background: ai ? 'var(--rb-surface-tint)' : 'var(--rb-primary-tint)',
-        border: live ? '1px dashed var(--rb-primary-light)' : '1px solid transparent',
-        borderRadius: 16,
-        padding: '14px 20px',
-        fontSize: 16,
-        lineHeight: 1.65,
-        color: 'var(--rb-ink)',
-      }}
+      className={`rb-chat__bubble${ai ? '' : ' rb-chat__bubble--me'}${first ? ' rb-chat__bubble--tail' : ''}`}
+      data-live={live || undefined}
     >
-      <small style={{ display: 'block', fontSize: 12, color: 'var(--rb-ink-faint)', marginBottom: 4 }}>{label}</small>
       {children}
+    </div>
+  );
+  if (!ai) return <div className={`rb-chat__row rb-chat__row--me${first ? ' rb-chat__row--first' : ''}`}>{bubble}</div>;
+  return (
+    <div className={`rb-chat__row${first ? ' rb-chat__row--first' : ''}`}>
+      {/* 연달아 보낸 메시지는 사진 자리만 비워 두고 말풍선을 나란히 */}
+      {first ? <span className="rb-chat__avatar" role="img" aria-label="하루" /> : <span className="rb-chat__avatar-gap" aria-hidden />}
+      <div className="rb-chat__col">
+        {first && <span className="rb-chat__name">하루</span>}
+        {bubble}
+      </div>
     </div>
   );
 }
@@ -62,6 +68,8 @@ export function HaruChat({ talk: t }: { talk: Talk }) {
   }, [t.log, t.phase, t.live]);
 
   const listening = t.phase === 'listen';
+  // 마지막 줄을 누가 보냈는지 — 말하는 중·생각하는 중 말풍선도 같은 사람이 이어 보내면 사진·꼬리를 다시 붙이지 않는다
+  const lastIsMine = t.log.length > 0 && !t.log[t.log.length - 1].ai;
   const canStart = t.phase === 'ready';
   const bar: Record<Exclude<typeof t.phase, 'done'>, { title: string; sub: string }> = {
     ready: { title: '버튼을 누르고 말해요', sub: '천천히 말해도 괜찮아요' },
@@ -88,17 +96,17 @@ export function HaruChat({ talk: t }: { talk: Talk }) {
       <section className="rb-haru-talk__chat" aria-label="하루와 나눈 대화">
         <div ref={box} className="rb-haru-talk__log">
           {t.log.map((l, k) => (
-            <Bubble key={k} ai={l.ai} label={l.ai ? '하루' : '내 대답'}>
+            <Bubble key={k} ai={l.ai} first={k === 0 || t.log[k - 1].ai !== l.ai}>
               {l.text}
             </Bubble>
           ))}
           {listening && (
-            <Bubble ai={false} label="말하는 중" live>
-              {t.live || '…'}
+            <Bubble ai={false} first={!lastIsMine} live>
+              {t.live || '말하는 중…'}
             </Bubble>
           )}
           {t.phase === 'think' && (
-            <Bubble ai label="하루">
+            <Bubble ai first={lastIsMine}>
               …
             </Bubble>
           )}
