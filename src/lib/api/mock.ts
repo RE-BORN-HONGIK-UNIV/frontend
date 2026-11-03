@@ -5,7 +5,10 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
-  GazeBlinkResult,
+  HaruProfileResponse,
+  HaruReplyRequest,
+  HaruReplyResponse,
+  InterviewSessionDetail,
   InterviewSessionSummary,
   LatestResponse,
   LiveSaveResponse,
@@ -77,9 +80,11 @@ export const mockApi = {
   async analyze(): Promise<AnalyzeResult> {
     await delay();
     return {
-      scores: { stability: 78, fluency: 72, pause_ctrl: 65, continuity: 80, calm: 70 },
-      model_scores: { prolongation: 81, energy: 77, tremor: 67 },
-      probabilities: { tremor: 0.18, prolongation: 0.22, energy: 0.15 },
+      scores: { stability: 78, fluency: 72, pause_ctrl: 65, continuity: 80, calm: null },
+      model_scores: { prolongation: 80, energy: null, tremor: 78 },
+      probabilities: { tremor: 22, prolongation: 20, energy: null },
+      detected: { tremor: false, prolongation: false, energy: null },
+      model_status: { tremor: 'ready', prolongation: 'ready', energy: 'pending' },
       filler_detail: { filler_count: 4, sound_segment_count: 32, filler_ratio_pct: 12.5 },
       pause_detail: {
         pause_count: 9,
@@ -89,7 +94,7 @@ export const mockApi = {
         total_duration_sec: 45.2,
       },
       cnn_window_count: 14,
-      demo_mode: true,
+      demo_mode: false,
     };
   },
 
@@ -205,6 +210,11 @@ export const mockApi = {
     };
   },
 
+  async getInterviewSession(): Promise<InterviewSessionDetail> {
+    await delay();
+    throw new Error('mock: 면접 기록 없음');
+  },
+
   async listInterviewSessions(): Promise<{ sessions: InterviewSessionSummary[] }> {
     await delay();
     return { sessions: [] };
@@ -238,44 +248,15 @@ export const mockApi = {
     };
   },
 
-  async analyzeGazeBlink(): Promise<GazeBlinkResult> {
+  async haruReply(body: HaruReplyRequest): Promise<HaruReplyResponse> {
     await delay();
-    return {
-      blink: {
-        rate_per_min: 18,
-        status: '정상',
-        score: 82,
-        events: [{ start: 2.1, end: 2.3 }, { start: 9.0, end: 9.2 }],
-        highlight: null,
-      },
-      gaze: {
-        avg_fixation_sec: 3.6,
-        score: 74,
-        segments: [
-          { type: 'fixation', start: 0, end: 3.5 },
-          { type: 'aversion', start: 3.5, end: 3.8 },
-          { type: 'fixation', start: 3.8, end: 12 },
-        ],
-        highlight: null,
-      },
-      expression: {
-        smile_score: 45,
-        tension_score: 30,
-        score: 68,
-        status: '보통',
-        smile_ratio: 0.12,
-        tension_ratio: 0.08,
-        frame_count: 450,
-        segments: [
-          { type: 'neutral', start: 0, end: 4 },
-          { type: 'smile', start: 4, end: 6 },
-          { type: 'neutral', start: 6, end: 9 },
-          { type: 'tension', start: 9, end: 10.5 },
-          { type: 'neutral', start: 10.5, end: 15 },
-        ],
-        highlight: null,
-      },
-      previous: null,
-    };
+    const nods = ['그렇군요, 이야기해 줘서 고마워요.', '좋아요, 잘 들었어요.', '아, 그랬군요.'];
+    const nod = nods[body.index % nods.length];
+    return { say: body.next ? `${nod} ${body.next}` : '오늘 이야기 나눠 줘서 고마워요.', retry: false, source: 'fallback' };
+  },
+
+  async haruProfile(items: { label: string; answer: string }[]): Promise<HaruProfileResponse> {
+    await delay();
+    return { items: items.map((it) => ({ label: it.label, value: it.answer.slice(0, 40) })), source: 'fallback' };
   },
 };

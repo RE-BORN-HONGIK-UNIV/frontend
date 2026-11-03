@@ -38,10 +38,13 @@ type Turn = { main: number; sub: number };
 export function QuestionView({
   stream,
   tier,
+  aboutMe = [],
   onAllDone,
 }: {
   stream: MediaStream | null;
   tier: DifficultyTier;
+  /** 하루가 정리하고 사용자가 확인한 자기 이야기("항목: 내용") — 기본 질문의 소재로 참고 */
+  aboutMe?: string[];
   /** 결과 화면으로 넘어갈 때, 이번 면접의 질문·답변과 서버 저장 id를 함께 넘긴다 */
   onAllDone: (result: InterviewResult) => void;
 }) {
@@ -115,6 +118,7 @@ export function QuestionView({
         askedRef.current,
         previousAnswer || undefined,
         isFollowUp ? 'follow_up' : 'main',
+        aboutMe,
       );
       await ask(q, isFollowUp ? 'follow_up' : 'main');
     } catch {

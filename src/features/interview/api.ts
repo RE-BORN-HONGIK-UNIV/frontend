@@ -23,6 +23,8 @@ export async function getNextQuestion(
   previousAnswer?: string,
   // main: 새 주제의 기본 질문 / follow_up: 방금 답변을 파고드는 꼬리질문
   mode: 'main' | 'follow_up' = 'main',
+  // 하루가 정리하고 사용자가 확인한 자기 이야기("항목: 내용") — 기본 질문의 소재로 참고됨
+  aboutMe: string[] = [],
 ): Promise<NextQuestionResponse> {
   const res = await fetch(`${API_BASE_URL}/interview/next-question`, {
     method: 'POST',
@@ -37,6 +39,7 @@ export async function getNextQuestion(
       previous_questions: previousQuestions,
       previous_answer: previousAnswer,
       mode,
+      ...(aboutMe.length ? { about_me: aboutMe } : {}),
     }),
   });
 
@@ -69,10 +72,10 @@ export async function transcribeAnswer(blob: Blob): Promise<string> {
 
 /**
  * 질문 텍스트를 TTS 음성(mp3)으로 변환해서, 재생 가능한 object URL로 반환.
- * tier를 넘기면 해당 면접관 목소리로 생성 (안 넘기면 서버에서 standard 음성 사용).
+ * tier를 넘기면 해당 면접관 목소리로 생성 (안 넘기면 서버에서 standard 음성 사용). 'haru'는 1·2단계 대화 상대 하루 목소리.
  * 실패하면 null (컴포넌트 쪽에서 null이면 바로 다음 단계로 넘어가게 처리되어 있음).
  */
-export async function getSpeechAudioUrl(text: string, tier?: DifficultyTier): Promise<string | null> {
+export async function getSpeechAudioUrl(text: string, tier?: DifficultyTier | 'haru'): Promise<string | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/interview/tts`, {
       method: 'POST',

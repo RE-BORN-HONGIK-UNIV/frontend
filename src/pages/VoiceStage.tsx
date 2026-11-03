@@ -1,28 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
-  Anchor,
   Box,
   Button,
-  Dropzone,
-  Group,
   LoadingBar,
   Paper,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
 } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { ApiError } from '@/lib/api/client';
-import type { AnalyzeResult, CalibrationResult } from '@/lib/api/types';
-import { AXES, GUIDE_ITEMS, TRAINING_TIPS, scoreColor, type AxisKey } from '@/features/voice/constants';
+import type { CalibrationResult } from '@/lib/api/types';
+import { GUIDE_ITEMS } from '@/features/voice/constants';
 import { overallScore } from '@/features/voice/feedback';
 import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
-import { VoiceRadar } from '@/features/voice/VoiceRadar';
-import { Step1FeedbackCoach } from '@/features/voice/Step1FeedbackCoach';
+import { saveStage1Detail } from '@/features/report/stageDetails';
 import { CalibrationStep } from '@/features/voice/CalibrationStep';
+import { HaruChat } from '@/features/haru/HaruChat';
+import { linkStyle } from '@/features/haru/styles';
+import { STAGE1_QUESTIONS } from '@/features/haru/script';
+import { saveStageAnswers } from '@/features/haru/store';
+import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
+import { useHaruTalk } from '@/features/haru/useHaruTalk';
 
 const MAXW = 720;
 
@@ -50,372 +52,28 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── result view  ────────────────────── */
+/* ── 하루와 목소리 대화 (경량 웹 1단계에서 가져옴) ─────────────────── */
 
-function ResultView({ result, onReset }: { result: AnalyzeResult; onReset: () => void }) {
-  const { scores } = result;
-  const ov = overallScore(scores);
-  const sorted = [...(Object.entries(scores) as [AxisKey, number][])].sort((a, b) => b[1] - a[1]);
-  const strengths = sorted.slice(0, 2);
-  const weaknesses = sorted.slice(-2).reverse();
-  const worst = sorted[sorted.length - 1][0];
+/** 하루와 대화하면서, 사용자가 말하는 구간만 이어 녹음해 둔다. 대화가 끝나면 녹음 파일을 넘긴다. */
+type TalkRecording = Awaited<ReturnType<ReturnType<typeof useAnswerRecorder>['finish']>>;
 
-  const metrics = [
-    { label: '음성 길이', value: result.pause_detail.total_duration_sec, unit: '초' },
-    {
-      label: '채움말 / 전체 구간',
-      value: `${result.filler_detail.filler_count}/${result.filler_detail.sound_segment_count}`,
-      unit: '개',
-    },
-    {
-      label: '불안 멈춤 / 전체 멈춤',
-      value: `${result.pause_detail.anxious_pause_count}/${result.pause_detail.pause_count}`,
-      unit: '개',
-    },
-    { label: '음성 떨림 지수', value: result.probabilities.tremor, unit: '%' },
-  ];
-
-  return (
-    <Stack gap={20}>
-      <Button variant="default" radius="md" onClick={onReset} fullWidth>
-        ↺ 새 파일로 다시 분석
-      </Button>
-
-      <Box
-        style={{
-          border: '1.5px solid var(--rb-line-strong)',
-          background: 'var(--rb-primary-tint)',
-          borderRadius: 12,
-          padding: '12px 16px',
-        }}
-      >
-        <Text fz={14} fw={600} c="var(--rb-primary-strong)">
-          CNN 모델 직접 점수
-        </Text>
-        <Group gap={6} mt={8} wrap="wrap">
-          {Object.entries(result.model_scores).map(([k, v]) => (
-            <Text
-              key={k}
-              fz={12}
-              style={{ background: 'rgba(255,255,255,0.7)', padding: '2px 10px', borderRadius: 20 }}
-            >
-              {k}: <strong>{v}점</strong>
-            </Text>
-          ))}
-        </Group>
-        {result.demo_mode && (
-          <Text fz={11} c="var(--rb-ink-faint)" mt={6}>
-            ※ 모델 파일 없음 — 데모 모드 (CNN 3지표는 참고용)
-          </Text>
-        )}
-      </Box>
-
-      <SectionLabel>발화 역량 오각형 분석</SectionLabel>
-      <Panel>
-        <VoiceRadar scores={scores} />
-        <Stack gap={8} mt={12}>
-          {AXES.map((a) => {
-            const v = scores[a.key];
-            return (
-              <Group key={a.key} gap={8} wrap="nowrap">
-                <Text fz={13} fw={600} style={{ flex: '0 0 84px' }}>
-                  {a.label}
-                </Text>
-                <Box style={{ flex: 1, height: 5, background: 'var(--rb-line)', borderRadius: 4 }}>
-                  <Box
-                    style={{
-                      width: `${v}%`,
-                      height: '100%',
-                      borderRadius: 4,
-                      background: scoreColor(v),
-                    }}
-                  />
-                </Box>
-                <Text fz={13} fw={700} style={{ flex: '0 0 30px', textAlign: 'right', color: scoreColor(v) }}>
-                  {v}
-                </Text>
-              </Group>
-            );
-          })}
-          <Group justify="space-between" mt={6} pt={10} style={{ borderTop: '1px solid var(--rb-line)' }}>
-            <Text fz={13} c="var(--rb-ink-soft)">
-              종합 점수
-            </Text>
-            <Text fz={22} fw={700} style={{ color: scoreColor(ov) }}>
-              {ov}
-              <Text component="span" fz={13} c="var(--rb-ink-faint)">
-                {' '}
-                / 100
-              </Text>
-            </Text>
-          </Group>
-        </Stack>
-      </Panel>
-
-      <SectionLabel>상세 측정 지표</SectionLabel>
-      <Panel>
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing={10}>
-          {metrics.map((m) => (
-            <Stack key={m.label} gap={4} align="center" ta="center" style={{ background: 'var(--rb-bg)', borderRadius: 10, padding: '12px 8px' }}>
-              <Text fz={11} c="var(--rb-ink-faint)">
-                {m.label}
-              </Text>
-              <Text fz={20} fw={600}>
-                {m.value ?? '–'}
-              </Text>
-              <Text fz={11} c="var(--rb-ink-faint)">
-                {m.unit}
-              </Text>
-            </Stack>
-          ))}
-        </SimpleGrid>
-      </Panel>
-
-      <SectionLabel>맞춤 피드백</SectionLabel>
-      <Panel>
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={12}>
-          <Stack gap={8}>
-            <Text fz={13} fw={700} c="#1e8a57">
-              ✓ 강점
-            </Text>
-            {strengths.map(([key, val]) => {
-              const axis = AXES.find((a) => a.key === key)!;
-              return (
-                <Box key={key} style={{ background: '#f0fbf5', border: '1px solid #8dddb5', borderRadius: 10, padding: '10px 12px' }}>
-                  <Text fz={13} fw={600}>
-                    {axis.label} <Text component="span" c="#1e8a57">{val}점</Text>
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-soft)" mt={2}>
-                    {axis.desc}
-                  </Text>
-                </Box>
-              );
-            })}
-          </Stack>
-          <Stack gap={8}>
-            <Text fz={13} fw={700} c="#b07a00">
-              ! 보완점
-            </Text>
-            {weaknesses.map(([key, val]) => {
-              const axis = AXES.find((a) => a.key === key)!;
-              return (
-                <Box key={key} style={{ background: '#fffbea', border: '1px solid #f5e17a', borderRadius: 10, padding: '10px 12px' }}>
-                  <Text fz={13} fw={600}>
-                    {axis.label} <Text component="span" c="#b07a00">{val}점</Text>
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-soft)" mt={2}>
-                    {axis.desc}
-                  </Text>
-                </Box>
-              );
-            })}
-          </Stack>
-        </SimpleGrid>
-
-        <Step1FeedbackCoach result={result} />
-
-        <Box style={{ background: 'var(--rb-primary-tint)', border: '1px solid var(--rb-line)', borderRadius: 10, padding: '12px 14px', marginTop: 10 }}>
-          <Text fz={12} fw={700} c="var(--rb-primary-strong)" mb={4}>
-            다음 훈련 제안
-          </Text>
-          <Text fz={13} style={{ lineHeight: 1.7 }}>
-            {TRAINING_TIPS[worst]}
-          </Text>
-        </Box>
-      </Panel>
-    </Stack>
-  );
-}
-
-/* ── 녹음/업로드 단계 (신규) ──────────────────────────────────── */
-
-function RecordOrUpload({
-  onSubmit,
-  isPending,
-  isError,
-  error,
-}: {
-  onSubmit: (file: File) => void;
-  isPending: boolean;
-  isError: boolean;
-  error: unknown;
-}) {
-  const [mode, setMode] = useState<'record' | 'upload'>('record');
-  const [file, setFile] = useState<File | null>(null);
-
-  // ── 브라우저 녹음 ──
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordSeconds, setRecordSeconds] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const cleanupStream = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const recordedFile = new File([blob], 'answer.webm', { type: 'audio/webm' });
-        setFile(recordedFile);
-        cleanupStream();
-      };
-
-      mediaRecorderRef.current = recorder;
-      recorder.start();
-      setIsRecording(true);
-      setRecordSeconds(0);
-
-      timerRef.current = setInterval(() => {
-        setRecordSeconds((s) => s + 1);
-      }, 1000);
-    } catch (err) {
-      // 마이크 권한 거부 등 — 조용히 실패, 업로드 탭으로 유도
-    }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-  };
-
-  const resetRecording = () => {
-    setFile(null);
-    setRecordSeconds(0);
-  };
+function HaruVoiceTalk({ onFinished }: { onFinished: (rec: TalkRecording) => void }) {
+  const finishRef = useRef<ReturnType<typeof useAnswerRecorder>['finish'] | null>(null);
+  const talk = useHaruTalk(STAGE1_QUESTIONS, (answers) => {
+    saveStageAnswers(1, answers);
+    void (finishRef.current?.() ?? Promise.resolve(null)).then(onFinished);
+  });
+  const recorder = useAnswerRecorder(talk.phase === 'listen');
+  finishRef.current = recorder.finish;
 
   return (
     <Panel>
-      <Box mb={12}>
-        <SegmentedControl
-          value={mode}
-          onChange={(v) => {
-            setMode(v as 'record' | 'upload');
-            setFile(null);
-          }}
-          data={[
-            { label: '직접 녹음', value: 'record' },
-            { label: '파일 업로드', value: 'upload' },
-          ]}
-          fullWidth
-        />
-      </Box>
-
-      {mode === 'record' && (
-        <Stack align="center" gap={10} py={12}>
-          {!file && !isRecording && (
-            <>
-              <Text fz={13} c="var(--rb-ink-soft)">
-                버튼을 누르고 30초 이상 답변해보세요
-              </Text>
-              <Button onClick={startRecording} radius="md">
-                ● 녹음 시작
-              </Button>
-            </>
-          )}
-
-          {isRecording && (
-            <>
-              <Text fz={22} fw={700} c="red">
-                ● {recordSeconds}초
-              </Text>
-              <Button onClick={stopRecording} color="red" radius="md">
-                녹음 종료
-              </Button>
-            </>
-          )}
-
-          {file && !isRecording && (
-            <Group gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px', width: '100%' }}>
-              <Text fz={13} style={{ flex: 1 }}>
-                녹음 완료 ({recordSeconds}초)
-              </Text>
-              <Anchor fz={13} c="var(--rb-ink-faint)" onClick={resetRecording}>
-                ✕ 다시 녹음
-              </Anchor>
-            </Group>
-          )}
-        </Stack>
-      )}
-
-      {mode === 'upload' && (
-        <>
-          <Dropzone
-            onDrop={(files) => setFile(files[0] ?? null)}
-            onReject={() => setFile(null)}
-            accept={{ 'audio/wav': ['.wav'], 'audio/x-wav': ['.wav'], 'audio/wave': ['.wav'] }}
-            maxFiles={1}
-            multiple={false}
-            radius="md"
-            style={{ border: '2px dashed var(--rb-line-strong)', background: 'var(--rb-bg)' }}
-          >
-            <Stack align="center" gap={6} py={24} style={{ pointerEvents: 'none' }}>
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 15V3M7 8l5-5 5 5" />
-                <path d="M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
-              </svg>
-              <Text fz={14} fw={500}>
-                음성 파일을 업로드하세요
-              </Text>
-              <Text fz={12} c="var(--rb-ink-faint)">
-                WAV 형식 · 드래그하거나 클릭
-              </Text>
-            </Stack>
-          </Dropzone>
-
-          {file && (
-            <Group mt={10} gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px' }}>
-              <Text fz={13} style={{ flex: 1, wordBreak: 'break-all' }}>
-                {file.name}
-              </Text>
-              <Anchor fz={13} c="var(--rb-ink-faint)" onClick={() => setFile(null)}>
-                ✕
-              </Anchor>
-            </Group>
-          )}
-        </>
-      )}
-
-      {isPending && (
-        <Stack align="center" gap={6} mt={14}>
-          <LoadingBar label="분석 중" />
-          <Text fz={12} c="var(--rb-ink-faint)">
-            음성 길이에 따라 30초~2분 정도 걸려요
-          </Text>
-        </Stack>
-      )}
-
-      {isError && (
-        <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
-          {error instanceof ApiError ? error.message : '백엔드에 연결할 수 없어요. (localhost:5000 실행 확인)'}
+      <HaruChat talk={talk} />
+      {recorder.error && (
+        <Alert color="gray" variant="light" mt={12} p="xs" fz={13}>
+          마이크를 쓸 수 없어서 목소리 분석은 못 해요. 대화는 계속할 수 있어요.
         </Alert>
       )}
-
-      <Button
-        mt={12}
-        fullWidth
-        color="brand"
-        radius="md"
-        disabled={!file}
-        loading={isPending}
-        onClick={() => file && onSubmit(file)}
-      >
-        AI 분석 시작
-      </Button>
     </Panel>
   );
 }
@@ -424,31 +82,48 @@ function RecordOrUpload({
 
 export default function VoiceStage() {
   const [calibration, setCalibration] = useState<CalibrationResult | null>(null);
+  // 하루와 대화를 마쳤는지, 녹음이 비었는지(마이크를 못 썼거나 대답을 다 넘김)
+  const [talkDone, setTalkDone] = useState(false);
+  const [noAudio, setNoAudio] = useState(false);
+  const [talkKey, setTalkKey] = useState(0);
   const analyze = useAnalyze();
+  const navigate = useNavigate();
   const result = analyze.data ?? null;
+  const turnStartsRef = useRef<number[]>([]);
 
+  // 분석이 끝나면: 대시보드용 완료 메모 + 최종 리포트(3단계 뒤)에 쓸 세부값을 이 기기에 남긴다.
+  // 1단계 결과는 여기서 따로 보여 주지 않고 3단계 뒤 통합 리포트에서 한 번에 보여 준다(경량 웹 흐름).
   useEffect(() => {
-    if (result) localProgress.markStage1Done(overallScore(result.scores));
+    if (!result) return;
+    localProgress.markStage1Done(overallScore(result.scores));
+    saveStage1Detail(result, turnStartsRef.current);
   }, [result]);
 
   const reset = () => {
     setCalibration(null);
+    setTalkDone(false);
+    setNoAudio(false);
+    setTalkKey((k) => k + 1);
     analyze.reset();
+  };
+
+  const handleTalkFinished = (rec: TalkRecording) => {
+    setTalkDone(true);
+    if (!rec) return setNoAudio(true);
+    turnStartsRef.current = rec.turnStarts;
+    analyze.mutate({ file: rec.file, calibration });
   };
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        back="/dashboard"
-        eyebrow="1단계 · 음성 정밀 진단"
+        eyebrow="1단계 · 하루와 목소리 대화"
         title="보이스 터치"
-        subtitle="발화를 올리면 5가지 지표를 오각형 그래프로 진단하고, 함께 연습할 부분을 짚어줍니다."
+        subtitle="하루와 편하게 이야기해요. 대답한 목소리는 3단계까지 마친 뒤 최종 리포트에서 함께 살펴봐요."
       />
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
-        {result ? (
-          <ResultView result={result} onReset={reset} />
-        ) : !calibration ? (
+        {!calibration ? (
           <Stack gap={20}>
             <SectionLabel>분석 전 체크리스트</SectionLabel>
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
@@ -465,6 +140,12 @@ export default function VoiceStage() {
               ))}
             </SimpleGrid>
 
+            <Alert color="brand" variant="light" p="sm" fz={13}>
+              하루가 대답에 맞춰 반응할 수 있게, 대답은 글로 받아써서(크롬은 Google 음성 인식 사용) AI로 보내요.
+              대답 목소리는 분석에만 쓰고 저장하지 않아요. 하루와 나눈 이야기는 3단계 면접 질문을 만들 때 쓰도록 이
+              기기에만 남겨 두고, 3단계 시작 화면에서 언제든 지울 수 있어요.
+            </Alert>
+
             <SectionLabel>마이크 캘리브레이션</SectionLabel>
             <Panel>
               <CalibrationStep onComplete={setCalibration} />
@@ -472,13 +153,56 @@ export default function VoiceStage() {
           </Stack>
         ) : (
           <Stack gap={20}>
-            <SectionLabel>답변 녹음 / 업로드</SectionLabel>
-            <RecordOrUpload
-              onSubmit={(file) => analyze.mutate({ file, calibration })}
-              isPending={analyze.isPending}
-              isError={analyze.isError}
-              error={analyze.error}
-            />
+            <SectionLabel>하루와 이야기하기</SectionLabel>
+            {!talkDone ? (
+              <HaruVoiceTalk key={talkKey} onFinished={handleTalkFinished} />
+            ) : (
+              <Panel>
+                <Stack gap={12} align="center" ta="center">
+                  <Text fz={17} fw={700}>
+                    1단계를 마쳤어요
+                  </Text>
+                  <Text fz={13} c="var(--rb-ink-soft)">
+                    목소리로 질문 {STAGE1_QUESTIONS.length}개를 끝까지 마쳤어요.
+                  </Text>
+                  {analyze.isPending && (
+                    <>
+                      <LoadingBar label="대답한 목소리 정리하는 중" />
+                      <Text fz={12} c="var(--rb-ink-faint)">
+                        30초~2분 정도 걸려요. 결과는 3단계를 마친 뒤 최종 리포트에서 함께 보여 드려요.
+                      </Text>
+                    </>
+                  )}
+                  {result && (
+                    <>
+                      <Text fz={13} c="var(--rb-ink-soft)">
+                        목소리 정리가 끝났어요. 결과는 3단계를 마친 뒤 최종 리포트에서 함께 보여 드려요.
+                      </Text>
+                      <Button radius="md" onClick={() => navigate('/face')}>
+                        2단계 하루와 영상 통화하러 가기 →
+                      </Button>
+                      <button type="button" onClick={reset} style={linkStyle}>
+                        하루와 다시 이야기할래요
+                      </button>
+                    </>
+                  )}
+                  {(noAudio || analyze.isError) && (
+                    <>
+                      <Alert color="red" variant="light" p="xs" fz={13}>
+                        {noAudio
+                          ? '녹음된 대답이 없어서 목소리를 살펴보지 못했어요.'
+                          : analyze.error instanceof ApiError
+                            ? analyze.error.message
+                            : '서버에 연결할 수 없어요. 잠시 뒤에 다시 해 주세요.'}
+                      </Alert>
+                      <Button variant="default" radius="md" onClick={reset}>
+                        ↺ 하루와 다시 이야기하기
+                      </Button>
+                    </>
+                  )}
+                </Stack>
+              </Panel>
+            )}
           </Stack>
         )}
       </Box>

@@ -333,6 +333,34 @@ export default function Dashboard() {
                 );
               })}
 
+              {/* 최종 통합 리포트 다시 보기 — 3단계를 마친 뒤 나온 리포트(1·2·3단계를 한 장에)를 다시 연다 */}
+              <Paper
+                p={20}
+                radius="lg"
+                withBorder
+                onClick={() => navigate('/report')}
+                style={{ background: 'var(--rb-primary-tint)', borderColor: 'var(--rb-line)', cursor: 'pointer' }}
+              >
+                <Group gap={16} wrap="nowrap" align="center">
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }}>
+                      REPORT
+                    </Text>
+                    <Text fz={17} fw={700}>
+                      최종 리포트 다시 보기
+                    </Text>
+                    <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
+                      {s3.done
+                        ? '1·2·3단계에서 보인 것을 한 장에 모은 리포트를 다시 볼 수 있어요.'
+                        : '3단계까지 마치면 1·2·3단계를 한 장에 모은 리포트가 만들어져요.'}
+                    </Text>
+                  </Box>
+                  <Text fz={20} fw={700} c="var(--rb-primary)" style={{ flexShrink: 0 }}>
+                    →
+                  </Text>
+                </Group>
+              </Paper>
+
               <Button variant="subtle" color="gray" size="xs" onClick={handleReset}>
                 ↺ 진행 상황 초기화
               </Button>

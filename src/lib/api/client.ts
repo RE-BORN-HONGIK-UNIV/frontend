@@ -7,7 +7,10 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
-  GazeBlinkResult,
+  HaruProfileResponse,
+  HaruReplyRequest,
+  HaruReplyResponse,
+  InterviewSessionDetail,
   InterviewSessionSummary,
   LatestResponse,
   LiveSavePayload,
@@ -109,17 +112,23 @@ export const api = {
       ? mockApi.feedback()
       : request<FeedbackResponse>('/analyze/feedback', {
           method: 'POST',
-          body: JSON.stringify(result),
+          // 모델이 아직 없는 축(null)은 빼고 보낸다
+          body: JSON.stringify({ ...result, scores: Object.fromEntries(Object.entries(result.scores).filter(([, v]) => v !== null)) }),
         }),
 
-  analyzeGazeBlink: (file: File) => {
-    if (USE_MOCK) return mockApi.analyzeGazeBlink();
-    const fd = new FormData();
-    fd.append('file', file);
-    return request<GazeBlinkResult>('/analyze/gaze-blink', { method: 'POST', body: fd });
-  },
+  /** 1·2단계 하루 대화 — 방금 대답에 한 문장 반응 + 다음 질문으로 잇는 말. 서버가 AI를 못 쓰면 정해 둔 문장을 준다. */
+  haruReply: (body: HaruReplyRequest) =>
+    USE_MOCK
+      ? mockApi.haruReply(body)
+      : request<HaruReplyResponse>('/haru/reply', { method: 'POST', body: JSON.stringify(body) }),
 
-  /** 실시간 촬영 결과 저장 — 업로드 모드와 같은 이력(Stage2Result)에 쌓이고, 저장 직전 기록을 돌려준다. */
+  /** "하루가 이렇게 이해했어요" 카드 — 1·2단계 대답을 항목별로 짧게 정리(서버에 저장하지 않음). */
+  haruProfile: (items: { label: string; question: string; answer: string }[]) =>
+    USE_MOCK
+      ? mockApi.haruProfile(items)
+      : request<HaruProfileResponse>('/haru/profile', { method: 'POST', body: JSON.stringify({ items }) }),
+
+  /** 실시간 촬영 결과 저장 — 2단계 이력(Stage2Result)에 쌓이고, 저장 직전 기록을 돌려준다. */
   saveLiveGazeBlink: (payload: LiveSavePayload) =>
     USE_MOCK
       ? mockApi.saveLiveGazeBlink()
@@ -181,6 +190,12 @@ export const api = {
       : request<{ message: string }>(`/interview/sessions/${sessionId}`, { method: 'DELETE' }),
 
   /** 내 면접 목록(최신순) — 대시보드 완료 표시용. */
+  /** 면접 1회 상세 — 최종 리포트 다시 보기에서 3단계 질문·답변을 불러올 때 */
+  getInterviewSession: (sessionId: number) =>
+    USE_MOCK
+      ? mockApi.getInterviewSession()
+      : request<InterviewSessionDetail>(`/interview/sessions/${sessionId}`),
+
   listInterviewSessions: () =>
     USE_MOCK
       ? mockApi.listInterviewSessions()

@@ -1,56 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Box,
-  Button,
-  Dropzone,
-  Group,
-  LoadingBar,
-  Paper,
-  SegmentedControl,
-  SimpleGrid,
-  Stack,
-  Text,
-} from '@/components/ui';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, Paper, SimpleGrid, Stack, Text } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
-import { ApiError } from '@/lib/api/client';
 import type { GazeBlinkResult } from '@/lib/api/types';
-import { COMPARISON_BUILDERS, extractMetrics } from '@/features/face/comparison';
-import { FACE_GUIDE_ITEMS, MAX_CAPTURE_SEC, METRIC_TABS, type MetricKey } from '@/features/face/constants';
-import { useAnalyzeGazeBlink } from '@/features/face/queries';
-import { ScoreTrack } from '@/features/face/ScoreTrack';
-import { ExpressionPlayer } from '@/features/face/ExpressionPlayback';
-import { GazeTimeline } from '@/features/face/GazeTimeline';
-import { LiveCaptureView } from '@/features/face/live/LiveCaptureView';
-import { localProgress, type Stage2Entry } from '@/features/progress/localProgress';
+import { FACE_GUIDE_ITEMS } from '@/features/face/constants';
+import { HaruCallView } from '@/features/face/live/HaruCallView';
+import { linkStyle } from '@/features/haru/styles';
+import { localProgress } from '@/features/progress/localProgress';
 import { stage2OverallScore } from '@/features/progress/stageProgress';
-
-type Mode = 'upload' | 'live';
+import { saveStage2Detail } from '@/features/report/stageDetails';
 
 const MAXW = 720;
-
-/** 업로드된 영상 파일의 길이(초)를 읽는다 — 브라우저가 직접 디코딩 못 하는
- * 코덱이면 duration을 못 읽을 수 있는데, 그런 경우엔 여기서 막지 않고
- * 백엔드 분석에 맡긴다(길이 체크는 부가 기능이지 업로드 자체를 막는
- * 게이트가 아님). */
-function getVideoDurationSec(file: File): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    const url = URL.createObjectURL(file);
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      resolve(video.duration);
-    };
-    video.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('영상 메타데이터를 읽을 수 없어요'));
-    };
-    video.src = url;
-  });
-}
 
 function Check() {
   return (
@@ -68,173 +28,17 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <Paper p={24} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
-      {children}
-    </Paper>
-  );
-}
-
-/* 상태 문구별 배지 색 — "정상/편안함"은 긍정, "빈번/과응시/긴장됨"은 주의,
- * 그 외("보통")는 중립. gaze 지표는 status가 없어서(점수만 있음) null 처리. */
-const STATUS_COLOR: Record<string, 'brand' | 'amber' | 'gray'> = {
-  정상: 'brand',
-  편안함: 'brand',
-  빈번: 'amber',
-  과응시: 'amber',
-  긴장됨: 'amber',
-  보통: 'gray',
-};
-
-function getStatus(tab: MetricKey, result: GazeBlinkResult): string | null {
-  if (tab === 'blink') return result.blink.status;
-  if (tab === 'expression') return result.expression.status;
-  return null;
-}
-
-/* ── result view ─────────────────────────────────────────── */
-
-function ResultView({
-  result,
-  previous,
-  onReset,
-  mode,
-}: {
-  result: GazeBlinkResult;
-  previous: Stage2Entry | null;
-  onReset: () => void;
-  mode: Mode;
-}) {
-  const [tab, setTab] = useState<MetricKey>('blink');
-
-  const metrics = useMemo(() => extractMetrics(result), [result]);
-  const comparisonText = COMPARISON_BUILDERS[tab](metrics, previous);
-  const highlight = result[tab].highlight;
-  const score = result[tab].score;
-  const status = getStatus(tab, result);
-
-  return (
-    <Stack gap={20}>
-      <Button variant="default" radius="md" onClick={onReset} fullWidth>
-        {mode === 'live' ? '↺ 다시 촬영하기' : '↺ 새 파일로 다시 분석'}
-      </Button>
-
-      {!previous && (
-        <Alert color="brand" variant="light" p="sm" fz={13}>
-          🌱 첫 번째 페이스 터치 기록이 쌓였어요. 다음번엔 오늘과 비교해서 어떻게 달라졌는지 보여드릴게요.
-        </Alert>
-      )}
-
-      <SectionLabel>지표별로 살펴보기</SectionLabel>
-      <Panel>
-        <SegmentedControl
-          fullWidth
-          value={tab}
-          onChange={(v) => setTab(v as MetricKey)}
-          data={METRIC_TABS.map((m) => ({ label: m.label, value: m.key }))}
-        />
-
-        <Text fz={11} c="var(--rb-ink-faint)" mt={10}>
-          {METRIC_TABS.find((m) => m.key === tab)?.desc}
-        </Text>
-
-        <Group gap={10} align="center" mt={10}>
-          <Text fz={28} fw={700} c="var(--rb-primary-strong)">
-            {score}점
-          </Text>
-          {status && <Badge color={STATUS_COLOR[status] ?? 'gray'}>{status}</Badge>}
-        </Group>
-
-        {highlight ? (
-          <video key={tab} src={highlight} controls style={{ width: '100%', borderRadius: 10, marginTop: 12, background: '#000' }} />
-        ) : (
-          <Box
-            style={{
-              marginTop: 12,
-              padding: '28px 16px',
-              borderRadius: 10,
-              background: 'var(--rb-bg)',
-              border: '1px dashed var(--rb-line-strong)',
-              textAlign: 'center',
-            }}
-          >
-            <Text fz={13} c="var(--rb-ink-faint)">
-              이번 영상에서는 따로 짚어서 보여드릴 순간이 없었어요.
-            </Text>
-          </Box>
-        )}
-
-        <Text fz={14} mt={12} style={{ lineHeight: 1.7 }}>
-          {comparisonText}
-        </Text>
-      </Panel>
-
-      {tab === 'expression' && (
-        <>
-          <SectionLabel>표정 재생</SectionLabel>
-          <Panel>
-            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
-              미소·긴장이 영상 어느 구간에서 나타났는지, 원하는 지표만 골라 얼굴로 재생해볼 수 있어요.
-            </Text>
-            <SimpleGrid cols={2} spacing={12}>
-              <ExpressionPlayer
-                key={`${tab}-smile`}
-                indicator="smile"
-                score={result.expression.smile_score}
-                segments={result.expression.segments}
-              />
-              <ExpressionPlayer
-                key={`${tab}-tension`}
-                indicator="tension"
-                score={result.expression.tension_score}
-                segments={result.expression.segments}
-              />
-            </SimpleGrid>
-          </Panel>
-        </>
-      )}
-
-      {tab === 'gaze' && (
-        <>
-          <SectionLabel>시선 흐름</SectionLabel>
-          <Panel>
-            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
-              점수 대신, 영상 전체에서 언제·얼마나 시선을 피했는지 구간으로 보여드려요.
-            </Text>
-            <GazeTimeline key={tab} segments={result.gaze.segments} />
-          </Panel>
-        </>
-      )}
-
-      {tab === 'blink' && (
-        <>
-          <SectionLabel>점수 위치</SectionLabel>
-          <Panel>
-            <Text fz={13} c="var(--rb-ink-soft)" mb={10}>
-              {METRIC_TABS.find((m) => m.key === tab)?.label} 점수가 0~100점 중 어디쯤인지 보여드려요.
-            </Text>
-            <ScoreTrack key={tab} score={score} status={status ?? undefined} statusColor={status ? STATUS_COLOR[status] ?? 'gray' : undefined} />
-          </Panel>
-        </>
-      )}
-    </Stack>
-  );
-}
-
 /* ── page ────────────────────────────────────────────────── */
 
 export default function FaceStage() {
-  const [mode, setMode] = useState<Mode>('upload');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [liveResult, setLiveResult] = useState<GazeBlinkResult | null>(null);
-  const analyze = useAnalyzeGazeBlink();
-  const result = analyze.data ?? liveResult;
-  const previous: Stage2Entry | null = result?.previous ?? null;
+  // 2단계는 하루와 영상 통화하는 동안 실시간 분석만 한다(HaruCallView — 경량 웹 2단계 화면을 가져옴).
+  // 예전 "영상 업로드" 모드(POST /analyze/gaze-blink)는 2026-10-31 팀 결정으로 폐기.
+  // 결과는 여기서 따로 보여 주지 않고 3단계를 마친 뒤 최종 통합 리포트에서 한 번에 보여 준다(경량 웹 흐름).
+  const [result, setResult] = useState<GazeBlinkResult | null>(null);
+  const [callKey, setCallKey] = useState(0);
+  const navigate = useNavigate();
 
-  // 분석 결과가 나오면(업로드·실시간 공통) 이 기기에도 "2단계 완료" 메모를 남긴다 —
-  // 서버 조회가 안 될 때 대시보드가 이 메모로 대신 완료 여부를 보여줌 (1단계와 같은 방식).
+  // 분석 결과가 나오면: 대시보드용 완료 메모(서버 조회가 안 될 때 대신 씀) + 최종 리포트에 쓸 세부값을 이 기기에 남긴다
   useEffect(() => {
     if (!result) return;
     localProgress.markStage2Done(
@@ -244,49 +48,42 @@ export default function FaceStage() {
         expression: result.expression.score,
       }),
     );
+    saveStage2Detail(result);
   }, [result]);
-
-  const reset = () => {
-    setFile(null);
-    setUploadError(null);
-    analyze.reset();
-    setLiveResult(null);
-  };
-
-  const handleDrop = async (files: File[]) => {
-    const f = files[0] ?? null;
-    if (!f) {
-      setFile(null);
-      return;
-    }
-    try {
-      const duration = await getVideoDurationSec(f);
-      if (duration > MAX_CAPTURE_SEC) {
-        setFile(null);
-        setUploadError(
-          `영상이 너무 길어요(${Math.round(duration)}초) — 최대 ${MAX_CAPTURE_SEC / 60}분까지 업로드할 수 있어요.`,
-        );
-        return;
-      }
-    } catch {
-      // duration을 못 읽어도 업로드 자체는 막지 않는다 — 백엔드 분석에 맡김
-    }
-    setUploadError(null);
-    setFile(f);
-  };
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        back="/dashboard"
-        eyebrow="2단계 · 표정·시선 분석"
+        eyebrow="2단계 · 하루와 영상 통화"
         title="페이스 터치"
-        subtitle="영상을 올리면 시선 처리·눈 깜빡임·표정을 지난 세션과 비교해서 보여드려요."
+        subtitle="하루와 영상 통화해요. 시선·눈 깜빡임·표정은 3단계까지 마친 뒤 최종 리포트에서 함께 살펴봐요."
       />
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {result ? (
-          <ResultView result={result} previous={previous} onReset={reset} mode={mode} />
+          <Paper p={24} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
+            <Stack gap={12} align="center" ta="center">
+              <Text fz={17} fw={700}>
+                2단계를 마쳤어요
+              </Text>
+              <Text fz={13} c="var(--rb-ink-soft)">
+                하루 얼굴을 보며 끝까지 이야기했어요. 결과는 3단계 실전 면접을 마친 뒤 최종 리포트에서 함께 보여 드려요.
+              </Text>
+              <Button radius="md" onClick={() => navigate('/interview')}>
+                하루가 정리한 이야기 보고 3단계로 가기 →
+              </Button>
+              <button
+                type="button"
+                style={linkStyle}
+                onClick={() => {
+                  setResult(null);
+                  setCallKey((k) => k + 1);
+                }}
+              >
+                하루와 다시 통화할래요
+              </button>
+            </Stack>
+          </Paper>
         ) : (
           <Stack gap={20}>
             <SectionLabel>분석 전 체크리스트</SectionLabel>
@@ -304,101 +101,8 @@ export default function FaceStage() {
               ))}
             </SimpleGrid>
 
-            {!analyze.isPending && (
-              <>
-                <SectionLabel>분석 방법 선택</SectionLabel>
-                <SegmentedControl
-                  fullWidth
-                  value={mode}
-                  onChange={(v) => setMode(v as Mode)}
-                  data={[
-                    { label: '영상 업로드', value: 'upload' },
-                    { label: '실시간 촬영', value: 'live' },
-                  ]}
-                />
-              </>
-            )}
-
-            {mode === 'upload' ? (
-              <>
-                <SectionLabel>영상 파일 업로드</SectionLabel>
-                <Panel>
-                  <Dropzone
-                    onDrop={handleDrop}
-                    onReject={() => setFile(null)}
-                    accept={{ 'video/mp4': ['.mp4'], 'video/quicktime': ['.mov'], 'video/webm': ['.webm'] }}
-                    maxFiles={1}
-                    multiple={false}
-                    radius="md"
-                    style={{ border: '2px dashed var(--rb-line-strong)', background: 'var(--rb-bg)' }}
-                  >
-                    <Stack align="center" gap={6} py={24} style={{ pointerEvents: 'none' }}>
-                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 15V3M7 8l5-5 5 5" />
-                        <path d="M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
-                      </svg>
-                      <Text fz={14} fw={500}>
-                        얼굴이 나오는 영상을 업로드하세요
-                      </Text>
-                      <Text fz={12} c="var(--rb-ink-faint)">
-                        MP4 형식 · 드래그하거나 클릭
-                      </Text>
-                    </Stack>
-                  </Dropzone>
-
-                  {file && !analyze.isPending && (
-                    <Group mt={10} gap={10} style={{ background: 'var(--rb-bg)', border: '1px solid var(--rb-line-strong)', borderRadius: 10, padding: '10px 14px' }}>
-                      <Text fz={13} style={{ flex: 1, wordBreak: 'break-all' }}>
-                        {file.name}
-                      </Text>
-                      <Anchor fz={13} c="var(--rb-ink-faint)" onClick={reset}>
-                        ✕
-                      </Anchor>
-                    </Group>
-                  )}
-
-                  {analyze.isPending && (
-                    <Stack align="center" gap={6} mt={14}>
-                      <LoadingBar label="분석 중" />
-                      <Text fz={12} c="var(--rb-ink-faint)">
-                        영상 길이에 따라 다소 시간이 걸려요
-                      </Text>
-                    </Stack>
-                  )}
-
-                  {uploadError && (
-                    <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
-                      {uploadError}
-                    </Alert>
-                  )}
-
-                  {analyze.isError && (
-                    <Alert color="red" variant="light" mt={10} p="xs" fz={13}>
-                      {analyze.error instanceof ApiError
-                        ? analyze.error.message
-                        : '백엔드에 연결할 수 없어요. (localhost:5000 실행 확인)'}
-                    </Alert>
-                  )}
-
-                  <Button
-                    mt={12}
-                    fullWidth
-                    color="brand"
-                    radius="md"
-                    disabled={!file}
-                    loading={analyze.isPending}
-                    onClick={() => file && analyze.mutate(file)}
-                  >
-                    AI 분석 시작
-                  </Button>
-                </Panel>
-              </>
-            ) : (
-              <>
-                <SectionLabel>실시간 촬영</SectionLabel>
-                <LiveCaptureView onComplete={setLiveResult} />
-              </>
-            )}
+            <SectionLabel>하루와 영상 통화</SectionLabel>
+            <HaruCallView key={callKey} onComplete={setResult} />
           </Stack>
         )}
       </Box>
