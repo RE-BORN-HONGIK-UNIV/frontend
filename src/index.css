@@ -766,7 +766,7 @@ a {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px; /* 같은 사람이 이어 보낸 말풍선은 붙여서, 사람이 바뀌면 .rb-chat__row--first가 간격을 더 준다 */
   padding: 36px 40px;
 }
 .rb-haru-talk__bar {
@@ -845,4 +845,54 @@ a {
   .rb-haru-talk__log { padding: 18px 16px; }
   .rb-haru-talk__bar { padding: 14px 16px; gap: 12px; }
   .rb-haru-talk__aside { margin-left: 0; width: 100%; justify-content: space-between; }
+}
+
+
+/* 대화 말풍선 — 카카오톡처럼: 하루는 왼쪽 프로필 사진·이름 + 꼬리 달린 말풍선, 내 대답은 오른쪽. 시간은 없음 */
+.rb-chat__row { display: flex; align-items: flex-start; gap: 10px; }
+.rb-chat__row--first { margin-top: 10px; }
+.rb-chat__row:first-child { margin-top: 0; }
+.rb-chat__row--me { justify-content: flex-end; }
+.rb-chat__avatar,
+.rb-chat__avatar-gap { flex: 0 0 44px; width: 44px; height: 44px; }
+.rb-chat__avatar {
+  border-radius: 16px;
+  background: #ece8f8 url('/haru/haru.jpg') center 15% / cover no-repeat;
+  box-shadow: 0 0 0 1px var(--rb-line);
+}
+.rb-chat__col { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; max-width: 78%; }
+.rb-chat__name { font-size: 14px; font-weight: 600; color: var(--rb-ink); }
+.rb-chat__bubble {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--rb-surface-tint);
+  color: var(--rb-ink);
+  border-radius: 16px;
+  padding: 11px 16px;
+  font-size: 16px;
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.rb-chat__bubble--me { background: var(--rb-primary-tint); max-width: 78%; }
+.rb-chat__bubble[data-live] { outline: 1px dashed var(--rb-primary-light); color: var(--rb-ink-soft); }
+/* 첫 말풍선의 꼬리 — 하루는 왼쪽 위, 나는 오른쪽 위 */
+.rb-chat__bubble--tail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+.rb-chat__bubble--me.rb-chat__bubble--tail::before { left: auto; right: -6px; clip-path: polygon(0 0, 100% 0, 0 100%); }
+.rb-chat__bubble--tail { border-top-left-radius: 4px; }
+.rb-chat__bubble--me.rb-chat__bubble--tail { border-top-left-radius: 16px; border-top-right-radius: 4px; }
+@media (max-width: 760px) {
+  .rb-chat__avatar, .rb-chat__avatar-gap { flex-basis: 36px; width: 36px; height: 36px; }
+  .rb-chat__avatar { border-radius: 13px; }
+  .rb-chat__bubble { font-size: 15px; padding: 10px 14px; }
 }
