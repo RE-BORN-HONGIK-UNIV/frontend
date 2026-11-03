@@ -252,17 +252,7 @@ export interface FaceReport {
     emo: { smile: number; neutral: number; tension: number } | null;
   };
   summary: { good: string[]; next: string[] };
-  /** 2단계를 어떻게 쟀는지 한 줄 (실시간 하루 통화에서 대답하는 동안만 쟀으면 그렇게 말한다) */
-  scope: string;
-  /** 결과를 그대로 믿기 어려울 때의 안내 — 지금은 얼굴이 카메라에서 자주 벗어났을 때 하나 */
-  caution: string | null;
 }
-
-/** 잰 동안 얼굴이 잡힌 비율이 이보다 낮으면 리포트에 안내한다. 판정 임계값이 아니라 안내를 띄울지 정하는 값 —
- * 얼굴이 안 잡힌 순간은 시선 회피로 계산되므로(gaze.ts), 30% 넘게 비면 "덜 바라봤다"는 결과가 실제와 다를 수 있다. */
-export const FACE_VISIBLE_NOTICE = 0.7;
-
-const FACE_SCOPE_DEFAULT = '2단계에서 하루와 영상 통화하는 동안 카메라로 살펴봤어요. 영상은 저장하지 않았어요.';
 
 type Stage2Source = { at: string; result: GazeBlinkResult } | { at: string; latest: GazeBlinkLatest };
 
@@ -305,8 +295,6 @@ export function buildFaceReport(src: Stage2Source): FaceReport {
       gaze: { chip: { tone: TONE[tier.gaze], text: GAZE_CHIP[tier.gaze] }, big: null, line: '', segments: null, perQ: null },
       expr: { chip: { tone: TONE[tier.expr], text: words(EXPR_WORDS, status.expr) }, smilePct: null, tensionPct: null, line: '', segments: null, emo: null },
       summary,
-      scope: FACE_SCOPE_DEFAULT,
-      caution: null,
     };
   }
 
@@ -342,14 +330,6 @@ export function buildFaceReport(src: Stage2Source): FaceReport {
       })(),
     },
     summary,
-    scope:
-      r.measured_scope === 'answer'
-        ? '2단계에서 하루와 영상 통화하며 대답하는 동안 카메라로 살펴봤어요. 하루가 말하는 동안은 살펴보지 않았어요. 영상은 저장하지 않았어요.'
-        : FACE_SCOPE_DEFAULT,
-    caution:
-      r.face_visible_ratio != null && r.face_visible_ratio < FACE_VISIBLE_NOTICE
-        ? '살펴보는 동안 얼굴이 카메라에서 벗어난 순간이 많았어요. 눈 맞춤은 실제보다 짧게 나왔을 수 있어요.'
-        : null,
   };
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Alert, Box, Button, Group, Paper, Stack, Text } from '@/components/ui';
 import type { GazeBlinkResult } from '@/lib/api/types';
 import { HaruAvatar, TileTag } from '@/features/haru/HaruAvatar';
@@ -8,11 +8,6 @@ import { saveStageAnswers } from '@/features/haru/store';
 import { linkStyle } from '@/features/haru/styles';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
 import { useLiveFaceSession } from './useLiveFaceSession';
-import { FaceDebugPanel } from './FaceDebugPanel';
-
-/** 통화 중 얼굴이 이 시간 넘게 안 잡히면 알려 준다 — 잠깐 고개를 숙이는 정도로는 안 뜨게(내 얼굴은 안 보여 주므로
- * 스스로 알 방법이 이것뿐이다. 얼굴이 안 잡힌 순간은 시선 회피로 계산된다 — gaze.ts stepGaze) */
-const FACE_LOST_NOTICE_MS = 2000;
 
 /** 통화 연결 직후 내 화면을 작게 보여 주는 시간 — 실제 영상 통화처럼 "연결됐다"는 느낌만 주고 사라진다(경량 웹과 같은 2초) */
 const PIP_MS = 2000;
@@ -40,18 +35,7 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
   const [pip, setPip] = useState(false);
   // 하루가 새 질문을 시작한 시각들(촬영 시작부터 초) — 결과를 질문별로 나누는 데 쓴다
   const questionStartsRef = useRef<number[]>([]);
-  // 하루와의 대화 단계 — 사용자가 대답하는 동안(listen)만 표정·시선을 잰다. 안내("말하는 동안에는 하루를 봐 주세요 ·
-  // 그 밖에는 편하게 봐도 돼요")와 맞추려는 것: 하루가 질문하는 동안 자막·버튼을 보는 건 시선 회피가 아니다
-  const talkPhaseRef = useRef<string>('ready');
-  const [params] = useSearchParams();
-  const debug = params.get('debug') === '1';
-  const s = useLiveFaceSession({
-    videoRef,
-    onComplete: setResult,
-    getQuestionStarts: () => questionStartsRef.current,
-    isMeasuring: () => talkPhaseRef.current === 'listen',
-    debug,
-  });
+  const s = useLiveFaceSession({ videoRef, onComplete: setResult, getQuestionStarts: () => questionStartsRef.current });
   // 하루와의 주고받기 — 통화가 연결되면(callOn) 첫 질문을 읽기 시작한다
   const t = useHaruTalk(
     STAGE2_QUESTIONS,
@@ -61,20 +45,7 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
     },
     callOn,
   );
-  talkPhaseRef.current = t.phase;
   const analysisEnded = s.saving || result !== null;
-
-  // 통화 중 얼굴이 FACE_LOST_NOTICE_MS 넘게 안 잡히면 알림 — 다시 잡히면 바로 사라진다
-  const [faceLost, setFaceLost] = useState(false);
-  const watchingFace = callOn && !analysisEnded && !talkDone;
-  useEffect(() => {
-    if (!watchingFace || s.faceDetected) {
-      setFaceLost(false);
-      return;
-    }
-    const id = setTimeout(() => setFaceLost(true), FACE_LOST_NOTICE_MS);
-    return () => clearTimeout(id);
-  }, [watchingFace, s.faceDetected]);
 
   // 대화가 끝났으면 촬영도 끝낸다(이미 3분이 지나 끝났으면 아무 일도 안 함). 결과까지 나오면 결과 화면으로
   useEffect(() => {
@@ -134,20 +105,6 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
                 <TileTag top>● 연결됨 · {mmss(s.recordingElapsedSec)}</TileTag>
                 <TileTag>하루{!t.bye && !talkDone && ` · 질문 ${t.index + 1} / ${t.total}`}</TileTag>
               </>
-            )}
-            {faceLost && (
-              <div
-                role="status"
-                style={{
-                  position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-                  background: 'rgba(21,24,28,.72)', color: '#fff', borderRadius: 12, padding: '10px 16px',
-                  fontSize: 14, fontWeight: 600, textAlign: 'center', lineHeight: 1.5, maxWidth: '80%',
-                }}
-              >
-                얼굴이 카메라에서 벗어났어요
-                <br />
-                <span style={{ fontWeight: 400, fontSize: 13 }}>카메라 쪽으로 살짝 와 주세요</span>
-              </div>
             )}
           </HaruAvatar>
           <div
@@ -270,8 +227,6 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
             표정·시선은 통화 시작 후 {s.maxCaptureSec / 60}분까지 살펴봤어요. 대화는 이어서 해도 돼요.
           </Text>
         )}
-
-        {debug && callOn && <FaceDebugPanel s={s} />}
 
         {callOn && !talkDone && (
           <Group justify="center">
