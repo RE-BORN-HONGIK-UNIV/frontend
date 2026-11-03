@@ -273,7 +273,7 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
       )}
 
       {mode === 'call' && !talkDone && (
-        <Stack gap={10}>
+        <Stack gap={12} align="center">
           {(t.phase === 'speak' || t.phase === 'ready') && (
             <Text fz={18} fw={600} ta="center" style={{ lineHeight: 1.6 }} aria-live="polite">
               {t.line}
@@ -285,34 +285,41 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
             </Text>
           )}
           {t.phase === 'listen' && (
-            <>
-              <Text fz={14} c="var(--rb-ink-soft)" ta="center">
-                듣고 있어요. 다 말했으면 아래 버튼을 눌러요.
-              </Text>
-              <Button fullWidth radius="md" onClick={() => void t.finish()}>
+            <Text fz={14} c="var(--rb-ink-soft)" ta="center">
+              듣고 있어요. 다 말했으면 아래 버튼을 눌러요.
+            </Text>
+          )}
+          {/* 통화 조작 — 대답 버튼과 빨간 전화 끊기 버튼을 한 줄로(경량 웹·휴대폰 영상 통화처럼) */}
+          <div className="rb-call__controls">
+            {t.phase === 'listen' ? (
+              <button type="button" className="rb-call__action" data-kind="finish" onClick={() => void t.finish()}>
                 ✓ 답변 마치기
-              </Button>
-              <Group justify="center">
-                <button type="button" onClick={t.again} style={linkStyle}>
-                  처음부터 다시 말할게요
+              </button>
+            ) : (
+              !t.bye && (
+                <button type="button" className="rb-call__action" disabled={t.phase !== 'ready'} onClick={t.start}>
+                  🎙 하루를 보며 대답하기
                 </button>
-              </Group>
-            </>
+              )
+            )}
+            <button type="button" className="rb-call__hangup" onClick={hangUp} aria-label="통화 끝내기" title="통화 끝내기">
+              <PhoneIcon down />
+            </button>
+          </div>
+          {t.phase === 'listen' && (
+            <button type="button" onClick={t.again} style={linkStyle}>
+              처음부터 다시 말할게요
+            </button>
           )}
           {(t.phase === 'speak' || t.phase === 'ready') && !t.bye && (
-            <>
-              <Button fullWidth radius="md" disabled={t.phase !== 'ready'} onClick={t.start}>
-                🎙 하루를 보며 대답하기
-              </Button>
-              <Group justify="center" gap={16}>
-                <button type="button" onClick={t.replay} disabled={t.phase !== 'ready'} style={linkStyle}>
-                  다시 들려주세요
-                </button>
-                <button type="button" onClick={() => void t.finish(true)} disabled={t.phase !== 'ready'} style={linkStyle}>
-                  이 질문 넘어가기
-                </button>
-              </Group>
-            </>
+            <Group justify="center" gap={16}>
+              <button type="button" onClick={t.replay} disabled={t.phase !== 'ready'} style={linkStyle}>
+                다시 들려주세요
+              </button>
+              <button type="button" onClick={() => void t.finish(true)} disabled={t.phase !== 'ready'} style={linkStyle}>
+                이 질문 넘어가기
+              </button>
+            </Group>
           )}
         </Stack>
       )}
@@ -334,13 +341,6 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
         </Text>
       )}
 
-      {mode === 'call' && !talkDone && (
-        <Group justify="center">
-          <button type="button" onClick={hangUp} style={{ ...linkStyle, color: 'var(--rb-amber-strong)' }}>
-            통화 끝내기
-          </button>
-        </Group>
-      )}
       {mode === 'prep' && s.phase === 'error' && (
         <Alert color="red" variant="light" p="xs" fz={13}>
           {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해주세요.'}
