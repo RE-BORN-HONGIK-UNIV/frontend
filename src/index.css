@@ -968,17 +968,63 @@ a {
 .rb-call[data-mode='prep'] .rb-call__haru,
 .rb-call[data-mode='prep'] .rb-call__me { aspect-ratio: 16 / 10; }
 /* 캘리브레이션·통화: 한 칸(정중앙) — 하루와 내 화면을 같은 자리에 겹친다 */
+.rb-call[data-mode='ring'],
 .rb-call[data-mode='calib'],
 .rb-call[data-mode='call'] { max-width: 960px; aspect-ratio: 16 / 9; }
+.rb-call[data-mode='ring'] .rb-call__haru,
 .rb-call[data-mode='calib'] .rb-call__haru,
 .rb-call[data-mode='call'] .rb-call__haru { position: absolute; inset: 0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08); }
-.rb-call[data-mode='calib'] .rb-call__me { position: absolute; inset: 0; z-index: 2; }
-/* 통화: 내 화면은 연결 직후 2초만 오른쪽 위에 작게, 그다음 사라짐 */
+/* 하루 그림: 전화가 오는 동안은 흐릿하게, 응답하면 선명하게 */
+.rb-call__haru > [role='img'] { transition: filter 0.7s ease, transform 0.7s ease; }
+.rb-call[data-mode='ring'] .rb-call__haru > [role='img'] { filter: blur(14px) brightness(0.7); transform: scale(1.08); }
+/* 전화 오는 화면·연결 중·통화: 내 화면은 숨김(카메라는 계속 켜져 있어 분석은 됨), 통화 연결 직후 2초만 오른쪽 위에 작게 */
+.rb-call[data-mode='ring'] .rb-call__me,
+.rb-call[data-mode='calib'] .rb-call__me,
 .rb-call[data-mode='call'] .rb-call__me {
   position: absolute; right: 16px; top: 16px; width: 24%; aspect-ratio: 4 / 3; z-index: 2;
   border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 0.6s;
 }
 .rb-call[data-mode='call'] .rb-call__me[data-pip] { opacity: 1; }
+/* 하루에게서 영상 통화가 오는 화면 — 휴대폰 전화 수신 화면처럼 */
+.rb-ring {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 7% 16px 5%; color: #fff; text-align: center;
+}
+.rb-ring__who { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rb-ring__sub { font-size: 16px; opacity: 0.85; letter-spacing: 0.02em; }
+.rb-ring__name { font-family: var(--rb-font-display); font-size: clamp(40px, 6vw, 64px); font-weight: 700; color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.25); }
+/* 이름 아래 도형 — 마름모 세 개가 차례로 밝아졌다 흐려진다(전화가 오고 있다는 표시) */
+.rb-ring__shapes { display: flex; gap: 14px; margin-top: 10px; height: 26px; align-items: center; }
+.rb-ring__shapes i {
+  width: 18px; height: 18px; border-radius: 4px; transform: rotate(45deg);
+  background: rgba(255, 255, 255, 0.9); opacity: 0.25; animation: rbRingShape 1.5s ease-in-out infinite;
+}
+.rb-ring__shapes i:nth-child(2) { animation-delay: 0.25s; }
+.rb-ring__shapes i:nth-child(3) { animation-delay: 0.5s; }
+@keyframes rbRingShape {
+  0%, 100% { opacity: 0.25; transform: rotate(45deg) scale(0.8); }
+  40% { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+.rb-ring__actions { display: flex; gap: min(30vw, 260px); }
+.rb-ring__btn {
+  width: 76px; height: 76px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center; color: #fff; transition: transform 0.15s ease, filter 0.15s ease;
+}
+.rb-ring__btn:hover { transform: scale(1.06); filter: brightness(1.05); }
+.rb-ring__btn:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.rb-ring__btn[data-kind='decline'] { background: #e5484d; }
+.rb-ring__btn[data-kind='accept'] { background: #30c25f; animation: rbRingAccept 1.6s ease-out infinite; }
+@keyframes rbRingAccept {
+  0% { box-shadow: 0 0 0 0 rgba(48, 194, 95, 0.55); }
+  100% { box-shadow: 0 0 0 22px rgba(48, 194, 95, 0); }
+}
+.rb-ring__labels { display: flex; gap: min(30vw, 260px); margin-top: -4%; font-size: 15px; }
+.rb-ring__labels span { width: 76px; }
+@media (prefers-reduced-motion: reduce) {
+  .rb-ring__shapes i, .rb-ring__btn[data-kind='accept'] { animation: none; opacity: 0.8; }
+  .rb-call__haru > [role='img'] { transition: none; }
+}
 .rb-call__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #34d27b; margin-right: 6px; vertical-align: 1px; }
 .rb-call__dot[data-off] { background: #f2b544; }
 .rb-call__qtag {
@@ -1006,8 +1052,10 @@ a {
 }
 @media (max-width: 760px) {
   .rb-call[data-mode='prep'] { grid-template-columns: 1fr; gap: 14px; }
+  .rb-call[data-mode='ring'],
   .rb-call[data-mode='calib'],
   .rb-call[data-mode='call'] { aspect-ratio: 4 / 5; }
+  .rb-ring__actions, .rb-ring__labels { gap: 120px; }
   .rb-call__haru, .rb-call__me { border-radius: 18px; }
 }
 /* 1단계를 마친 뒤 하단 바의 체크 표시 — 누르는 버튼이 아님 */

@@ -84,10 +84,22 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
     setTimeout(() => setPip(false), PIP_MS);
   };
 
-  // "통화 시작하기" → 정중앙 캘리브레이션 5초
+  // "통화 시작하기" → 하루에게서 영상 통화가 오는 화면(ring) → 초록 "응답" → 캘리브레이션 5초 → 통화
+  const [ringing, setRinging] = useState(false);
   const startCall = () => {
     setStarted(true);
+    setRinging(true);
+  };
+  // 응답: 흐릿했던 하루가 선명해지고, 5초 동안 "하루를 봐 주세요"로 시선 기준을 잰다 — 통화 중 하루가 나올 바로 그
+  // 자리를 보게 되므로 기준이 가장 정확하다. 얼굴 위치는 대기실 오른쪽 칸에서 이미 확인해서 내 얼굴은 다시 안 띄운다
+  const accept = () => {
+    setRinging(false);
     s.startCalibration();
+  };
+  // 거절: 대기실로
+  const decline = () => {
+    setRinging(false);
+    setStarted(false);
   };
 
   // 캘리브레이션이 끝나면: 얼굴이 잘 잡혔으면 바로 통화 시작, 아니면 다시 맞출지 묻는다
@@ -101,7 +113,7 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
     if (window.confirm('통화를 끝낼까요? 2단계는 다음에 처음부터 다시 해요.')) navigate('/dashboard');
   };
 
-  const mode = !started ? 'prep' : callOn ? 'call' : 'calib';
+  const mode = !started ? 'prep' : callOn ? 'call' : ringing ? 'ring' : 'calib';
   const cameraOn = s.phase !== 'idle' && s.phase !== 'loading' && s.phase !== 'error';
   const calibLeft = Math.max(0, s.calibrationSec - s.calibrationElapsedSec);
 
@@ -155,6 +167,23 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
                 <TileTag>하루</TileTag>
               </>
             )}
+            {mode === 'calib' && (
+              <div className="rb-call__calib" aria-live="polite">
+                {s.phase === 'calibrating' && (
+                  <>
+                    <b>연결 중… 하루를 봐 주세요</b>
+                    <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                    <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
+                  </>
+                )}
+                {s.phase === 'ready' && !calibrationLooksGood && (
+                  <>
+                    <b>얼굴이 잘 안 잡혔어요</b>
+                    <span>카메라 위치나 조명을 확인해 주세요</span>
+                  </>
+                )}
+              </div>
+            )}
             {faceLost && (
               <div role="status" className="rb-call__notice">
                 얼굴이 카메라에서 벗어났어요
@@ -163,6 +192,31 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
               </div>
             )}
           </HaruAvatar>
+          {mode === 'ring' && (
+            <div className="rb-ring" role="dialog" aria-label="하루에게서 영상 통화가 왔어요">
+              <div className="rb-ring__who">
+                <span className="rb-ring__sub">영상 통화</span>
+                <strong className="rb-ring__name">하루</strong>
+                <span className="rb-ring__shapes" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+              <div className="rb-ring__actions">
+                <button type="button" className="rb-ring__btn" data-kind="decline" onClick={decline} aria-label="거절">
+                  <PhoneIcon down />
+                </button>
+                <button type="button" className="rb-ring__btn" data-kind="accept" onClick={accept} aria-label="응답" autoFocus>
+                  <PhoneIcon />
+                </button>
+              </div>
+              <div className="rb-ring__labels" aria-hidden>
+                <span>거절</span>
+                <span>응답</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rb-call__me" data-pip={(mode === 'call' && pip) || undefined}>
@@ -187,23 +241,6 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
               <TileTag>나</TileTag>
               <span className="rb-call__note">영상은 저장하지 않아요</span>
             </>
-          )}
-          {mode === 'calib' && (
-            <div className="rb-call__calib" aria-live="polite">
-              {s.phase === 'calibrating' && (
-                <>
-                  <b>화면 가운데를 봐 주세요</b>
-                  <span>통화 중 하루가 나올 자리예요 · {Math.ceil(calibLeft)}초</span>
-                  <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
-                </>
-              )}
-              {s.phase === 'ready' && !calibrationLooksGood && (
-                <>
-                  <b>얼굴이 잘 안 잡혔어요</b>
-                  <span>카메라 위치나 조명을 확인해 주세요</span>
-                </>
-              )}
-            </div>
           )}
         </div>
       </div>
@@ -310,6 +347,14 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
         </Alert>
       )}
     </Stack>
+  );
+}
+
+function PhoneIcon({ down = false }: { down?: boolean }) {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={down ? { transform: 'rotate(135deg)' } : undefined}>
+      <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.6a1 1 0 0 1-.25 1z" />
+    </svg>
   );
 }
 
