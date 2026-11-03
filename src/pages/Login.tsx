@@ -16,21 +16,26 @@ import {
   TextInput,
 } from '@/components/ui';
 import { AuthShell } from '@/components/AuthShell';
-import { useLogin } from '@/features/auth/mutations';
+import { useGuestStart, useLogin } from '@/features/auth/mutations';
 import { ApiError } from '@/lib/api/client';
 import { toast } from '@/lib/toast';
+import { auth } from '@/lib/auth';
 
 // Signup.tsx와 동일한 이유로 스텁 — app.py에 OAuth 연동 생기면 교체
 const handleSocialLoginStub = (provider: string) => () =>
   toast.info(`${provider} 로그인은 아직 준비 중이에요.`);
 
-type LocationState = { registered?: boolean; from?: string } | null;
+type LocationState = { registered?: boolean; from?: string; guestFailed?: boolean } | null;
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
   const login = useLogin();
+  const guest = useGuestStart();
+  // 토큰이 만료돼 이 화면으로 온 경우(client.ts의 401 처리)
+  const expired = new URLSearchParams(location.search).has('expired');
+  const wasGuest = auth.isGuest;
 
   const form = useForm({
     initialValues: { email: '', password: '' },
@@ -61,6 +66,21 @@ export default function Login() {
     >
       <form onSubmit={submit} noValidate>
         <Stack gap={20}>
+          {expired && (
+            <Alert color="brand" variant="light" p="xs" fz={13}>
+              로그인이 만료됐어요. 다시 로그인해 주세요.
+            </Alert>
+          )}
+          {state?.guestFailed && (
+            <Alert color="red" variant="light" p="xs" fz={13}>
+              지금은 로그인 없이 시작할 수 없어요. 잠시 뒤에 다시 시도하거나 로그인해 주세요.
+            </Alert>
+          )}
+          {wasGuest && (
+            <Alert color="brand" variant="light" p="xs" fz={13}>
+              지금은 게스트로 이용 중이에요. 로그인하면 게스트로 남긴 기록은 옮겨지지 않아요.
+            </Alert>
+          )}
           {state?.registered && (
             <Alert color="brand" variant="light" p="xs" fz={13}>
               회원가입이 완료됐어요. 로그인해 주세요.
@@ -88,6 +108,23 @@ export default function Login() {
           <Button type="submit" color="brand" radius="md" loading={login.isPending} fullWidth mt={16}>
             로그인
           </Button>
+          {!wasGuest && (
+            <Button
+              type="button"
+              variant="default"
+              radius="md"
+              fullWidth
+              loading={guest.isPending}
+              onClick={() =>
+                guest.mutate(undefined, {
+                  onSuccess: () => navigate(state?.from ?? '/dashboard', { replace: true }),
+                  onError: () => toast.error('지금은 로그인 없이 시작할 수 없어요. 잠시 뒤에 다시 시도해 주세요.'),
+                })
+              }
+            >
+              로그인 없이 시작하기
+            </Button>
+          )}
         </Stack>
       </form>
 

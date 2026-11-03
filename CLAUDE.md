@@ -55,6 +55,9 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 - ~~`/interview` 라우트에 `PrivateRoute` 누락~~ → 수정 완료 (`src/app/router.tsx`,
   다른 라우트와 동일하게 `PrivateRoute`로 감쌈). `VITE_USE_MOCK_API=true`로 백엔드
   없이 화면만 확인하는 흐름(README "개발" 섹션)은 인증 상태와 무관하게 그대로 동작.
+- 로그인 없이 시작: `PrivateRoute`는 로그인하지 않았으면 로그인 화면 대신 게스트 계정을 자동으로 만들어 들여보낸다
+  (backend `POST /api/guest`, 30일 토큰). 게스트는 헤더에 "게스트로 이용 중 · 로그인"으로 보이고(로그아웃하면 기록을 잃어서
+  로그아웃 버튼이 없음), 게스트로 남긴 기록은 로그인·회원가입해도 옮겨지지 않는다. 401을 받으면 `client.ts`가 토큰을 지운다.
 - 과거 버그·트러블슈팅 기록은 별도 레포 `re-born-hongik-univ/trouble-shooting`의
   `frontend/`에 있음 — 비슷한 증상(크래시, 프록시 누락 등) 다룰 땐 먼저 검색.
 
