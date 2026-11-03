@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createSegmentBufferState,
   detectSegmentsBatch,
+  flushSegmentBuffer,
   mergeShortSegmentsBatch,
+  pauseSegmentBuffer,
   rawSegmentsBatch,
+  stepSegmentBuffer,
   type Segment,
 } from './segmentBuffer';
 
@@ -76,5 +80,23 @@ describe('segmentBuffer 스트리밍(지연 버퍼)과 배치(mergeShortSegments
 
   it('빈 프레임 시퀀스는 빈 결과', () => {
     expect(detectSegmentsBatch([])).toEqual([]);
+  });
+});
+
+describe('pauseSegmentBuffer — 측정을 멈췄다 다시 시작', () => {
+  it('멈춘 동안의 시간은 구간에 들어가지 않는다', () => {
+    const st = createSegmentBufferState();
+    stepSegmentBuffer(st, 0, 'fixation');
+    stepSegmentBuffer(st, 2, 'fixation');
+    stepSegmentBuffer(st, 2.1, 'aversion'); // 확정 전 후보
+    pauseSegmentBuffer(st);
+    // 10초 뒤 다시 측정
+    stepSegmentBuffer(st, 12, 'aversion');
+    stepSegmentBuffer(st, 14, 'aversion');
+    flushSegmentBuffer(st);
+    expect(st.committed).toEqual([
+      { type: 'fixation', start: 0, end: 2.1 },
+      { type: 'aversion', start: 12, end: 14 },
+    ]);
   });
 });

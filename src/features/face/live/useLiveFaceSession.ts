@@ -5,23 +5,12 @@ import { api } from '@/lib/api/client';
 import { buildLiveSavePayload } from './savePayload';
 import { splitByQuestion } from './perQuestion';
 import { MAX_CAPTURE_SEC } from '@/features/face/constants';
-import {
-  createBlinkFsmState,
-  computeBlinkBlendshapeScore,
-  stepBlendshapeBlink,
-  type Blink,
-} from './blink';
 import { calibrateBaselineGaze, DEFAULT_BASELINE_GAZE, type GazeBaseline } from './calibration';
-import { computeIrisOffset, matrixToHeadPose } from './headPose';
-import { createGazeFsmState, flushGaze, stepGaze } from './gaze';
-import { createSegmentBufferState } from './segmentBuffer';
-import {
-  computeExpressionForFrame,
-  createExpressionFsmState,
-  flushExpression,
-  stepExpression,
-  summarizeExpression,
-} from './expression';
+import { computeIrisOffset, isLookingAtCamera, matrixToHeadPose } from './headPose';
+import { stepGaze } from './gaze';
+import { computeExpressionForFrame, summarizeExpression, JAW_OPEN_KEY, SMILE_KEYS, avgBlendshape } from './expression';
+import { createAccumulator, faceVisibleRatio, finishAccumulator, stepAccumulator, type Accumulator } from './measure';
+import { createFrameLog, type DebugLabels, type DebugSnapshot } from './debugLog';
 import { scoreBlinkRate, scoreExpression, scoreGazeSegments } from './scoring';
 import { LEFT_EYE_EAR_IDX, LEFT_IRIS_IDX, RIGHT_EYE_EAR_IDX, RIGHT_IRIS_IDX } from './landmarkIndices';
 import type { Point2D } from './types';
@@ -68,6 +57,11 @@ import type { Point2D } from './types';
 
 const CALIBRATION_SEC = 5;
 
+/** isMeasuring을 줬는데 실제로 잰 시간(사용자가 대답한 시간)이 이보다 짧으면 통화 전체 기록으로 대신한다 —
+ * 대답을 다 넘겨서 잰 게 거의 없을 때 결과가 비거나 깜빡임 분당 횟수가 터무니없이 나오지 않게(판정 임계값이 아니라
+ * "결과를 낼 만큼 쟀는가"의 최소 길이). */
+const MIN_MEASURED_SEC = 5;
+
 /** 서버 저장 응답을 기다리는 최대 시간 — 결과 화면이 네트워크 때문에 오래 막히지 않게. */
 const SAVE_TIMEOUT_MS = 5000;
 
@@ -83,9 +77,14 @@ export interface UseLiveFaceSessionOptions {
   onComplete: (result: GazeBlinkResult) => void;
   /** 촬영 중 질문이 바뀐 시각들(촬영 시작부터 초) — 주면 결과에 질문별 깜빡임·눈 맞춤(per_question)을 붙인다 */
   getQuestionStarts?: () => number[];
+  /** 지금 프레임을 잴지 — 주면 true인 동안만 결과에 넣는다(2단계: 사용자가 대답하는 동안만, measure.ts 참고).
+   * 안 주면 촬영 내내 잰다. */
+  isMeasuring?: () => boolean;
+  /** 확인용 디버그(/face?debug=1) — 프레임마다 판정값을 보여 주고 숫자 기록을 CSV로 내려받을 수 있게 모은다 */
+  debug?: boolean;
 }
 
-export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: UseLiveFaceSessionOptions) {
+export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, isMeasuring, debug = false }: UseLiveFaceSessionOptions) {
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -107,11 +106,12 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
   const calibratedRef = useRef(false);
 
-  const blinkFsmRef = useRef(createBlinkFsmState());
-  const blinksRef = useRef<Blink[]>([]);
-  const gazeFsmRef = useRef(createGazeFsmState());
-  const exprFsmRef = useRef(createExpressionFsmState());
-  const exprSeriesRef = useRef<[number, number | null, number | null][]>([]);
+  // all: 촬영 내내 / answer: isMeasuring이 true인 동안만 — 결과는 answer로 내되, 잰 게 너무 적으면 all로 대신
+  const allAccRef = useRef<Accumulator>(createAccumulator());
+  const answerAccRef = useRef<Accumulator>(createAccumulator());
+  const debugSnapshotRef = useRef<DebugSnapshot | null>(null);
+  const debugLabelsRef = useRef<DebugLabels>({ gaze: '', smile: '' });
+  const frameLogRef = useRef(createFrameLog());
 
   useEffect(() => {
     let cancelled = false;
@@ -190,9 +190,11 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
               // 미치는 영향이 미미함. 이 리플레이는 gaze FSM의 EMA 스무딩
               // 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
               // 초기화하므로 이 구간이 실제 구간 판정에 남지는 않는다.
-              stepGaze(gazeFsmRef.current, bt, bRaw, baseline.yaw, baseline.pitch);
+              stepGaze(allAccRef.current.gazeFsm, bt, bRaw, baseline.yaw, baseline.pitch);
             }
-            gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
+            const smoothed = allAccRef.current.gazeFsm.smoothed;
+            allAccRef.current = createAccumulator();
+            allAccRef.current.gazeFsm.smoothed = smoothed;
 
             const detected = buffer.filter(([, p]) => p !== null).length;
             setCalibrationSummary({ detectedRatio: buffer.length > 0 ? detected / buffer.length : 0 });
@@ -202,22 +204,35 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
           // recording이 시작된 뒤부터만 최종 결과에 반영 — 캘리브레이션·대기
           // 구간 값은 여기서 버려진다(위 함수 docstring 참고).
           if (isRecordingRef.current) {
-            const blinkScore = computeBlinkBlendshapeScore(blendshapes);
-            const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
-            if (blink) blinksRef.current.push(blink);
-
-            stepExpression(exprFsmRef.current, t, blendshapes);
-            const exprFrame = computeExpressionForFrame(blendshapes);
-            exprSeriesRef.current.push([
-              t,
-              exprFrame ? exprFrame.smile : null,
-              exprFrame ? exprFrame.tension : null,
-            ]);
-
             // isRecordingRef가 true인 시점엔 캘리브레이션이 이미 끝난
             // 뒤라(beginRecording은 phase==='ready'에서만 호출 가능) baseline은
             // 항상 계산돼 있다.
-            stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
+            const frame = { blendshapes, gazeRaw };
+            const measuring = isMeasuring ? isMeasuring() : true;
+            stepAccumulator(allAccRef.current, t, frame, baselineGazeRef.current, true);
+            if (isMeasuring) stepAccumulator(answerAccRef.current, t, frame, baselineGazeRef.current, measuring);
+
+            if (debug) {
+              const base = baselineGazeRef.current;
+              const sm = allAccRef.current.gazeFsm.smoothed;
+              const expr = computeExpressionForFrame(blendshapes);
+              const snap: DebugSnapshot = {
+                t: Math.max(0, t - recordingStartTRef.current),
+                measuring,
+                detected: gazeRaw !== null,
+                yawDev: gazeRaw ? gazeRaw.yaw - base.yaw : null,
+                pitchDev: gazeRaw ? gazeRaw.pitch - base.pitch : null,
+                irisX: gazeRaw ? gazeRaw.ox : null,
+                irisY: gazeRaw ? gazeRaw.oy : null,
+                looking: gazeRaw && sm ? isLookingAtCamera(sm.yaw, sm.pitch, sm.ox, sm.oy, base.yaw, base.pitch) : false,
+                smileRaw: blendshapes ? avgBlendshape(blendshapes, SMILE_KEYS) : null,
+                jawOpen: blendshapes ? (blendshapes[JAW_OPEN_KEY] ?? 0) : null,
+                smile: expr ? expr.smile : null,
+                tension: expr ? expr.tension : null,
+              };
+              debugSnapshotRef.current = snap;
+              frameLogRef.current.push(snap, debugLabelsRef.current);
+            }
 
             if (t - recordingStartTRef.current >= MAX_CAPTURE_SEC) {
               elapsedSecRef.current = t;
@@ -255,11 +270,12 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
    * 실제로 점수에 반영되는 구간이 시작된다. */
   function beginRecording() {
     if (phase !== 'ready') return;
-    blinkFsmRef.current = createBlinkFsmState();
-    blinksRef.current = [];
-    exprFsmRef.current = createExpressionFsmState();
-    exprSeriesRef.current = [];
-    gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
+    // 캘리브레이션 동안 이어 온 시선 스무딩 값만 남기고 새로 시작
+    const smoothed = allAccRef.current.gazeFsm.smoothed;
+    allAccRef.current = createAccumulator();
+    allAccRef.current.gazeFsm.smoothed = smoothed;
+    answerAccRef.current = createAccumulator();
+    frameLogRef.current = createFrameLog();
     recordingStartTRef.current = elapsedSecRef.current;
     isRecordingRef.current = true;
     setPhase('recording');
@@ -274,13 +290,16 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     streamRef.current?.getTracks().forEach((t) => t.stop());
     landmarkerRef.current?.close();
 
-    flushGaze(gazeFsmRef.current);
-    flushExpression(exprFsmRef.current);
+    finishAccumulator(allAccRef.current);
+    finishAccumulator(answerAccRef.current);
+    // 대답하는 동안만 잰 기록으로 결과를 낸다. 잰 게 너무 적으면(대답을 다 넘김 등) 통화 전체 기록으로 대신
+    const useAnswer = !!isMeasuring && answerAccRef.current.sec >= MIN_MEASURED_SEC;
+    const acc = useAnswer ? answerAccRef.current : allAccRef.current;
 
-    const durationSec = Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
-    const blinkResult = scoreBlinkRate(blinksRef.current.length, durationSec);
-    const gazeResult = scoreGazeSegments(gazeFsmRef.current.segmentBuffer.committed);
-    const expressionSummary = summarizeExpression(exprSeriesRef.current);
+    const durationSec = useAnswer ? acc.sec : Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
+    const blinkResult = scoreBlinkRate(acc.blinks.length, durationSec);
+    const gazeResult = scoreGazeSegments(acc.gazeFsm.segmentBuffer.committed);
+    const expressionSummary = summarizeExpression(acc.exprSeries);
     const expressionResult = scoreExpression(expressionSummary.smileRatio, expressionSummary.tensionRatio);
 
     // 서버 저장이 실패·지연되는 경우의 폴백 이력 — 브라우저 로컬(같은 기기에서만 유효)
@@ -296,13 +315,13 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
         rate_per_min: blinkResult.ratePerMin,
         status: blinkResult.status,
         score: blinkResult.score,
-        events: blinksRef.current,
+        events: acc.blinks,
         highlight: null,
       },
       gaze: {
         avg_fixation_sec: gazeResult.avgFixationSec,
         score: gazeResult.score,
-        segments: gazeFsmRef.current.segmentBuffer.committed as GazeBlinkResult['gaze']['segments'],
+        segments: acc.gazeFsm.segmentBuffer.committed as GazeBlinkResult['gaze']['segments'],
         highlight: null,
       },
       expression: {
@@ -313,20 +332,23 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
         smile_ratio: expressionSummary.smileRatio,
         tension_ratio: expressionSummary.tensionRatio,
         frame_count: expressionSummary.frameCount,
-        segments: exprFsmRef.current.segmentBuffer.committed as GazeBlinkResult['expression']['segments'],
+        segments: acc.exprFsm.segmentBuffer.committed as GazeBlinkResult['expression']['segments'],
         highlight: null,
       },
       previous: localPrevious,
+      measured_scope: useAnswer ? 'answer' : 'whole',
+      face_visible_ratio: faceVisibleRatio(acc),
     };
 
     // 하루와 통화한 경우: 질문이 바뀐 시각으로 깜빡임·시선을 나눠 질문별 값을 붙인다(최종 리포트의 질문별 막대)
     const starts = getQuestionStarts?.() ?? [];
     if (starts.length) {
       result.per_question = splitByQuestion(
-        blinksRef.current,
-        gazeFsmRef.current.segmentBuffer.committed,
+        acc.blinks,
+        acc.gazeFsm.segmentBuffer.committed,
         starts.map((s) => recordingStartTRef.current + s),
         elapsedSecRef.current,
+        useAnswer ? acc.intervals : undefined,
       );
     }
 
@@ -360,6 +382,13 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,
     finish,
+    /** 확인용 디버그(debug=true일 때만): 지금 프레임 판정값, 정답 표시 바꾸기, 숫자 기록 CSV */
+    debugSnapshot: debug ? debugSnapshotRef.current : null,
+    setDebugLabels: (labels: DebugLabels) => {
+      debugLabelsRef.current = labels;
+    },
+    debugCsv: () => frameLogRef.current.toCsv(),
+    debugFrameCount: () => frameLogRef.current.count(),
     /** 지금이 촬영 시작부터 몇 초인지 (질문이 바뀐 시각을 적을 때). 촬영 중이 아니면(3분이 지나 끝남 등) null */
     recordingNowSec: () => (isRecordingRef.current ? Math.max(0, elapsedSecRef.current - recordingStartTRef.current) : null),
   };

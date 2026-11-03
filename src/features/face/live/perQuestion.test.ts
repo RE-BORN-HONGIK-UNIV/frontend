@@ -23,3 +23,12 @@ describe('질문별로 나누기', () => {
     expect(r.blink_per_min).toHaveLength(2);
   });
 });
+
+describe('splitByQuestion — 잰 시간만 세기 (2단계: 대답하는 동안만 측정)', () => {
+  it('분당 깜빡임은 구간 안에서 실제로 잰 시간으로 나눈다', () => {
+    // 질문1 0~60초 중 대답(측정)은 30~60초, 깜빡임 5번 → 30초 동안 5번 = 분당 10번 (전체 60초로 나누면 5번)
+    const blinks = [31, 35, 40, 50, 55].map((s) => ({ start: s, end: s + 0.2 }));
+    const out = splitByQuestion(blinks, [], [0, 60], 120, [[30, 60]]);
+    expect(out.blink_per_min).toEqual([10, 0]);
+  });
+});
