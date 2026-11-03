@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalyzeResult, GazeBlinkResult } from '@/lib/api/types';
+import { TRAINING_TIPS } from '@/features/voice/constants';
 import { buildFaceReport, buildSummary, buildVoiceReport, FIRST_WORDS_SEC } from './buildReport';
 
 const analyze = (over: Partial<AnalyzeResult> = {}): AnalyzeResult => ({
@@ -84,6 +85,40 @@ describe('말하기 습관 (1단계)', () => {
   it('모든 축이 좋으면 연습 제안을 따로 띄우지 않는다', () => {
     const r = buildVoiceReport({ at: 'x', result: analyze({ scores: { stability: 90, fluency: 90, pause_ctrl: 90, continuity: 90, calm: 90 } }) });
     expect(r.tip).toBeNull();
+  });
+  it('분석 모델이 아직 없는 축(서버가 null)은 0점이 아니라 "준비 중"으로 둔다', () => {
+    // 떨림(stability)·에너지(calm) 모델이 없는 경우 — 0점으로 읽으면 "자주 흔들렸어요"가 된다
+    const r = buildVoiceReport({
+      at: 'x',
+      result: analyze({ scores: { stability: null, fluency: 90, pause_ctrl: 40, continuity: 90, calm: null } }),
+    });
+    expect(r.habits[0].chip).toEqual({ tone: 'n', text: '준비 중' });
+    expect(r.habits[4].chip).toEqual({ tone: 'n', text: '준비 중' });
+    expect(r.habits[0].flow[0]).toBeNull();
+    expect(r.v[0]).toBeNull();
+    expect(r.v[4]).toBeNull();
+    expect(r.v[1]).toBe(0.9);
+    // 연습 팁은 값이 있는 축 중 가장 낮은 침묵 조절에서 고른다
+    expect(r.tip).toBe(TRAINING_TIPS.pause_ctrl);
+    // 정리에도 '준비 중' 축은 들어가지 않는다
+    const { good, next } = buildSummary(r, null);
+    expect(good).toEqual(['"음, 어"가 적어요', '또박또박']);
+    expect(next).toEqual(['오래 멈추기']);
+  });
+
+  it('참고용 모델(시험 미통과) 판정은 참고용이라고 붙이고 정리·연습 팁에는 쓰지 않는다', () => {
+    const r = buildVoiceReport({
+      at: 'x',
+      result: analyze({
+        scores: { stability: 20, fluency: 90, pause_ctrl: 90, continuity: 90, calm: 90 },
+        model_status: { tremor: 'reference', prolongation: 'ready', energy: 'ready' },
+      }),
+    });
+    expect(r.habits[0].chip).toEqual({ tone: 'p', text: '자주 흔들렸어요 · 참고용' });
+    expect(r.habits[0].line).toContain('참고만');
+    expect(r.habits[3].reference).toBe(false);
+    expect(r.tip).toBeNull();
+    expect(buildSummary(r, null).next).toEqual([]);
   });
 });
 

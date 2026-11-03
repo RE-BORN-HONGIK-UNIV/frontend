@@ -1,17 +1,26 @@
 /** Response shapes from the Flask backend (backend/app.py). */
 
+/** CNN 축(stability=떨림, continuity=연장, calm=에너지)은 그 모델이 아직 없으면 null. */
 export interface AnalyzeScores {
-  stability: number;
+  stability: number | null;
   fluency: number;
   pause_ctrl: number;
-  continuity: number;
-  calm: number;
+  continuity: number | null;
+  calm: number | null;
 }
+
+export type CnnLabel = 'prolongation' | 'tremor' | 'energy';
 
 export interface AnalyzeResult {
   scores: AnalyzeScores;
-  model_scores: Record<string, number>;
-  probabilities: { tremor: number; prolongation: number; energy: number };
+  model_scores: Record<string, number | null>;
+  /** 0~100 (%). 모델이 없는 라벨은 null. */
+  probabilities: Record<CnnLabel, number | null>;
+  /** 모델 설정의 기준선으로 내린 있음/없음. 모델이 없는 라벨은 null.
+   * optional: 이 기기에 예전에 저장된 1단계 결과(stageDetails, 라벨별 CNN 이전)에는 없다. */
+  detected?: Record<CnnLabel, boolean | null>;
+  /** reference: 붙어 있지만 시험을 통과하지 못한 참고용 모델(떨림 v1). optional 이유는 detected와 같다. */
+  model_status?: Record<CnnLabel, 'ready' | 'reference' | 'pending'>;
   filler_detail: {
     filler_count: number;
     sound_segment_count: number;

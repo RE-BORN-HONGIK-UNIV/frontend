@@ -19,7 +19,9 @@ export function useAnswerRecorder(recording: boolean) {
   useEffect(() => {
     let cancelled = false;
     navigator.mediaDevices
-      ?.getUserMedia({ audio: true })
+      // 브라우저 음량 자동 조절·잡음 제거가 에너지 변화를 지우지 않게 끈다(CNN 학습 데이터는 손질 없는 녹음 —
+      // feature/stage1-cnn-v1의 VoiceStage 설정을 옮김). 하루 목소리가 나오는 동안엔 녹음을 멈춰 두므로 반향 제거도 끈다.
+      ?.getUserMedia({ audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false } })
       .then((stream) => {
         if (cancelled) return stream.getTracks().forEach((t) => t.stop());
         streamRef.current = stream;

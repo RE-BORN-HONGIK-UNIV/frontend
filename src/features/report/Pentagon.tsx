@@ -1,8 +1,9 @@
 /**
  * 말하기 습관 오각형 — 경량 웹 ui.tsx의 Pentagon을 옮기고 색을 디자인 토큰으로 바꿨다(다크 모드 대응).
  * v: 축 5개의 0~1 값. 숫자는 그리지 않고 모양만 보여 준다(점수 숫자를 보이지 않는 리포트 원칙).
+ * null(분석 모델이 아직 없는 축)은 가운데 빈 점으로 두고 이름 아래에 "준비 중"을 붙인다.
  */
-export function Pentagon({ v, size = 260, labels }: { v: number[]; size?: number; labels: string[] }) {
+export function Pentagon({ v, size = 260, labels }: { v: (number | null)[]; size?: number; labels: string[] }) {
   const xy = (k: number, s: number) => {
     const a = ((-90 + 72 * k) * Math.PI) / 180;
     return [100 + 72 * s * Math.cos(a), 100 + 72 * s * Math.sin(a)];
@@ -10,12 +11,13 @@ export function Pentagon({ v, size = 260, labels }: { v: number[]; size?: number
   const pts = (f: (k: number) => number) =>
     v.map((_, k) => xy(k, f(k)).map((n) => n.toFixed(1)).join(',')).join(' ');
   return (
-    <svg viewBox="-40 -12 280 224" width={size} height={size} role="img" aria-label={`말하기 습관 다섯 가지 모양: ${labels.join(', ')}`}>
+    <svg viewBox="-40 -12 280 224" width={size} height={size} role="img" aria-label={`말하기 습관 다섯 가지 모양: ${labels.map((t, k) => (v[k] === null ? `${t}(준비 중)` : t)).join(', ')}`}>
       {[1, 0.66, 0.33].map((s) => (
         <polygon key={s} points={pts(() => s)} fill="none" stroke="var(--rb-line)" />
       ))}
-      <polygon points={pts((k) => v[k])} fill="color-mix(in srgb, var(--rb-primary) 20%, transparent)" stroke="var(--rb-primary)" strokeWidth="2.5" />
+      <polygon points={pts((k) => v[k] ?? 0)} fill="color-mix(in srgb, var(--rb-primary) 20%, transparent)" stroke="var(--rb-primary)" strokeWidth="2.5" />
       {v.map((s, k) => {
+        if (s === null) return null;
         const [x, y] = xy(k, s);
         return <circle key={k} cx={x} cy={y} r="3.5" fill="var(--rb-primary)" />;
       })}
@@ -24,6 +26,11 @@ export function Pentagon({ v, size = 260, labels }: { v: number[]; size?: number
         return (
           <text key={t} x={x} y={y + 4} fontSize="13" fontWeight="600" fill="var(--rb-ink-soft)" textAnchor={k === 0 ? 'middle' : k < 3 ? 'start' : 'end'}>
             {t}
+            {v[k] === null && (
+              <tspan x={x} dy="15" fontSize="11" fontWeight="500" fill="var(--rb-ink-faint)">
+                준비 중
+              </tspan>
+            )}
           </text>
         );
       })}

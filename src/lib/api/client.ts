@@ -112,7 +112,8 @@ export const api = {
       ? mockApi.feedback()
       : request<FeedbackResponse>('/analyze/feedback', {
           method: 'POST',
-          body: JSON.stringify(result),
+          // 모델이 아직 없는 축(null)은 빼고 보낸다
+          body: JSON.stringify({ ...result, scores: Object.fromEntries(Object.entries(result.scores).filter(([, v]) => v !== null)) }),
         }),
 
   /** 1·2단계 하루 대화 — 방금 대답에 한 문장 반응 + 다음 질문으로 잇는 말. 서버가 AI를 못 쓰면 정해 둔 문장을 준다. */

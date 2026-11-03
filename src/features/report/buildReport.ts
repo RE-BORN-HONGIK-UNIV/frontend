@@ -1,4 +1,4 @@
-import type { AnalyzeResult, GazeBlinkLatest, GazeBlinkResult, Stage1Latest } from '@/lib/api/types';
+import type { AnalyzeResult, CnnLabel, GazeBlinkLatest, GazeBlinkResult, Stage1Latest } from '@/lib/api/types';
 import { scoreTier, type ScoreTier } from '@/lib/scoreColor';
 import { TRAINING_TIPS, type AxisKey } from '@/features/voice/constants';
 import { extractMetrics, COMPARISON_BUILDERS } from '@/features/face/comparison';
@@ -12,7 +12,7 @@ import { extractMetrics, COMPARISON_BUILDERS } from '@/features/face/comparison'
  * scoreColor와 같은 경계)을 고르는 데만 쓰고, 화면에는 "가끔 나와요" 같은 말과 실제로 센 횟수·초만 보인다.
  */
 
-export type Tone = 'g' | 'y' | 'p'; // 초록 지금처럼 / 노랑 가끔 / 주황 다음 연습 포인트
+export type Tone = 'g' | 'y' | 'p' | 'n'; // 초록 지금처럼 / 노랑 가끔 / 주황 다음 연습 포인트 / 회색 준비 중(분석 모델이 아직 없음)
 export interface Chip {
   tone: Tone;
   text: string;
@@ -31,6 +31,9 @@ interface AxisCopy {
 /** 오각형 축 순서 (경량 웹과 같음): 안정성·유창성·침묵 조절·지속성·에너지 */
 export const VOICE_AXES: AxisKey[] = ['stability', 'fluency', 'pause_ctrl', 'continuity', 'calm'];
 export const VOICE_AXIS_LABELS = ['안정성', '유창성', '침묵 조절', '지속성', '에너지'];
+
+/** CNN 축 → 서버 라벨 (backend app.py: stability=떨림, continuity=연장, calm=에너지) */
+const CNN_AXIS_LABEL: Partial<Record<AxisKey, CnnLabel>> = { stability: 'tremor', continuity: 'prolongation', calm: 'energy' };
 
 const AXIS_COPY: Record<AxisKey, AxisCopy> = {
   stability: {
@@ -71,9 +74,11 @@ export const FIRST_WORDS_SEC = 3;
 
 export interface VoiceReport {
   at: string;
-  v: number[];
+  /** 오각형 축 5개의 0~1 값. 분석 모델이 아직 없는 축(CNN 3축 중 서버가 null로 준 것)은 null → "준비 중" */
+  v: (number | null)[];
   /** flow: 1·2·3단계 이 축의 값(0~100). 2·3단계 목소리 분석이 아직 없으면 null → 막대가 "준비 중" 모양 */
-  habits: { key: AxisKey; name: string; easy: string; line: string; chip: Chip; flow: (number | null)[] }[];
+  /** reference: 시험을 통과하지 못한 참고용 모델의 판정 — 칩·문구에 참고용이라고 붙고, 요약과 연습 팁에는 쓰지 않는다 */
+  habits: { key: AxisKey; name: string; easy: string; line: string; chip: Chip; flow: (number | null)[]; reference: boolean }[];
   /** 세부 목록 — 이 기기에서 분석했고 서버가 위치 목록을 준 경우에만 */
   fillers: { chip: Chip; count: number; words: [string, number][]; ticks: number[]; line: string } | null;
   pauses: { chip: Chip; count: number; marks: { left: number; width: number; label: string }[]; line: string } | null;
@@ -99,25 +104,48 @@ const pct = (x: number, total: number) => Math.max(0, Math.min(100, (x / total) 
 const sec = (x: number) => `${(Math.round(x * 10) / 10).toString()}초`;
 
 export function buildVoiceReport(src: Stage1Source, others: VoiceFlowSources = {}): VoiceReport {
-  const scores: Record<AxisKey, number> =
+  // CNN 3축(안정성·지속성·에너지)은 그 라벨의 모델이 서버에 아직 없으면 null로 온다(backend /analyze).
+  // 0점으로 바꾸면 "자주 흔들렸어요"처럼 잘못 읽히므로 null 그대로 두고 "준비 중"으로 보인다.
+  const scores: Record<AxisKey, number | null> =
     'result' in src
       ? src.result.scores
       : { stability: src.latest.stability, fluency: src.latest.fluency, pause_ctrl: src.latest.pauseCtrl, continuity: src.latest.continuity, calm: src.latest.calm };
 
   const habits = VOICE_AXES.map((key) => {
-    const tier = scoreTier(scores[key]);
+    const score = scores[key];
     const c = AXIS_COPY[key];
+    if (score === null) {
+      return {
+        key,
+        name: c.name,
+        easy: c.easy,
+        line: '이 부분을 살펴볼 분석을 아직 준비하고 있어요.',
+        chip: { tone: 'n' as const, text: '준비 중' },
+        flow: [null, others.stage2?.scores[key] ?? null, others.stage3?.scores[key] ?? null],
+        reference: false,
+      };
+    }
+    const tier = scoreTier(score);
+    // 참고용 모델(시험 미통과, 예: 떨림 v1)은 판정 옆에 참고용이라고 붙인다 — 확정된 결과처럼 보이지 않게
+    const label = CNN_AXIS_LABEL[key];
+    const reference = 'result' in src && label !== undefined && src.result.model_status?.[label] === 'reference';
     return {
       key,
       name: c.name,
       easy: c.easy,
-      line: c.line[tier],
-      chip: { tone: TONE[tier], text: c.chip[tier] },
-      flow: [scores[key], others.stage2?.scores[key] ?? null, others.stage3?.scores[key] ?? null],
+      line: reference ? `${c.line[tier]} (아직 시험 중인 분석이라 참고만 해 주세요.)` : c.line[tier],
+      chip: { tone: TONE[tier], text: reference ? `${c.chip[tier]} · 참고용` : c.chip[tier] },
+      flow: [score, others.stage2?.scores[key] ?? null, others.stage3?.scores[key] ?? null],
+      reference,
     };
   });
-  const worst = VOICE_AXES.reduce((a, b) => (scores[b] < scores[a] ? b : a));
-  const tip = scoreTier(scores[worst]) === 'good' ? null : TRAINING_TIPS[worst];
+  // 연습 팁은 값이 있고 참고용이 아닌 축 중에서만 고른다 (유창성·침묵 조절은 CNN이 아니라 항상 값이 있다)
+  const ready = habits.flatMap((h) => {
+    const v = scores[h.key];
+    return v === null || h.reference ? [] : [{ k: h.key, v }];
+  });
+  const worst = ready.length ? ready.reduce((a, b) => (b.v < a.v ? b : a)) : null;
+  const tip = worst === null || scoreTier(worst.v) === 'good' ? null : TRAINING_TIPS[worst.k];
 
   let fillers: VoiceReport['fillers'] = null;
   let pauses: VoiceReport['pauses'] = null;
@@ -194,7 +222,10 @@ export function buildVoiceReport(src: Stage1Source, others: VoiceFlowSources = {
 
   return {
     at: src.at,
-    v: VOICE_AXES.map((k) => Math.max(0.05, Math.min(1, scores[k] / 100))),
+    v: VOICE_AXES.map((k) => {
+      const v = scores[k];
+      return v === null ? null : Math.max(0.05, Math.min(1, v / 100));
+    }),
     habits,
     fillers,
     pauses,
@@ -307,6 +338,7 @@ export function buildSummary(voice: VoiceReport | null, face: FaceReport | null)
   const good: string[] = [];
   const next: string[] = [];
   voice?.habits.forEach((h) => {
+    if (h.reference) return; // 참고용 판정은 정리에 넣지 않는다 ('준비 중' 칩은 tone 'n'이라 아래에서 자연히 빠진다)
     if (h.chip.tone === 'g') good.push(AXIS_COPY[h.key].good);
     if (h.chip.tone === 'p') next.push(AXIS_COPY[h.key].next);
   });

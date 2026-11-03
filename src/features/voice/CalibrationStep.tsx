@@ -36,7 +36,10 @@ export function CalibrationStep({ onComplete }: CalibrationStepProps) {
 
   const start = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 답변 녹음과 같은 조건으로 기준을 잰다(VoiceStage와 같은 설정)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false },
+      });
       streamRef.current = stream;
 
       const recorder = new MediaRecorder(stream);
