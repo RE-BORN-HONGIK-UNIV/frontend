@@ -6,7 +6,6 @@ import {
   Button,
   LoadingBar,
   Paper,
-  SimpleGrid,
   Stack,
   Text,
 } from '@/components/ui';
@@ -19,6 +18,7 @@ import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
 import { saveStage1Detail } from '@/features/report/stageDetails';
 import { CalibrationStep, CheckRow } from '@/features/voice/CalibrationStep';
+import { GuideChecklist } from '@/features/voice/GuideChecklist';
 import { HaruChat } from '@/features/haru/HaruChat';
 import { linkStyle } from '@/features/haru/styles';
 import { STAGE1_QUESTIONS } from '@/features/haru/script';
@@ -27,14 +27,6 @@ import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
 
 const MAXW = 720;
-
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary-strong)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
 
 function ShieldIcon() {
   return (
@@ -137,19 +129,7 @@ export default function VoiceStage() {
         {!calibration ? (
           <Stack gap={16}>
             {/* 위: 가장 중요한 체크리스트 3개 */}
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing={10}>
-              {GUIDE_ITEMS.map((g) => (
-                <Stack key={g.title} gap={6} style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-line)', borderRadius: 12, padding: '14px 14px' }}>
-                  <Check />
-                  <Text fz={14} fw={700} c="var(--rb-primary-strong)">
-                    {g.title}
-                  </Text>
-                  <Text fz={12} c="var(--rb-ink-soft)" style={{ lineHeight: 1.5 }}>
-                    {g.desc}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
+            <GuideChecklist items={GUIDE_ITEMS} />
 
             {/* 아래: 경량 웹 1단계 시작 화면 — 마이크 확인(캘리브레이션) + 개인정보 안내 + 시작 버튼 */}
             <Box
