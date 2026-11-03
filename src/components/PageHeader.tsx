@@ -5,7 +5,8 @@ import { RebornWordmark } from './RebornWordmark';
 import { SiteNavLinks } from './SiteNavLinks';
 import { auth } from '@/lib/auth';
 
-/** Shared header for app pages (Dashboard, VoiceStage, FaceStage, InterviewStage).
+/** Shared header for app pages outside the 1→2→3단계 flow (Dashboard, PracticePage).
+ * 1·2·3단계와 결과 화면은 단계 표시가 있는 StageHeader를 쓴다(경량 웹 상단바).
  * '이야기'(Community) 페이지와 같은 흰 배경 + 상단 네비(로고/이야기/문의/사용자명/
  * 로그아웃) 스타일로 통일 — 예전엔 이 화면들만 진한 그린 그라디언트 배너를 써서,
  * '이야기'와 오갈 때 디자인 시스템이 확 바뀌는 느낌이 있었음(CommunityShell.tsx

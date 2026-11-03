@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Text } from '@/components/ui';
-import { PageHeader } from '@/components/PageHeader';
+import { StageHeader } from '@/components/StageHeader';
 import { localProgress } from '@/features/progress/localProgress';
 import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import type { DifficultyTier } from '@/features/interview/difficulty';
@@ -69,16 +69,8 @@ export default function InterviewStage() {
           </button>
         </Box>
       ) : (
-        // PageHeader는 title이 필수라 intro가 아닐 땐 빈 문자열로 넘겨서 제목 줄만 비움
-        <PageHeader
-          eyebrow="3단계 · 실전 면접 시뮬레이션"
-          title={step === 'intro' || step === 'about' ? '면접 시뮬레이터' : ''}
-          subtitle={
-            step === 'intro' || step === 'about'
-              ? '1,2단계 진단 결과를 바탕으로 난이도가 조절된 실전 면접을 진행합니다.'
-              : undefined
-          }
-        />
+        // 면접이 끝나면(result) 최종 통합 리포트를 보여 주므로 4단계 "결과"로 표시
+        <StageHeader current={step === 'result' ? 4 : 3} />
       )}
 
       <Box style={{ maxWidth: step === 'result' ? 1072 : 960, margin: '0 auto', padding: '20px 16px 0' }}>

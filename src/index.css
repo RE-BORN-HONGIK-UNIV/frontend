@@ -675,3 +675,60 @@ a {
     transition: none;
   }
 }
+
+/* 1·2·3단계·결과 화면 상단바(StageHeader) — 경량 웹 단계 표시 */
+.rb-stagebar {
+  background: var(--rb-surface);
+  border-bottom: 1px solid var(--rb-line);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: 'logo steps exit';
+  align-items: center;
+  gap: 12px;
+  padding: 14px 40px;
+}
+.rb-stagebar__logo { grid-area: logo; justify-self: start; display: inline-flex; }
+.rb-stagebar__nav { grid-area: steps; }
+.rb-stagebar__exit {
+  grid-area: exit;
+  justify-self: end;
+  font-size: 14px;
+  color: var(--rb-ink-soft);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.rb-stagebar__exit:hover { color: var(--rb-ink); }
+.rb-stagebar__steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rb-stagebar__line {
+  width: 24px;
+  height: 1px;
+  background: var(--rb-line-strong);
+}
+@media (max-width: 720px) {
+  /* 좁은 화면: 윗줄 로고 · 그만하기, 아랫줄 가운데 단계 표시 (한 줄이면 로고가 눌려 안 보임) */
+  .rb-stagebar {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'logo exit' 'steps steps';
+    padding: 10px 16px 12px;
+    gap: 8px;
+  }
+  .rb-stagebar__nav { justify-self: center; }
+  .rb-stagebar__steps { gap: 6px; }
+  .rb-stagebar__line { width: 10px; }
+  /* 좁은 화면에선 지금 단계 이름만 글자로 — 나머지 이름은 화면 읽기 프로그램에만 */
+  .rb-stagebar__steps li:not([aria-current]) .rb-stagebar__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Paper, SimpleGrid, Stack, Text } from '@/components/ui';
-import { PageHeader } from '@/components/PageHeader';
+import { StageHeader } from '@/components/StageHeader';
 import type { GazeBlinkResult } from '@/lib/api/types';
 import { FACE_GUIDE_ITEMS } from '@/features/face/constants';
 import { HaruCallView } from '@/features/face/live/HaruCallView';
@@ -53,11 +53,7 @@ export default function FaceStage() {
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
-      <PageHeader
-        eyebrow="2단계 · 하루와 영상 통화"
-        title="페이스 터치"
-        subtitle="하루와 영상 통화해요. 시선·눈 깜빡임·표정은 3단계까지 마친 뒤 최종 리포트에서 함께 살펴봐요."
-      />
+      <StageHeader current={2} />
 
       <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
         {result ? (
