@@ -89,6 +89,10 @@ export interface GazeBlinkResult {
   };
   /** 질문별 값 (아직 안 만듦 — 통화 중 질문이 바뀐 시각으로 나누면 계산 가능). 있으면 리포트가 질문별 막대로 그린다 */
   per_question?: { blink_per_min: number[]; gaze_avg_sec: number[] };
+  /** 실시간 2단계만: answer = 사용자가 대답하는 동안만 잼, whole = 통화 전체(대답이 너무 짧았을 때) */
+  measured_scope?: 'answer' | 'whole';
+  /** 실시간 2단계만: 잰 프레임 중 얼굴이 잡힌 비율(0~1). 낮으면 시선 회피가 실제보다 많게 나왔을 수 있음 */
+  face_visible_ratio?: number | null;
   /** 로그인한 유저의 직전 2단계 기록 (서버 DB 조회) — 처음이면 null */
   previous: {
     at: string;

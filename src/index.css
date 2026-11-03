@@ -896,3 +896,33 @@ a {
   .rb-chat__avatar { border-radius: 13px; }
   .rb-chat__bubble { font-size: 15px; padding: 10px 14px; }
 }
+
+
+/* 메인 "무료로 시작하기"(흰 박스 아래) — 마우스를 올리면 박스가 진해진다 */
+.rb-start-cta {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  border-radius: 18px;
+}
+.rb-start-cta__box {
+  background: var(--rb-primary-tint);
+  color: var(--rb-primary-strong);
+  padding: 18px 36px;
+  border-radius: 16px;
+  font-size: 20px;
+  font-weight: 700;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.rb-start-cta:hover .rb-start-cta__box,
+.rb-start-cta:focus-visible .rb-start-cta__box {
+  background: var(--rb-primary);
+  color: #fff;
+}
+.rb-start-cta:focus-visible {
+  outline: 3px solid var(--rb-primary);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-start-cta__box { transition: none; }
+}
