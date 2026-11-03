@@ -61,7 +61,14 @@ function Wave() {
  * 대답은 글이 아니라 목소리로 한다. 받아쓴 글은 하루가 반응할 거리로만 쓰고 화면에 함께 보여 준다.
  * 좁은 화면 배치(위아래로 쌓기)는 index.css의 .rb-haru-talk.
  */
-export function HaruChat({ talk: t }: { talk: Talk }) {
+/** 대화가 끝났을 때 하단 바에 보여 줄 것 — 1단계: 화면을 넘기지 않고 대화를 둔 채 "2단계 시작하기" */
+export interface DoneBar {
+  title: string;
+  sub: string;
+  actions: ReactNode;
+}
+
+export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight });
@@ -111,6 +118,21 @@ export function HaruChat({ talk: t }: { talk: Talk }) {
             </Bubble>
           )}
         </div>
+
+        {t.phase === 'done' && doneBar && (
+          <div className="rb-haru-talk__bar">
+            <span className="rb-haru-talk__mic" data-done aria-hidden>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            <div style={{ flex: '1 1 160px', minWidth: 0 }} aria-live="polite">
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--rb-ink)' }}>{doneBar.title}</div>
+              <div style={{ fontSize: 14, color: 'var(--rb-ink-soft)', marginTop: 2 }}>{doneBar.sub}</div>
+            </div>
+            <div className="rb-haru-talk__aside">{doneBar.actions}</div>
+          </div>
+        )}
 
         {t.phase !== 'done' && (
           <div className="rb-haru-talk__bar">

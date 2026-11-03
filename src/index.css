@@ -947,3 +947,68 @@ a {
   .rb-chat__avatar { border-radius: 13px; }
   .rb-chat__bubble { font-size: 15px; padding: 10px 14px; }
 }
+
+/* 2단계 하루 영상 통화(HaruCallView) — 경량 웹 대기실(하루·나 두 칸) → 캘리브레이션(한 칸, 가운데 내 얼굴 5초) → 통화(같은 자리에 하루).
+   같은 <video>를 계속 쓰려고 DOM은 그대로 두고 data-mode로 배치만 바꾼다. */
+.rb-call__title {
+  margin: 0;
+  font-family: var(--rb-font-display);
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--rb-ink);
+}
+.rb-call { position: relative; width: 100%; margin: 0 auto; }
+.rb-call__haru,
+.rb-call__me { position: relative; overflow: hidden; border-radius: 24px; }
+.rb-call__me { background: #2a2e33; }
+.rb-call__me video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; transition: opacity 0.3s; }
+/* 대기실: 두 칸 나란히 */
+.rb-call[data-mode='prep'] { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.rb-call[data-mode='prep'] .rb-call__haru,
+.rb-call[data-mode='prep'] .rb-call__me { aspect-ratio: 16 / 10; }
+/* 캘리브레이션·통화: 한 칸(정중앙) — 하루와 내 화면을 같은 자리에 겹친다 */
+.rb-call[data-mode='calib'],
+.rb-call[data-mode='call'] { max-width: 960px; aspect-ratio: 16 / 9; }
+.rb-call[data-mode='calib'] .rb-call__haru,
+.rb-call[data-mode='call'] .rb-call__haru { position: absolute; inset: 0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08); }
+.rb-call[data-mode='calib'] .rb-call__me { position: absolute; inset: 0; z-index: 2; }
+/* 통화: 내 화면은 연결 직후 2초만 오른쪽 위에 작게, 그다음 사라짐 */
+.rb-call[data-mode='call'] .rb-call__me {
+  position: absolute; right: 16px; top: 16px; width: 24%; aspect-ratio: 4 / 3; z-index: 2;
+  border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 0.6s;
+}
+.rb-call[data-mode='call'] .rb-call__me[data-pip] { opacity: 1; }
+.rb-call__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #34d27b; margin-right: 6px; vertical-align: 1px; }
+.rb-call__dot[data-off] { background: #f2b544; }
+.rb-call__qtag {
+  position: absolute; right: 16px; top: 16px; background: rgba(255, 255, 255, 0.92); color: #232826;
+  font-size: 14px; font-weight: 600; border-radius: 10px; padding: 6px 12px;
+}
+.rb-call__note { position: absolute; right: 16px; bottom: 16px; color: rgba(255, 255, 255, 0.75); font-size: 13px; }
+.rb-call__center {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center;
+  color: rgba(255, 255, 255, 0.85); font-size: 16px;
+}
+.rb-call__calib {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(420px, 86%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  background: rgba(21, 24, 28, 0.72); color: #fff; border-radius: 14px; padding: 14px 18px; overflow: hidden;
+}
+.rb-call__calib:empty { display: none; }
+.rb-call__calib b { font-size: 17px; }
+.rb-call__calib span { font-size: 13px; opacity: 0.85; }
+.rb-call__calib i { position: absolute; left: 0; bottom: 0; height: 3px; background: #34d27b; transition: width 0.2s linear; }
+.rb-call__notice {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;
+  background: rgba(21, 24, 28, 0.72); color: #fff; border-radius: 12px; padding: 10px 16px;
+  font-size: 14px; font-weight: 600; text-align: center; line-height: 1.5; max-width: 80%;
+}
+@media (max-width: 760px) {
+  .rb-call[data-mode='prep'] { grid-template-columns: 1fr; gap: 14px; }
+  .rb-call[data-mode='calib'],
+  .rb-call[data-mode='call'] { aspect-ratio: 4 / 5; }
+  .rb-call__haru, .rb-call__me { border-radius: 18px; }
+}
+/* 1단계를 마친 뒤 하단 바의 체크 표시 — 누르는 버튼이 아님 */
+.rb-haru-talk__mic[data-done] { cursor: default; }

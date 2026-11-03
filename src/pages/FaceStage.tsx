@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Paper, SimpleGrid, Stack, Text } from '@/components/ui';
+import { Box, Button, Paper, Stack, Text } from '@/components/ui';
 import { StageHeader } from '@/components/StageHeader';
 import type { GazeBlinkResult } from '@/lib/api/types';
-import { FACE_GUIDE_ITEMS } from '@/features/face/constants';
 import { HaruCallView } from '@/features/face/live/HaruCallView';
 import { linkStyle } from '@/features/haru/styles';
 import { localProgress } from '@/features/progress/localProgress';
@@ -11,22 +10,8 @@ import { stage2OverallScore } from '@/features/progress/stageProgress';
 import { saveStage2Detail } from '@/features/report/stageDetails';
 
 const MAXW = 720;
-
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary-strong)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text fz={13} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '0.08em' }}>
-      {children}
-    </Text>
-  );
-}
+/** 통화 대기실·통화 화면은 경량 웹처럼 넓게(하루·내 카메라 두 칸) */
+const CALL_MAXW = 1180;
 
 /* ── page ────────────────────────────────────────────────── */
 
@@ -55,7 +40,7 @@ export default function FaceStage() {
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={2} />
 
-      <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
+      <Box style={{ maxWidth: result ? MAXW : CALL_MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
         {result ? (
           <Paper p={24} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
             <Stack gap={12} align="center" ta="center">
@@ -81,25 +66,8 @@ export default function FaceStage() {
             </Stack>
           </Paper>
         ) : (
-          <Stack gap={20}>
-            <SectionLabel>분석 전 체크리스트</SectionLabel>
-            <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
-              {FACE_GUIDE_ITEMS.map((g) => (
-                <Stack key={g.title} gap={6} style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-line)', borderRadius: 12, padding: '14px 12px' }}>
-                  <Check />
-                  <Text fz={13} fw={600} c="var(--rb-primary-strong)">
-                    {g.title}
-                  </Text>
-                  <Text fz={11} c="var(--rb-ink-soft)" style={{ lineHeight: 1.5 }}>
-                    {g.desc}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
-
-            <SectionLabel>하루와 영상 통화</SectionLabel>
-            <HaruCallView key={callKey} onComplete={setResult} />
-          </Stack>
+          // 경량 웹 대기실 화면 그대로 — 예전 체크리스트 6칸·"하루와 영상 통화" 라벨은 뺐다(안내는 대기실 화면 안에)
+          <HaruCallView key={callKey} onComplete={setResult} />
         )}
       </Box>
     </Box>

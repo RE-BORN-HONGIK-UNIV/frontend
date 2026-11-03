@@ -71,7 +71,8 @@ const CALIBRATION_SEC = 5;
 /** 서버 저장 응답을 기다리는 최대 시간 — 결과 화면이 네트워크 때문에 오래 막히지 않게. */
 const SAVE_TIMEOUT_MS = 5000;
 
-export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'ready' | 'recording' | 'error';
+/** camera: 카메라는 켜졌고 캘리브레이션을 기다리는 중(calibrateOnDemand일 때만 — startCalibration()으로 시작) */
+export type LivePhase = 'idle' | 'loading' | 'camera' | 'calibrating' | 'ready' | 'recording' | 'error';
 
 export interface CalibrationSummary {
   /** 캘리브레이션 5초 중 얼굴이 검출된 프레임 비율(0~1). */
@@ -83,9 +84,13 @@ export interface UseLiveFaceSessionOptions {
   onComplete: (result: GazeBlinkResult) => void;
   /** 촬영 중 질문이 바뀐 시각들(촬영 시작부터 초) — 주면 결과에 질문별 깜빡임·눈 맞춤(per_question)을 붙인다 */
   getQuestionStarts?: () => number[];
+  /** true면 카메라가 켜져도 캘리브레이션을 바로 시작하지 않고 startCalibration()을 기다린다.
+   * 2단계 하루 통화: 대기실(하루·내 카메라 나란히)에서는 연결만 확인하고, "통화 시작하기"를 누른 뒤 통화 화면
+   * 정중앙(하루가 나올 자리)에 내 얼굴을 5초 띄워 캘리브레이션한다 — 시선 기준을 하루를 볼 자리에서 잡아야 해서. */
+  calibrateOnDemand?: boolean;
 }
 
-export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: UseLiveFaceSessionOptions) {
+export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, calibrateOnDemand = false }: UseLiveFaceSessionOptions) {
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -106,6 +111,8 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
   const calibBufferRef = useRef<[number, GazeBaseline | null][]>([]);
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
   const calibratedRef = useRef(false);
+  // 캘리브레이션을 시작한 시각(세션 시작부터 초). calibrateOnDemand면 startCalibration() 전까지 null
+  const calibStartTRef = useRef<number | null>(calibrateOnDemand ? null : 0);
 
   const blinkFsmRef = useRef(createBlinkFsmState());
   const blinksRef = useRef<Blink[]>([]);
@@ -146,7 +153,7 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
         await video.play();
 
         sessionStartRef.current = performance.now();
-        setPhase('calibrating');
+        setPhase(calibrateOnDemand ? 'camera' : 'calibrating');
 
         const tick = () => {
           if (cancelled || finishedRef.current || !landmarkerRef.current || !videoRef.current) return;
@@ -175,9 +182,10 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
             gazeRaw = { yaw, pitch, ox, oy };
           }
 
-          if (t <= CALIBRATION_SEC) {
+          const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
+          if (calibT !== null && calibT <= CALIBRATION_SEC) {
             calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch } : null]);
-          } else if (!calibratedRef.current) {
+          } else if (calibT !== null && !calibratedRef.current) {
             calibratedRef.current = true;
             const buffer = calibBufferRef.current;
             const baseline = calibrateBaselineGaze(buffer.map(([, p]) => p));
@@ -250,6 +258,16 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** calibrateOnDemand일 때 캘리브레이션 5초를 지금부터 시작 */
+  function startCalibration() {
+    // camera: 처음 / ready: 얼굴이 잘 안 잡혀서 다시 맞출 때
+    if (phase !== 'camera' && phase !== 'ready') return;
+    calibratedRef.current = false;
+    calibBufferRef.current = [];
+    calibStartTRef.current = elapsedSecRef.current;
+    setPhase('calibrating');
+  }
 
   /** 캘리브레이션 확인 후 사용자가 "촬영 시작"을 눌렀을 때 — 이 순간부터
    * 실제로 점수에 반영되는 구간이 시작된다. */
@@ -356,6 +374,9 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     faceDetected,
     calibrationSummary,
     calibrationSec: CALIBRATION_SEC,
+    /** 캘리브레이션을 시작한 뒤 지난 초(시작 전이면 0) */
+    calibrationElapsedSec: calibStartTRef.current === null ? 0 : Math.max(0, elapsedSec - calibStartTRef.current),
+    startCalibration,
     maxCaptureSec: MAX_CAPTURE_SEC,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,

@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
   Button,
-  LoadingBar,
-  Paper,
   Stack,
   Text,
 } from '@/components/ui';
@@ -13,13 +11,10 @@ import { StageHeader } from '@/components/StageHeader';
 import { ApiError } from '@/lib/api/client';
 import type { CalibrationResult } from '@/lib/api/types';
 import { GUIDE_ITEMS } from '@/features/voice/constants';
-import { overallScore } from '@/features/voice/feedback';
-import { localProgress } from '@/features/progress/localProgress';
 import { useAnalyze } from '@/features/voice/queries';
-import { saveStage1Detail } from '@/features/report/stageDetails';
 import { CalibrationStep, CheckRow } from '@/features/voice/CalibrationStep';
 import { GuideChecklist } from '@/features/voice/GuideChecklist';
-import { HaruChat } from '@/features/haru/HaruChat';
+import { HaruChat, type DoneBar } from '@/features/haru/HaruChat';
 import { linkStyle } from '@/features/haru/styles';
 import { STAGE1_QUESTIONS } from '@/features/haru/script';
 import { saveStageAnswers } from '@/features/haru/store';
@@ -38,20 +33,12 @@ function ShieldIcon() {
   );
 }
 
-function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <Paper p={24} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
-      {children}
-    </Paper>
-  );
-}
-
 /* ── 하루와 목소리 대화 (경량 웹 1단계에서 가져옴) ─────────────────── */
 
 /** 하루와 대화하면서, 사용자가 말하는 구간만 이어 녹음해 둔다. 대화가 끝나면 녹음 파일을 넘긴다. */
 type TalkRecording = Awaited<ReturnType<ReturnType<typeof useAnswerRecorder>['finish']>>;
 
-function HaruVoiceTalk({ onFinished }: { onFinished: (rec: TalkRecording) => void }) {
+function HaruVoiceTalk({ onFinished, doneBar }: { onFinished: (rec: TalkRecording) => void; doneBar: DoneBar }) {
   const finishRef = useRef<ReturnType<typeof useAnswerRecorder>['finish'] | null>(null);
   const talk = useHaruTalk(STAGE1_QUESTIONS, (answers) => {
     saveStageAnswers(1, answers);
@@ -67,7 +54,7 @@ function HaruVoiceTalk({ onFinished }: { onFinished: (rec: TalkRecording) => voi
           마이크를 쓸 수 없어서 목소리 분석은 못 해요. 대화는 계속할 수 있어요.
         </Alert>
       )}
-      <HaruChat talk={talk} />
+      <HaruChat talk={talk} doneBar={doneBar} />
     </Stack>
   );
 }
@@ -78,44 +65,71 @@ export default function VoiceStage() {
   // checked: 마이크 확인(캘리브레이션)이 끝난 값, calibration: "1단계 시작하기"를 눌러 대화에 넘긴 값
   const [checked, setChecked] = useState<CalibrationResult | null>(null);
   const [calibration, setCalibration] = useState<CalibrationResult | null>(null);
-  // 하루와 대화를 마쳤는지, 녹음이 비었는지(마이크를 못 썼거나 대답을 다 넘김)
-  const [talkDone, setTalkDone] = useState(false);
+  // 녹음이 비었는지(마이크를 못 썼거나 대답을 다 넘김)
   const [noAudio, setNoAudio] = useState(false);
   const [talkKey, setTalkKey] = useState(0);
   const analyze = useAnalyze();
   const navigate = useNavigate();
-  const result = analyze.data ?? null;
-  const turnStartsRef = useRef<number[]>([]);
-
-  // 분석이 끝나면: 대시보드용 완료 메모 + 최종 리포트(3단계 뒤)에 쓸 세부값을 이 기기에 남긴다.
+  // 마지막 녹음 — 목소리 정리가 실패하면 다시 이야기하지 않고 같은 녹음을 다시 보낼 수 있게
+  const lastRecRef = useRef<{ file: File; turnStarts: number[] } | null>(null);
+  // 분석 결과 저장(대시보드 완료 메모 + 최종 리포트 세부값)은 useAnalyze 안에서 한다 — 1단계가 끝나면 기다리지 않고
+  // 바로 2단계로 넘어갈 수 있어서, 화면이 바뀐 뒤 분석이 끝나도 저장돼야 하기 때문(queries.ts 참고).
   // 1단계 결과는 여기서 따로 보여 주지 않고 3단계 뒤 통합 리포트에서 한 번에 보여 준다(경량 웹 흐름).
-  useEffect(() => {
-    if (!result) return;
-    localProgress.markStage1Done(overallScore(result.scores));
-    saveStage1Detail(result, turnStartsRef.current);
-  }, [result]);
 
   const reset = () => {
     setChecked(null);
     setCalibration(null);
-    setTalkDone(false);
     setNoAudio(false);
     setTalkKey((k) => k + 1);
     analyze.reset();
   };
 
   const handleTalkFinished = (rec: TalkRecording) => {
-    setTalkDone(true);
     if (!rec) return setNoAudio(true);
-    turnStartsRef.current = rec.turnStarts;
-    analyze.mutate({ file: rec.file, calibration });
+    lastRecRef.current = { file: rec.file, turnStarts: rec.turnStarts };
+    analyze.mutate({ file: rec.file, calibration, turnStarts: rec.turnStarts });
+  };
+
+  const resend = () => {
+    const rec = lastRecRef.current;
+    if (rec) analyze.mutate({ file: rec.file, calibration, turnStarts: rec.turnStarts });
+  };
+
+  // 대화가 끝나면 화면을 넘기지 않고 대화 그대로, 하단 바만 "1단계를 마쳤어요 · 2단계 시작하기"로 —
+  // 결과는 최종 리포트에서만 보여 주므로 목소리 정리를 기다릴 필요가 없다(뒤에서 계속 정리되고 저장됨)
+  const doneBar: DoneBar = {
+    title: '1단계를 마쳤어요',
+    sub: noAudio
+      ? '녹음된 대답이 없어서 목소리는 살펴보지 못했어요.'
+      : analyze.isError
+        ? analyze.error instanceof ApiError
+          ? analyze.error.message
+          : '목소리를 정리하지 못했어요. 다시 보내 볼까요?'
+        : analyze.isPending
+          ? '목소리를 정리하고 있어요 · 기다리지 않고 바로 2단계로 가도 돼요'
+          : '결과는 3단계까지 마친 뒤 최종 리포트에서 함께 봐요',
+    actions: (
+      <>
+        {analyze.isError && !noAudio && (
+          <button type="button" onClick={resend} style={linkStyle}>
+            다시 보내기
+          </button>
+        )}
+        <button type="button" onClick={reset} style={linkStyle}>
+          하루와 다시 이야기할래요
+        </button>
+        <Button radius="md" size="lg" onClick={() => navigate('/face')}>
+          2단계 시작하기 →
+        </Button>
+      </>
+    ),
   };
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={1} />
 
-      <Box style={{ maxWidth: calibration && !talkDone ? TALK_MAXW : MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
+      <Box style={{ maxWidth: calibration ? TALK_MAXW : MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
         {!calibration ? (
           <Stack gap={16}>
             {/* 위: 가장 중요한 체크리스트 3개 */}
@@ -183,55 +197,7 @@ export default function VoiceStage() {
           </Stack>
         ) : (
           <Stack gap={20}>
-            {!talkDone ? (
-              <HaruVoiceTalk key={talkKey} onFinished={handleTalkFinished} />
-            ) : (
-              <Panel>
-                <Stack gap={12} align="center" ta="center">
-                  <Text fz={17} fw={700}>
-                    1단계를 마쳤어요
-                  </Text>
-                  <Text fz={13} c="var(--rb-ink-soft)">
-                    목소리로 질문 {STAGE1_QUESTIONS.length}개를 끝까지 마쳤어요.
-                  </Text>
-                  {analyze.isPending && (
-                    <>
-                      <LoadingBar label="대답한 목소리 정리하는 중" />
-                      <Text fz={12} c="var(--rb-ink-faint)">
-                        30초~2분 정도 걸려요. 결과는 3단계를 마친 뒤 최종 리포트에서 함께 보여 드려요.
-                      </Text>
-                    </>
-                  )}
-                  {result && (
-                    <>
-                      <Text fz={13} c="var(--rb-ink-soft)">
-                        목소리 정리가 끝났어요. 결과는 3단계를 마친 뒤 최종 리포트에서 함께 보여 드려요.
-                      </Text>
-                      <Button radius="md" onClick={() => navigate('/face')}>
-                        2단계 하루와 영상 통화하러 가기 →
-                      </Button>
-                      <button type="button" onClick={reset} style={linkStyle}>
-                        하루와 다시 이야기할래요
-                      </button>
-                    </>
-                  )}
-                  {(noAudio || analyze.isError) && (
-                    <>
-                      <Alert color="red" variant="light" p="xs" fz={13}>
-                        {noAudio
-                          ? '녹음된 대답이 없어서 목소리를 살펴보지 못했어요.'
-                          : analyze.error instanceof ApiError
-                            ? analyze.error.message
-                            : '서버에 연결할 수 없어요. 잠시 뒤에 다시 해 주세요.'}
-                      </Alert>
-                      <Button variant="default" radius="md" onClick={reset}>
-                        ↺ 하루와 다시 이야기하기
-                      </Button>
-                    </>
-                  )}
-                </Stack>
-              </Panel>
-            )}
+            <HaruVoiceTalk key={talkKey} onFinished={handleTalkFinished} doneBar={doneBar} />
           </Stack>
         )}
       </Box>

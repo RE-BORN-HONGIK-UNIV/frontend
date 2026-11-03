@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Box, Button, Group, Paper, Stack, Text } from '@/components/ui';
+import { Alert, Button, Group, Stack, Text } from '@/components/ui';
 import type { GazeBlinkResult } from '@/lib/api/types';
 import { HaruAvatar, TileTag } from '@/features/haru/HaruAvatar';
 import { STAGE2_QUESTIONS } from '@/features/haru/script';
@@ -15,6 +15,11 @@ const PIP_MS = 2000;
 const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
 /**
+ * 2026-11 경량 웹 대기실로 바꿈: 대기실(prep)은 하루·내 카메라 두 칸(연결 확인만), "통화 시작하기"를 누르면
+ * 한 칸으로 합쳐 정중앙에 내 얼굴을 5초 띄워 캘리브레이션(calib)하고, 끝나면 같은 자리에 하루가 나온다(call).
+ * 통화 중 하루가 정중앙에 크게 나오므로, 시선 기준을 그 자리에서 잡으려는 것 — 대기실 오른쪽 칸을 보며 재면
+ * 통화 중 하루를 보는 게 옆을 보는 것으로 잡힌다. 내 얼굴은 캘리브레이션 5초 + 연결 직후 2초만 보인다.
+ *
  * 2단계 — 하루와 영상 통화하면서 실시간 표정·시선 분석(useLiveFaceSession)을 뒤에서 돌린다.
  * 화면은 경량 웹 Prep2/Talk2(영상 통화 대기실 → 통화)에서 가져왔고, 분석은 기존 실시간 촬영과 같다.
  *
@@ -35,7 +40,14 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
   const [pip, setPip] = useState(false);
   // 하루가 새 질문을 시작한 시각들(촬영 시작부터 초) — 결과를 질문별로 나누는 데 쓴다
   const questionStartsRef = useRef<number[]>([]);
-  const s = useLiveFaceSession({ videoRef, onComplete: setResult, getQuestionStarts: () => questionStartsRef.current });
+  const s = useLiveFaceSession({
+    videoRef,
+    onComplete: setResult,
+    getQuestionStarts: () => questionStartsRef.current,
+    calibrateOnDemand: true,
+  });
+  // "통화 시작하기"를 눌렀는지(→ 캘리브레이션 → 통화)
+  const [started, setStarted] = useState(false);
   // 하루와의 주고받기 — 통화가 연결되면(callOn) 첫 질문을 읽기 시작한다
   const t = useHaruTalk(
     STAGE2_QUESTIONS,
@@ -65,177 +77,247 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 질문 번호가 바뀔 때만 적는다
   }, [callOn, t.index]);
 
-  const startCall = () => {
+  const beginCall = () => {
     s.beginRecording();
     setCallOn(true);
     setPip(true);
     setTimeout(() => setPip(false), PIP_MS);
   };
 
+  // "통화 시작하기" → 정중앙 캘리브레이션 5초
+  const startCall = () => {
+    setStarted(true);
+    s.startCalibration();
+  };
+
+  // 캘리브레이션이 끝나면: 얼굴이 잘 잡혔으면 바로 통화 시작, 아니면 다시 맞출지 묻는다
+  const calibrationLooksGood = (s.calibrationSummary?.detectedRatio ?? 0) >= 0.5;
+  useEffect(() => {
+    if (started && !callOn && s.phase === 'ready' && calibrationLooksGood) beginCall();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 캘리브레이션이 끝난 순간 한 번
+  }, [started, callOn, s.phase, calibrationLooksGood]);
+
   const hangUp = () => {
     if (window.confirm('통화를 끝낼까요? 2단계는 다음에 처음부터 다시 해요.')) navigate('/dashboard');
   };
 
-  const calibrationLooksGood = (s.calibrationSummary?.detectedRatio ?? 0) >= 0.5;
+  const mode = !started ? 'prep' : callOn ? 'call' : 'calib';
+  const cameraOn = s.phase !== 'idle' && s.phase !== 'loading' && s.phase !== 'error';
+  const calibLeft = Math.max(0, s.calibrationSec - s.calibrationElapsedSec);
+
+  // 통화 중 얼굴이 2초 넘게 안 잡히면 알림(내 얼굴은 안 보여 주므로 스스로 알 방법이 이것뿐 — 얼굴이 안 잡힌 순간은 시선 회피로 계산됨)
+  const [faceLost, setFaceLost] = useState(false);
+  const watchingFace = callOn && !analysisEnded && !talkDone;
+  useEffect(() => {
+    if (!watchingFace || s.faceDetected) {
+      setFaceLost(false);
+      return;
+    }
+    const id = setTimeout(() => setFaceLost(true), 2000);
+    return () => clearTimeout(id);
+  }, [watchingFace, s.faceDetected]);
 
   return (
-    <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
-      <Stack gap={14}>
-        {!callOn && (
-          <div style={{ textAlign: 'center' }}>
-            <Text fz={18} fw={700}>
-              하루와 영상 통화를 준비해요
-            </Text>
-            <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-              통화가 시작되면 내 화면은 사라지고 이 자리에 하루가 보여요. 영상은 저장하지 않아요.
-            </Text>
-          </div>
-        )}
+    <Stack gap={18}>
+      {mode === 'prep' && (
+        <div style={{ textAlign: 'center' }}>
+          <h2 className="rb-call__title">
+            하루와 <span style={{ color: 'var(--rb-primary)' }}>영상 통화</span>를 준비해요
+          </h2>
+          <Text fz={16} c="var(--rb-ink-soft)" mt={8}>
+            통화가 시작되면 내 화면은 사라지고 하루만 보여요.
+          </Text>
+        </div>
+      )}
 
-        {/* 대기실: 내 얼굴이 크게 / 통화: 하루가 크게, 내 얼굴은 잠깐 작게 보였다가 사라짐 (같은 video 요소 유지) */}
-        <Box style={{ position: 'relative', width: '100%', maxWidth: 560, margin: '0 auto', aspectRatio: '4 / 3' }}>
-          {/* 하루 그림은 상태마다 바꿔 끼우고(말하기·듣기·생각), 말하는 중은 테두리 빛으로 보여 준다 */}
+      {/* 같은 <video>를 대기실·캘리브레이션·통화 내내 쓴다(다시 만들면 카메라 연결이 끊김) — data-mode로 배치만 바꾼다 */}
+      <div className="rb-call" data-mode={mode}>
+        <div className="rb-call__haru">
           <HaruAvatar
             phase={callOn ? t.phase : 'done'}
             glow={callOn && (t.phase === 'speak' || t.phase === 'listen')}
-            style={{ position: 'absolute', inset: 0, opacity: callOn ? 1 : 0, transition: 'opacity .3s' }}
+            style={{ position: 'absolute', inset: 0, aspectRatio: 'auto', borderRadius: 'inherit' }}
           >
-            {callOn && (
+            {mode === 'prep' && (
               <>
-                <TileTag top>● 연결됨 · {mmss(s.recordingElapsedSec)}</TileTag>
-                <TileTag>하루{!t.bye && !talkDone && ` · 질문 ${t.index + 1} / ${t.total}`}</TileTag>
+                <TileTag top>
+                  <span className="rb-call__dot" /> 기다리는 중
+                </TileTag>
+                <TileTag>하루</TileTag>
               </>
+            )}
+            {mode === 'call' && (
+              <>
+                <TileTag top>
+                  <span className="rb-call__dot" /> 연결됨 · {mmss(s.recordingElapsedSec)}
+                </TileTag>
+                {!t.bye && !talkDone && <span className="rb-call__qtag">질문 {t.index + 1} / {t.total}</span>}
+                <TileTag>하루</TileTag>
+              </>
+            )}
+            {faceLost && (
+              <div role="status" className="rb-call__notice">
+                얼굴이 카메라에서 벗어났어요
+                <br />
+                <span style={{ fontWeight: 400, fontSize: 13 }}>카메라 쪽으로 살짝 와 주세요</span>
+              </div>
             )}
           </HaruAvatar>
-          <div
-            style={
-              callOn
-                ? {
-                    position: 'absolute', right: 12, top: 12, width: '26%', aspectRatio: '4 / 3', borderRadius: 10,
-                    overflow: 'hidden', background: '#000', opacity: pip ? 1 : 0, transition: 'opacity .6s', pointerEvents: 'none',
-                  }
-                : { position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', background: '#000' }
-            }
-          >
-            <video
-              ref={videoRef}
-              muted
-              playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-            />
-            {!callOn && <TileTag>나</TileTag>}
-          </div>
-        </Box>
+        </div>
 
-        {!callOn && (
-          <>
-            <Group justify="center" gap={8}>
-              <Text fz={13} fw={600} c="var(--rb-primary-strong)">
-                {s.phase === 'loading' || s.phase === 'idle'
-                  ? '카메라 켜는 중…'
-                  : s.phase === 'calibrating'
-                    ? `화면 가운데를 봐 주세요 (${s.elapsedSec.toFixed(1)}/${s.calibrationSec}초)`
-                    : s.phase === 'ready'
-                      ? '준비됐어요'
-                      : ''}
-              </Text>
-              {(s.phase === 'calibrating' || s.phase === 'ready') && (
-                <Text fz={13} c={s.faceDetected ? 'var(--rb-primary-strong)' : 'var(--rb-amber-strong)'}>
-                  {s.faceDetected ? '· 얼굴이 잘 보여요' : '· 얼굴이 안 보여요'}
-                </Text>
+        <div className="rb-call__me" data-pip={(mode === 'call' && pip) || undefined}>
+          <video ref={videoRef} muted playsInline style={{ opacity: cameraOn ? 1 : 0 }} />
+          {mode === 'prep' && (
+            <>
+              <TileTag top>
+                <span className="rb-call__dot" data-off={!cameraOn || !s.faceDetected || undefined} />{' '}
+                {s.phase === 'error'
+                  ? '카메라를 켤 수 없어요'
+                  : !cameraOn
+                    ? '카메라 켜는 중…'
+                    : s.faceDetected
+                      ? '얼굴이 잘 보여요'
+                      : '얼굴이 안 보여요'}
+              </TileTag>
+              {!cameraOn && (
+                <span className="rb-call__center">
+                  {s.phase === 'error' ? s.errorMessage || '브라우저에서 카메라 권한을 확인해 주세요' : '카메라를 켜고 있어요'}
+                </span>
               )}
-            </Group>
+              <TileTag>나</TileTag>
+              <span className="rb-call__note">영상은 저장하지 않아요</span>
+            </>
+          )}
+          {mode === 'calib' && (
+            <div className="rb-call__calib" aria-live="polite">
+              {s.phase === 'calibrating' && (
+                <>
+                  <b>화면 가운데를 봐 주세요</b>
+                  <span>통화 중 하루가 나올 자리예요 · {Math.ceil(calibLeft)}초</span>
+                  <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
+                </>
+              )}
+              {s.phase === 'ready' && !calibrationLooksGood && (
+                <>
+                  <b>얼굴이 잘 안 잡혔어요</b>
+                  <span>카메라 위치나 조명을 확인해 주세요</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-            {s.phase === 'ready' && !calibrationLooksGood && (
-              <Alert color="red" variant="light" p="sm" fz={13}>
-                얼굴이 잘 안 잡혔어요. 카메라 위치나 조명을 확인하고 시작하거나, 새로고침해서 다시 맞춰 보세요.
-              </Alert>
-            )}
-            {s.phase === 'error' && (
-              <Alert color="red" variant="light" p="xs" fz={13}>
-                {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해주세요.'}
-              </Alert>
-            )}
-
-            <Text fz={13} c="var(--rb-ink-soft)" ta="center">
-              👀 말하는 동안에는 하루를 봐 주세요 · 그 밖에는 편하게 봐도 돼요
-            </Text>
-            <Button fullWidth radius="md" disabled={s.phase !== 'ready'} onClick={startCall}>
-              통화 시작하기
-            </Button>
-          </>
-        )}
-
-        {callOn && !talkDone && (
-          <Stack gap={10}>
-            {(t.phase === 'speak' || t.phase === 'ready') && (
-              <Text fz={16} fw={600} ta="center" style={{ lineHeight: 1.6 }} aria-live="polite">
-                {t.line}
-              </Text>
-            )}
-            {t.phase === 'think' && (
-              <Text fz={14} c="var(--rb-ink-faint)" ta="center">
-                하루가 듣고 생각하고 있어요…
-              </Text>
-            )}
-            {t.phase === 'listen' && (
-              <>
-                <Text fz={14} c="var(--rb-ink-soft)" ta="center">
-                  듣고 있어요. 다 말했으면 아래 버튼을 눌러요.
-                </Text>
-                <Button fullWidth radius="md" onClick={() => void t.finish()}>
-                  ✓ 답변 마치기
-                </Button>
-                <Group justify="center">
-                  <button type="button" onClick={t.again} style={linkStyle}>
-                    처음부터 다시 말할게요
-                  </button>
-                </Group>
-              </>
-            )}
-            {(t.phase === 'speak' || t.phase === 'ready') && !t.bye && (
-              <>
-                <Button fullWidth radius="md" disabled={t.phase !== 'ready'} onClick={t.start}>
-                  🎙 하루를 보며 대답하기
-                </Button>
-                <Group justify="center" gap={16}>
-                  <button type="button" onClick={t.replay} disabled={t.phase !== 'ready'} style={linkStyle}>
-                    다시 들려주세요
-                  </button>
-                  <button type="button" onClick={() => void t.finish(true)} disabled={t.phase !== 'ready'} style={linkStyle}>
-                    이 질문 넘어가기
-                  </button>
-                </Group>
-              </>
-            )}
-          </Stack>
-        )}
-
-        {callOn && talkDone && (
-          <Stack gap={6} align="center" ta="center">
-            <Text fz={17} fw={700}>
-              2단계를 마쳤어요
-            </Text>
-            <Text fz={13} c="var(--rb-ink-soft)">
-              하루 얼굴을 보며 질문 {STAGE2_QUESTIONS.length}개를 끝까지 마쳤어요. 결과를 정리하고 있어요…
-            </Text>
-          </Stack>
-        )}
-
-        {callOn && !talkDone && analysisEnded && (
-          <Text fz={12} c="var(--rb-ink-faint)" ta="center">
-            표정·시선은 통화 시작 후 {s.maxCaptureSec / 60}분까지 살펴봤어요. 대화는 이어서 해도 돼요.
+      {mode === 'prep' && (
+        <Stack gap={14} align="center">
+          <Text fz={16} ta="center" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <EyeIcon />
+            <b>말하는 동안에는 하루를 봐 주세요</b>
+            <span style={{ color: 'var(--rb-ink-soft)' }}>· 그 밖에는 편하게 봐도 돼요</span>
           </Text>
-        )}
+          <Button radius="md" size="lg" disabled={s.phase !== 'camera'} onClick={startCall} styles={{ root: { minWidth: 220 } }}>
+            통화 시작하기
+          </Button>
+          <button type="button" onClick={() => navigate('/dashboard')} style={linkStyle}>
+            오늘은 여기까지 할게요
+          </button>
+        </Stack>
+      )}
 
-        {callOn && !talkDone && (
-          <Group justify="center">
-            <button type="button" onClick={hangUp} style={{ ...linkStyle, color: 'var(--rb-amber-strong)' }}>
-              통화 끝내기
-            </button>
-          </Group>
-        )}
-      </Stack>
-    </Paper>
+      {mode === 'calib' && s.phase === 'ready' && !calibrationLooksGood && (
+        <Group justify="center" gap={12}>
+          <Button radius="md" onClick={() => s.startCalibration()}>
+            다시 맞추기
+          </Button>
+          <Button radius="md" variant="default" onClick={beginCall}>
+            그대로 시작하기
+          </Button>
+        </Group>
+      )}
+
+      {mode === 'call' && !talkDone && (
+        <Stack gap={10}>
+          {(t.phase === 'speak' || t.phase === 'ready') && (
+            <Text fz={18} fw={600} ta="center" style={{ lineHeight: 1.6 }} aria-live="polite">
+              {t.line}
+            </Text>
+          )}
+          {t.phase === 'think' && (
+            <Text fz={14} c="var(--rb-ink-faint)" ta="center">
+              하루가 듣고 생각하고 있어요…
+            </Text>
+          )}
+          {t.phase === 'listen' && (
+            <>
+              <Text fz={14} c="var(--rb-ink-soft)" ta="center">
+                듣고 있어요. 다 말했으면 아래 버튼을 눌러요.
+              </Text>
+              <Button fullWidth radius="md" onClick={() => void t.finish()}>
+                ✓ 답변 마치기
+              </Button>
+              <Group justify="center">
+                <button type="button" onClick={t.again} style={linkStyle}>
+                  처음부터 다시 말할게요
+                </button>
+              </Group>
+            </>
+          )}
+          {(t.phase === 'speak' || t.phase === 'ready') && !t.bye && (
+            <>
+              <Button fullWidth radius="md" disabled={t.phase !== 'ready'} onClick={t.start}>
+                🎙 하루를 보며 대답하기
+              </Button>
+              <Group justify="center" gap={16}>
+                <button type="button" onClick={t.replay} disabled={t.phase !== 'ready'} style={linkStyle}>
+                  다시 들려주세요
+                </button>
+                <button type="button" onClick={() => void t.finish(true)} disabled={t.phase !== 'ready'} style={linkStyle}>
+                  이 질문 넘어가기
+                </button>
+              </Group>
+            </>
+          )}
+        </Stack>
+      )}
+
+      {mode === 'call' && talkDone && (
+        <Stack gap={6} align="center" ta="center">
+          <Text fz={17} fw={700}>
+            2단계를 마쳤어요
+          </Text>
+          <Text fz={13} c="var(--rb-ink-soft)">
+            하루 얼굴을 보며 질문 {STAGE2_QUESTIONS.length}개를 끝까지 마쳤어요. 결과를 정리하고 있어요…
+          </Text>
+        </Stack>
+      )}
+
+      {mode === 'call' && !talkDone && analysisEnded && (
+        <Text fz={12} c="var(--rb-ink-faint)" ta="center">
+          표정·시선은 통화 시작 후 {s.maxCaptureSec / 60}분까지 살펴봤어요. 대화는 이어서 해도 돼요.
+        </Text>
+      )}
+
+      {mode === 'call' && !talkDone && (
+        <Group justify="center">
+          <button type="button" onClick={hangUp} style={{ ...linkStyle, color: 'var(--rb-amber-strong)' }}>
+            통화 끝내기
+          </button>
+        </Group>
+      )}
+      {mode === 'prep' && s.phase === 'error' && (
+        <Alert color="red" variant="light" p="xs" fz={13}>
+          {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해주세요.'}
+        </Alert>
+      )}
+    </Stack>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
