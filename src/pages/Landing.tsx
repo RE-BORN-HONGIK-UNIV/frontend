@@ -355,6 +355,7 @@ function Audience() {
                   lineHeight: 1.0,
                   color: 'var(--rb-ink)',
                   wordBreak: 'keep-all',
+                  textAlign: 'center',
                   border: '1px solid var(--rb-line)',
                 }}
               >
