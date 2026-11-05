@@ -94,11 +94,14 @@ export function isLookingAtCamera(
   yawThresh = 10,
   pitchThresh = 10,
   irisThresh = 0.15,
+  // 캘리브레이션에서 잡은 "하루를 볼 때의 눈동자 위치"(calibrateBaselineIris) — 기본 0이면 예전과 같은 판정
+  baselineIrisX = 0,
+  baselineIrisY = 0,
 ): boolean {
   return (
     Math.abs(yaw - baselineYaw) < yawThresh &&
     Math.abs(pitch - baselinePitch) < pitchThresh &&
-    Math.abs(irisOffsetX) < irisThresh &&
-    Math.abs(irisOffsetY) < irisThresh
+    Math.abs(irisOffsetX - baselineIrisX) < irisThresh &&
+    Math.abs(irisOffsetY - baselineIrisY) < irisThresh
   );
 }
