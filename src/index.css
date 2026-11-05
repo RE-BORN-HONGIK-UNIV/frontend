@@ -985,6 +985,9 @@ a {
 .rb-call[data-mode='call'] .rb-call__haru { position: absolute; inset: 0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08); }
 /* 하루 그림: 넓은 칸에서 머리가 잘리지 않게 높이에 맞춰 아래 정렬(빈 곳은 그림 배경색) */
 .rb-call__haru > [role='img'] {
+  /* 입 움직임(.rb-haru-mouth)도 같은 크기·위치로 겹치도록 변수로 넘긴다 */
+  --haru-bg-size: auto 94%;
+  --haru-bg-pos: center bottom;
   background-size: auto 94% !important;
   background-position: center bottom !important;
   background-color: #e3defc !important; /* 하루 그림 자체의 배경색과 같게 — 다르면 그림 둘레에 네모가 보임 */
@@ -1104,9 +1107,13 @@ a {
    간격을 일부러 고르지 않게 해서 기계적으로 똑같이 뻐끔거리지 않게 했다(목소리에 정확히 맞춘 입 모양은 아님). */
 .rb-haru-mouth {
   position: absolute; inset: 0; pointer-events: none;
-  background: center / cover no-repeat;
-  mask-size: cover; mask-position: center; mask-repeat: no-repeat;
-  -webkit-mask-size: cover; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat;
+  /* 그림 칸이 하루 그림 크기·위치를 바꿔 쓰면(2단계 통화: auto 94%·아래 정렬) --haru-bg-*로 같이 맞춘다 —
+     안 맞추면 입이 엉뚱한 자리(눈 위)에 겹친다 */
+  background-repeat: no-repeat;
+  background-size: var(--haru-bg-size, cover);
+  background-position: var(--haru-bg-pos, center);
+  mask-size: var(--haru-bg-size, cover); mask-position: var(--haru-bg-pos, center); mask-repeat: no-repeat;
+  -webkit-mask-size: var(--haru-bg-size, cover); -webkit-mask-position: var(--haru-bg-pos, center); -webkit-mask-repeat: no-repeat;
   animation: rb-haru-mouth 1.3s ease-in-out infinite;
 }
 @keyframes rb-haru-mouth {
