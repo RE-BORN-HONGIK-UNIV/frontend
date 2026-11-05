@@ -10,8 +10,8 @@ import { useHaruTalk } from '@/features/haru/useHaruTalk';
 import { useLiveFaceSession } from './useLiveFaceSession';
 import { useDebugRecorder } from './useDebugRecorder';
 
-/** 통화 연결 직후 내 화면을 작게 보여 주는 시간 — 실제 영상 통화처럼 "연결됐다"는 느낌만 주고 사라진다(경량 웹과 같은 2초) */
-const PIP_MS = 2000;
+// 예전엔 통화 연결 직후 2초 동안 오른쪽에 내 화면을 작게 띄웠는데(경량 웹), 2026-11 사용자 요청으로 뺐다 —
+// 통화 중에는 내 얼굴을 보이지 않는다(시선이 내 얼굴로 가지 않게).
 
 const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
@@ -19,13 +19,13 @@ const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:
  * 2026-11 경량 웹 대기실로 바꿈: 대기실(prep)은 하루·내 카메라 두 칸(연결 확인만), "통화 시작하기"를 누르면
  * 한 칸으로 합쳐 정중앙에 내 얼굴을 5초 띄워 캘리브레이션(calib)하고, 끝나면 같은 자리에 하루가 나온다(call).
  * 통화 중 하루가 정중앙에 크게 나오므로, 시선 기준을 그 자리에서 잡으려는 것 — 대기실 오른쪽 칸을 보며 재면
- * 통화 중 하루를 보는 게 옆을 보는 것으로 잡힌다. 내 얼굴은 캘리브레이션 5초 + 연결 직후 2초만 보인다.
+ * 통화 중 하루를 보는 게 옆을 보는 것으로 잡힌다. 통화 중에는 내 얼굴을 보이지 않는다(대기실에서만 보임).
  *
  * 2단계 — 하루와 영상 통화하면서 실시간 표정·시선 분석(useLiveFaceSession)을 뒤에서 돌린다.
  * 화면은 경량 웹 Prep2/Talk2(영상 통화 대기실 → 통화)에서 가져왔고, 분석은 기존 실시간 촬영과 같다.
  *
  *   대기실(카메라 로딩 → 캘리브레이션 5초, 내 얼굴이 크게 보임) → "통화 시작하기"(= 촬영 시작)
- *   → 하루와 질문 4개(내 얼굴은 2초 뒤 사라지고 하루만 보임) → 마무리 인사가 끝나면 촬영 종료 → 결과.
+ *   → 하루와 질문 4개(하루만 보임) → 마무리 인사가 끝나면 촬영 종료 → 결과.
  *
  * 시선 기준값(캘리브레이션)은 통화 중 하루가 보일 자리와 같은 자리에 내 얼굴을 띄워 두고 잰다 — 통화 중에는
  * 카메라가 아니라 화면 속 하루를 보게 되므로, 기준을 같은 자리에서 잡아야 "하루를 보는 것"이 정면으로 잡힌다.
@@ -47,7 +47,6 @@ export function HaruCallView({
   const [empty, setEmpty] = useState(false);
   const [callOn, setCallOn] = useState(false);
   const [talkDone, setTalkDone] = useState(false);
-  const [pip, setPip] = useState(false);
   // 하루가 새 질문을 시작한 시각들(촬영 시작부터 초) — 결과를 질문별로 나누는 데 쓴다
   const questionStartsRef = useRef<number[]>([]);
   // 정확도 검증 기록 — 주소 뒤 ?debug=1일 때만(영상·장면 값을 통화를 끝낼 때 이 컴퓨터에 내려받음, useDebugRecorder 참고)
@@ -111,8 +110,6 @@ export function HaruCallView({
   const beginCall = () => {
     s.beginRecording();
     setCallOn(true);
-    setPip(true);
-    setTimeout(() => setPip(false), PIP_MS);
   };
 
   // "통화 시작하기" → 하루에게서 영상 통화가 오는 화면(ring) → 초록 "응답" → 캘리브레이션 5초 → 통화
@@ -281,7 +278,7 @@ export function HaruCallView({
           )}
         </div>
 
-        <div className="rb-call__me" data-pip={(mode === 'call' && pip) || undefined}>
+        <div className="rb-call__me">
           <video ref={videoRef} muted playsInline style={{ opacity: cameraOn ? 1 : 0 }} />
           {mode === 'prep' && (
             <>
