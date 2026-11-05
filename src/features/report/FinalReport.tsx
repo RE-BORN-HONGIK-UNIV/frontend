@@ -6,6 +6,7 @@ import type { GazeBlinkLatest, Stage1Latest } from '@/lib/api/types';
 import {
   BLINK_NORMAL,
   buildFaceReport,
+  buildStage3FaceLines,
   buildSummary,
   buildVoiceReport,
   VOICE_AXIS_LABELS,
@@ -14,7 +15,7 @@ import {
   type VoiceReport,
 } from './buildReport';
 import { Pentagon } from './Pentagon';
-import { loadStageDetails, type StageDetails } from './stageDetails';
+import { loadStageDetails, STAGE_DETAILS_EVENT, type StageDetails } from './stageDetails';
 import './report.css';
 
 /** 글 안의 **굵게**를 굵은 글씨로 (경량 웹과 같은 표기) */
@@ -64,7 +65,16 @@ function Script({ t }: { t: string }) {
 
 /** 이 기기에 남긴 1·2단계 세부값 → 없으면 서버의 최신 요약 점수로 대신 (기기를 바꾼 경우) */
 function useStageReports(given?: StageDetails) {
-  const local = useMemo(() => given ?? loadStageDetails(), [given]);
+  // 3단계 목소리 분석은 리포트가 열린 뒤에 끝나므로, 저장되면 다시 읽는다
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    if (given) return;
+    const onChange = () => setVersion((v) => v + 1);
+    window.addEventListener(STAGE_DETAILS_EVENT, onChange);
+    return () => window.removeEventListener(STAGE_DETAILS_EVENT, onChange);
+  }, [given]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- version이 바뀌면 기기 기록을 다시 읽는다
+  const local = useMemo(() => given ?? loadStageDetails(), [given, version]);
   const [s1, setS1] = useState<Stage1Latest | null>(null);
   const [s2, setS2] = useState<GazeBlinkLatest | null>(null);
   const [loading, setLoading] = useState(!given && (!local.stage1 || !local.stage2));
@@ -93,7 +103,8 @@ function useStageReports(given?: StageDetails) {
       ? buildVoiceReport({ at: s1.at, latest: s1 }, others)
       : null;
   const face: FaceReport | null = local.stage2 ? buildFaceReport(local.stage2) : s2 ? buildFaceReport({ at: s2.at, latest: s2 }) : null;
-  return { voice, face, loading, marks: local.stage3Marks ?? null };
+  const real = local.stage3Face ? buildStage3FaceLines(local.stage3Face.result, local.stage2?.result) : null;
+  return { voice, face, loading, marks: local.stage3Marks ?? null, marksStatus: local.stage3VoiceStatus ?? null, real };
 }
 
 /**
@@ -121,7 +132,7 @@ export function FinalReport({
   /** 제목 위 안내 (예시 화면 표시 등) */
   notice?: ReactNode;
 }) {
-  const { voice, face, loading, marks } = useStageReports(details);
+  const { voice, face, loading, marks, marksStatus, real } = useStageReports(details);
   const summary = buildSummary(voice, face);
   const [today] = useState(() => (date ? new Date(date) : new Date()).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }));
   const name = auth.name;
@@ -172,7 +183,7 @@ export function FinalReport({
       </section>
 
       <VoiceSection voice={voice} loading={loading} />
-      <FaceSection face={face} loading={loading} />
+      <FaceSection face={face} loading={loading} real={real} />
 
       <section className="sec">
         <div className="sh">
@@ -200,8 +211,12 @@ export function FinalReport({
                 <span className="k4">면접관을 바라보며 말한 부분</span>
               </div>
             </>
+          ) : marksStatus === 'pending' ? (
+            <Pending>3단계 대답 목소리를 정리하고 있어요. 조금 뒤에 여기에 표시가 나타나요.</Pending>
+          ) : marksStatus === 'failed' ? (
+            <Pending>3단계 대답 목소리를 정리하지 못했어요. 다음 면접에서 다시 살펴볼게요.</Pending>
           ) : (
-            <Pending>3단계 대답 목소리를 분석하게 되면 질문마다 표시가 보여요.</Pending>
+            <Pending>3단계에서 대답한 목소리가 있으면 질문마다 표시가 보여요.</Pending>
           )}
         </div>
         <div style={{ marginTop: 18 }}>{interview}</div>
@@ -436,7 +451,7 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
   );
 }
 
-function FaceSection({ face, loading }: { face: FaceReport | null; loading: boolean }) {
+function FaceSection({ face, loading, real }: { face: FaceReport | null; loading: boolean; real: ReturnType<typeof buildStage3FaceLines> | null }) {
   const [lo, hi] = BLINK_NORMAL;
   const MAX = 50; // 막대 오른쪽 끝(1분 50번) — 화면 눈금용
   return (
@@ -445,7 +460,11 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
         <span className="no">2</span>
         <h2>시선과 표정</h2>
       </div>
-      <p className="sub">2단계에서 하루와 영상 통화하는 동안 카메라로 살펴봤어요. 영상은 저장하지 않았어요.</p>
+      <p className="sub">
+        {real
+          ? '2단계 영상 통화와 3단계 실전 면접에서 대답하는 동안 카메라로 살펴봤어요. 영상은 저장하지 않았어요.'
+          : '2단계에서 하루와 영상 통화하는 동안 카메라로 살펴봤어요. 영상은 저장하지 않았어요.'}
+      </p>
       {!face ? (
         <Missing stage="2단계" path="/face" loading={loading} />
       ) : (
@@ -458,6 +477,7 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
               <p className="what">1분에 몇 번 깜빡였는지</p>
               {face.blink.big && <p className="big">{face.blink.big}</p>}
               <p className="d">{face.blink.line}</p>
+              {real && <p className="d">{real.blink}</p>}
             </div>
             {face.blink.ratePerMin !== null && (
               <div>
@@ -495,6 +515,7 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
               <p className="what">하루를 한 번 볼 때 얼마나 오래 바라봤는지</p>
               {face.gaze.big && <p className="big">{face.gaze.big}</p>}
               {face.gaze.line && <p className="d">{face.gaze.line}</p>}
+              {real && <p className="d">{real.gaze}</p>}
             </div>
             {face.gaze.segments && face.gaze.segments.length > 0 && (
               <div>
@@ -537,6 +558,7 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
                 </div>
               )}
               {face.expr.line && <p className="d">{face.expr.line}</p>}
+              {real && <p className="d">{real.expr}</p>}
             </div>
             {face.expr.segments && face.expr.segments.length > 0 && (
               <div>

@@ -8,6 +8,10 @@ import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interv
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
+import { useLiveFaceSession } from '@/features/face/live/useLiveFaceSession';
+import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
+import { buildStage3Marks } from '@/features/report/stage3Marks';
+import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, startStage3Details } from '@/features/report/stageDetails';
 
 // 꼬리질문 생성 실패 시 쓰는 기본 꼬리질문
 const FALLBACK_FOLLOW_UP = '방금 말씀하신 내용을 조금 더 자세히 설명해주실 수 있을까요?';
@@ -35,6 +39,11 @@ type Turn = { main: number; sub: number };
  * 답변 텍스트는 브라우저 음성 인식 결과를 유저가 확인·수정한 값을 꼬리질문 생성에 사용.
  * 음성 인식 미지원 브라우저는 서버 STT(transcribeAnswer)로 대체.
  * 내 얼굴 화면·타이머는 시선 분석과 긴장 완화를 위해 일부러 표시하지 않음.
+ * 대답하는 동안에는 1·2단계와 같은 분석을 뒤에서 돌린다(2026-11, 경량 웹 리포트의 1→2→3단계 비교용):
+ *  - 얼굴: 2단계 실시간 분석(useLiveFaceSession)을 숨긴 카메라로 — 첫 질문을 듣는 5초 동안 면접관을 보는 자리로
+ *    시선 기준을 잡고, 대답하는 동안만(앞뒤 1초 제외) 잰다. 2단계 이력에는 안 남기고 리포트용으로만(saveStage3Face).
+ *  - 목소리: 대답하는 구간만 이어 녹음(useAnswerRecorder)해 면접이 끝나면 1단계 분석(/analyze, stage=3 — 1단계 점수는
+ *    안 덮음)으로 보낸다. 결과와 질문별 말버릇·멈춤 표시는 뒤에서 저장돼 리포트가 열린 뒤에 채워진다(saveStage3Voice).
  * 화면은 경량 웹 Talk3: 어두운 면접실 가운데 면접관 사진(움직이지 않음) + 아래 흰 버튼 줄(소리 막대·상태·
  * 다시 들려주세요·답변 마치기), 질문은 글로 보여 주지 않는다(index.css .rb-s3).
  */
@@ -62,6 +71,36 @@ export function QuestionView({
   const [question, setQuestion] = useState('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // ── 대답하는 동안의 얼굴 분석(2단계와 같은 로직) ──
+  const faceVideoRef = useRef<HTMLVideoElement>(null);
+  const questionStartsRef = useRef<number[]>([]);
+  const face = useLiveFaceSession({
+    videoRef: faceVideoRef,
+    onComplete: (r) => saveStage3Face(r),
+    getQuestionStarts: () => questionStartsRef.current,
+    calibrateOnDemand: true,
+    measureOnlyWhenAnswering: true,
+    persist: false,
+    // 3단계는 질문이 많고 대답이 길어서 2단계(3분)보다 넉넉히 — 대답한 시간 기준
+    maxCaptureSec: 10 * 60,
+  });
+  // 카메라가 켜지면 바로 시선 기준 5초(첫 질문을 들으며 면접관을 보는 동안), 끝나면 재기 시작
+  useEffect(() => {
+    if (face.phase === 'camera') face.startCalibration();
+    else if (face.phase === 'ready') face.beginRecording();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 단계가 바뀔 때만
+  }, [face.phase]);
+
+  // ── 대답하는 동안의 목소리 녹음(1단계와 같은 분석으로 보냄) ──
+  const voiceRec = useAnswerRecorder(phase === 'answering');
+  // 녹음 안 대답 하나하나가 몇 번째 질문의 대답인지(녹음기의 turnStarts와 같은 순서), 다시 들려주세요로 버린 대답인지
+  const answerLogRef = useRef<{ question: number; discarded: boolean }[]>([]);
+  useEffect(() => {
+    face.setAnswering(phase === 'answering');
+    if (phase === 'answering') answerLogRef.current.push({ question: transcriptRef.current.length - 1, discarded: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 대답 시작·끝에만
+  }, [phase]);
 
   const live = useLiveTranscript({ active: phase === 'answering' });
 
@@ -101,6 +140,8 @@ export function QuestionView({
   /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 바로 답변 대기로 넘어감 */
   const ask = async (text: string, kind: 'main' | 'follow_up') => {
     recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
+    // 얼굴 분석의 질문별 구간 — 아직 재기 전(시선 기준 잡는 중)이면 0초로
+    questionStartsRef.current.push(face.recordingNowSec() ?? 0);
     transcriptRef.current.push({ kind, question: text, answer: '' });
     askedRef.current = [...askedRef.current, text];
     setQuestion(text);
@@ -136,6 +177,7 @@ export function QuestionView({
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
+    startStage3Details(); // 지난 면접의 3단계 분석값이 새 리포트에 섞이지 않게
     recorder.start();
     loadQuestion({ main: 0, sub: 0 }, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,7 +206,11 @@ export function QuestionView({
 
   // 다시 들려주세요: 듣던 건 버리고 질문을 처음부터 다시 읽는다
   const handleReplay = async () => {
-    if (phaseRef.current === 'answering') await stop();
+    if (phaseRef.current === 'answering') {
+      await stop();
+      const last = answerLogRef.current[answerLogRef.current.length - 1];
+      if (last) last.discarded = true; // 다시 듣기 전에 하던 대답은 표시에서 뺀다
+    }
     live.reset();
     const a = audioRef.current;
     if (!a || !audioUrl) {
@@ -218,11 +264,36 @@ export function QuestionView({
       const url = await getSpeechAudioUrl(interviewer.closing, tier);
       setAudio(url);
       setPhase('finished');
+      void finishAnalysis();
       return;
     }
 
     setTurn(next);
     await loadQuestion(next, answer);
+  };
+
+  /** 면접을 마치면: 얼굴 분석을 끝내 저장하고, 이어 녹음한 대답을 목소리 분석으로 보낸다(리포트는 기다리지 않음) */
+  const finishAnalysis = async () => {
+    void face.finish();
+    const rec = await voiceRec.finish();
+    if (!rec) return skipStage3Voice();
+    const questions = transcriptRef.current.map((t) => t.question);
+    const log = answerLogRef.current;
+    api
+      .analyze(rec.file, null, 3)
+      .then((result) => {
+        const turns = rec.turnStarts
+          .map((start, i) => ({ question: log[i]?.question ?? -1, discarded: log[i]?.discarded ?? true, start, end: rec.turnStarts[i + 1] ?? rec.spokenSec }))
+          .filter((t) => !t.discarded && t.question >= 0);
+        const marks = buildStage3Marks(questions, turns, {
+          words: result.words ?? [],
+          fillers: result.filler_detail.events ?? [],
+          prolongs: result.prolong_detail?.events ?? [],
+          longPauses: result.pause_detail.long_pauses ?? [],
+        });
+        saveStage3Voice(result, marks);
+      })
+      .catch(() => failStage3Voice());
   };
 
   /** 결과 화면으로: 밀린 서버 저장이 끝나 면접 id가 확정될 때까지 잠깐 기다린다(최대 3초 — 느려도 결과 화면은 막지 않음) */
@@ -270,6 +341,8 @@ export function QuestionView({
       {/* 면접관 사진은 움직이지 않고, 말하는 중인지는 아래 소리 막대로만 보여 준다 */}
       <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`} />
       <audio ref={audioRef} src={audioUrl ?? undefined} onEnded={handleAudioEnded} hidden />
+      {/* 얼굴 분석용 카메라 — 화면에는 내 얼굴을 띄우지 않는다(경량 웹처럼). display:none이면 프레임이 안 들어와서 1px로 숨김 */}
+      <video ref={faceVideoRef} muted playsInline aria-hidden className="rb-s3__facecam" />
 
       {phase === 'finished' ? (
         <div className="rb-s3__end">

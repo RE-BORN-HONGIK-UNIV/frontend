@@ -94,7 +94,8 @@ src/
 - **리포트의 "준비 중" 칸** — 경량 웹 리포트에 있던 칸은 값이 없어도 자리를 잡아 두고 "준비 중"으로 보인다(예시 값을 채우지 않음). 아래 이름으로 값이 들어오면 코드 수정 없이 바로 그려진다 (`lib/api/types.ts`, `features/report/stageDetails.ts` 주석 참고):
   - 1단계 `/analyze` 응답: `prolong_detail.events`(소리 늘이기), `energy_detail.sentence_bars`(문장 끝 에너지 막대), `tremor_detail.curve`(떨림 곡선)
   - ~~2단계 결과: `per_question`(질문별 깜빡임·눈 맞춤)~~ → 채움: 하루와 통화 중 질문이 바뀐 시각으로 기존 깜빡임·시선을 나눔(`face/live/perQuestion.ts`)
-  - 리포트 저장값: `stage2Voice` / `stage3Voice`(2·3단계 대답 목소리 분석 → 1→2→3단계 흐름 막대), `stage3Marks`(질문별 말버릇·멈춤 표시, `[f:음] [l:저어] [p:3초 멈춤] [k:…]` 표기)
+  - 리포트 저장값: `stage2Voice`(아직 없음) / ~~`stage3Voice`, `stage3Marks`~~ → 채움(2026-11): 3단계 면접 대답만 이어 녹음해 `/analyze`(`stage=3`, 1단계 점수는 안 덮음)로 보내고, Whisper 단어 시각으로 질문별 `[f:음] [l:저어] [p:3초 멈춤]` 표시를 만듦(`report/stage3Marks.ts`). `[k:…]`(바라보며 말한 부분)은 아직 없음
+  - 3단계 얼굴: 면접 중 대답하는 동안 2단계와 같은 실시간 분석을 돌려 `stage3Face`로 남기고, 시선과 표정 칸에 "실전 면접에서는 …(2단계 …)" 줄로 보여 줌(2단계 이력에는 안 남김)
   - `/report/sample`에는 이 값들까지 예시로 넣어 두어서, 다 채워졌을 때의 모습을 볼 수 있다.
 - 하루의 반응 한마디는 `POST /haru/reply`(Claude, 실패하면 정해 둔 공감 문장), 목소리는 `/interview/tts`의 `tier: 'haru'`(Typecast, 실패하면 브라우저 목소리), 대답 받아쓰기는 브라우저 음성 인식(크롬·엣지)이 먼저고 비면 그 대답 녹음을 서버 Whisper(`/interview/transcribe`)로 — 3단계와 같은 방식.
 - 하루와 나눈 대답·카드는 **이 기기 localStorage에만**(계정별, `store.ts`) — 1·2단계를 다른 날 해도 이어지게 하되 민감한 대답을 서버 DB에 쌓지 않으려고. 카드에서 언제든 지울 수 있음.

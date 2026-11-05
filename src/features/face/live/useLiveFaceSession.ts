@@ -114,6 +114,11 @@ export interface UseLiveFaceSessionOptions {
   measureOnlyWhenAnswering?: boolean;
   /** measureOnlyWhenAnswering인데 대답한 구간이 거의 없어 결과를 만들지 않았을 때 */
   onEmpty?: () => void;
+  /** false면 결과를 2단계 이력(서버 Stage2Result·기기의 2단계 기록)에 남기지 않는다 — 3단계 면접 중 분석용.
+   * 3단계 값이 2단계 "지난번과 비교"·대시보드에 섞이지 않게. 기본 true(2단계). */
+  persist?: boolean;
+  /** 잴 수 있는 최대 시간(초). 기본 MAX_CAPTURE_SEC(3분, 2단계 업로드 영상 길이 제한과 같은 값) */
+  maxCaptureSec?: number;
 }
 
 export function useLiveFaceSession({
@@ -123,6 +128,8 @@ export function useLiveFaceSession({
   calibrateOnDemand = false,
   measureOnlyWhenAnswering = false,
   onEmpty,
+  persist = true,
+  maxCaptureSec = MAX_CAPTURE_SEC,
 }: UseLiveFaceSessionOptions) {
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -308,7 +315,7 @@ export function useLiveFaceSession({
 
             // 3분 제한: 대답 구간만 재는 경우엔 실제로 잰 시간으로 센다
             const capturedSec = measureOnlyWhenAnswering ? measuredSec() : t - recordingStartTRef.current;
-            if (capturedSec >= MAX_CAPTURE_SEC) {
+            if (capturedSec >= maxCaptureSec) {
               elapsedSecRef.current = t;
               setElapsedSec(t);
               void finish();
@@ -408,13 +415,15 @@ export function useLiveFaceSession({
     const expressionSummary = summarizeExpression(exprSeriesRef.current);
     const expressionResult = scoreExpression(expressionSummary.smileRatio, expressionSummary.tensionRatio);
 
-    // 서버 저장이 실패·지연되는 경우의 폴백 이력 — 브라우저 로컬(같은 기기에서만 유효)
-    const { previous: localPrevious } = localProgress.appendStage2Result({
-      blinkRatePerMin: blinkResult.ratePerMin,
-      avgFixationSec: gazeResult.avgFixationSec,
-      smileRatio: expressionSummary.smileRatio,
-      tensionRatio: expressionSummary.tensionRatio,
-    });
+    // 서버 저장이 실패·지연되는 경우의 폴백 이력 — 브라우저 로컬(같은 기기에서만 유효). 3단계(persist=false)는 안 남김
+    const { previous: localPrevious } = persist
+      ? localProgress.appendStage2Result({
+          blinkRatePerMin: blinkResult.ratePerMin,
+          avgFixationSec: gazeResult.avgFixationSec,
+          smileRatio: expressionSummary.smileRatio,
+          tensionRatio: expressionSummary.tensionRatio,
+        })
+      : { previous: null };
 
     const result: GazeBlinkResult = {
       blink: {
@@ -459,6 +468,10 @@ export function useLiveFaceSession({
     // 결과를 서버(Stage2Result)에 저장하고, 서버 이력 기준의 "직전 기록"을 받아 비교에 쓴다.
     // 업로드 모드 이력과 합쳐지고 기기를 바꿔도 이어지며, 3단계 난이도·ai-agent도 읽을 수 있음.
     // 실패·시간초과·서버에 이력 없음이면 로컬 이력으로 폴백 — 결과 화면은 절대 안 막는다.
+    if (!persist) {
+      onComplete(result);
+      return;
+    }
     setSaving(true);
     try {
       const saved = await Promise.race([
@@ -485,7 +498,7 @@ export function useLiveFaceSession({
     /** 캘리브레이션을 시작한 뒤 지난 초(시작 전이면 0) */
     calibrationElapsedSec: calibStartTRef.current === null ? 0 : Math.max(0, elapsedSec - calibStartTRef.current),
     startCalibration,
-    maxCaptureSec: MAX_CAPTURE_SEC,
+    maxCaptureSec,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,
     setAnswering,

@@ -1233,3 +1233,4 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .rb-s3__bars i { animation: none; }
 }
+.rb-s3__facecam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; top: 0; }
