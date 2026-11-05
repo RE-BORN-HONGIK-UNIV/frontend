@@ -138,7 +138,7 @@ export default function VoiceStage() {
                 시작 전에 확인해요
               </Text>
               <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-                준비된 것을 눌러 체크해 보세요. 다 못 해도 시작할 수 있어요.
+                준비된 것을 눌러 체크해요. 다 못 해도 시작할 수 있어요.
               </Text>
             </div>
             <GuideChecklist items={GUIDE_ITEMS} />
@@ -148,9 +148,9 @@ export default function VoiceStage() {
               style={{
                 background: 'var(--rb-surface)',
                 border: '1px solid var(--rb-line)',
-                borderRadius: 24,
+                borderRadius: 12,
                 padding: 'clamp(22px, 5vw, 40px)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.05)',
+                boxShadow: '0 40px 40px rgba(0,0,0,0.05)',
               }}
             >
               <h2
@@ -158,31 +158,31 @@ export default function VoiceStage() {
                   margin: 0,
                   fontFamily: 'var(--rb-font-display)',
                   fontSize: 'clamp(24px, 4.5vw, 34px)',
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
                   color: 'var(--rb-ink)',
                 }}
               >
                 시작하기 전에 <span style={{ color: 'var(--rb-primary)' }}>마이크</span>만 확인할게요
               </h2>
               <Text fz={15} c="var(--rb-ink-soft)" mt={10}>
-                브라우저가 마이크를 써도 되는지 물어보면 &quot;허용&quot;을 눌러 주세요. 크롬·엣지에서 가장 잘 돼요.
+                브라우저가 마이크를 써도 되는지 물어보면 &quot;허용&quot;을 눌러 주세요. 
               </Text>
 
               <Stack gap={12} mt={24}>
                 <CalibrationStep onComplete={setChecked} />
                 <CheckRow icon={<ShieldIcon />} title="녹음은 분석이 끝나면 바로 지워요">
                   <Text fz={13} c="var(--rb-ink-soft)" mt={4} style={{ lineHeight: 1.6 }}>
-                    하루가 대답에 맞춰 반응할 수 있게 대답은 글로 받아써서(크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈
-                    이야기는 3단계 면접 질문을 만들 때 쓰도록 이 기기에만 남고, 2단계를 마친 뒤 정리 화면에서 지울 수 있어요. 카메라는
-                    2단계에서 따로 물어볼게요.
+                    대답은 글로 작성되어 (크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈
+                    이야기는 3단계 면접 질문을 만들 때 쓰도록 이 기기에만 남고, 2단계를 마친 뒤 지울 수 있어요. 
                   </Text>
                 </CheckRow>
               </Stack>
 
               <Box mt={24} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                 <Text fz={13} c="var(--rb-ink-soft)">
-                  하루의 질문 {STAGE1_QUESTIONS.length}개 · 5분쯤 걸려요
+                  질문 수 : {STAGE1_QUESTIONS.length}개 <br />
+                  소요 시간 : 약 5분
                 </Text>
                 <Button radius="md" size="lg" disabled={!checked} onClick={() => checked && setCalibration(checked)}>
                   1단계 시작하기
