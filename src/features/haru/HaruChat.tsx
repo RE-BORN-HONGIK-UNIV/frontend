@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { HaruAvatar } from './HaruAvatar';
 import { linkStyle } from './styles';
 import type { useHaruTalk } from './useHaruTalk';
@@ -7,12 +7,31 @@ type Talk = ReturnType<typeof useHaruTalk>;
 
 const STATUS = { speak: '말하고 있어요', ready: '기다리고 있어요', listen: '듣고 있어요', think: '생각하고 있어요', done: '대화를 마쳤어요' };
 
+/** 카톡처럼 "오후 3:12" */
+const fmtTime = (d: Date) =>
+  `${d.getHours() < 12 ? '오전' : '오후'} ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+
 /**
  * 말풍선 한 줄 — 카카오톡처럼: 하루 메시지는 왼쪽에 프로필 사진·이름, 내 대답은 오른쪽.
  * first: 같은 사람이 연달아 보낸 메시지 중 첫 번째 — 사진·이름·말풍선 꼬리는 첫 번째에만 붙는다.
- * 시간은 표시하지 않는다.
+ * time: 연달아 보낸 메시지 중 마지막에만 말풍선 옆 아래에 작게(카톡처럼). unread: 내 말풍선 옆 노란 "1"(아직 안 읽음).
+ * 새 줄은 아래에서 살짝 올라오며 나타난다(index.css .rb-chat__row 애니메이션 — 움직임 줄이기 설정이면 없음).
  */
-function Bubble({ ai, first, children, live }: { ai: boolean; first: boolean; children: ReactNode; live?: boolean }) {
+function Bubble({
+  ai,
+  first,
+  children,
+  live,
+  time,
+  unread,
+}: {
+  ai: boolean;
+  first: boolean;
+  children: ReactNode;
+  live?: boolean;
+  time?: string;
+  unread?: boolean;
+}) {
   const bubble = (
     <div
       className={`rb-chat__bubble${ai ? '' : ' rb-chat__bubble--me'}${first ? ' rb-chat__bubble--tail' : ''}`}
@@ -21,16 +40,43 @@ function Bubble({ ai, first, children, live }: { ai: boolean; first: boolean; ch
       {children}
     </div>
   );
-  if (!ai) return <div className={`rb-chat__row rb-chat__row--me${first ? ' rb-chat__row--first' : ''}`}>{bubble}</div>;
+  const meta =
+    time || unread ? (
+      <span className="rb-chat__meta" aria-hidden>
+        {unread && <span className="rb-chat__unread">1</span>}
+        {time && <span className="rb-chat__time">{time}</span>}
+      </span>
+    ) : null;
+  if (!ai)
+    return (
+      <div className={`rb-chat__row rb-chat__row--me${first ? ' rb-chat__row--first' : ''}`}>
+        {meta}
+        {bubble}
+      </div>
+    );
   return (
     <div className={`rb-chat__row${first ? ' rb-chat__row--first' : ''}`}>
       {/* 연달아 보낸 메시지는 사진 자리만 비워 두고 말풍선을 나란히 */}
       {first ? <span className="rb-chat__avatar" role="img" aria-label="하루" /> : <span className="rb-chat__avatar-gap" aria-hidden />}
       <div className="rb-chat__col">
         {first && <span className="rb-chat__name">하루</span>}
-        {bubble}
+        <div className="rb-chat__line">
+          {bubble}
+          {meta}
+        </div>
       </div>
     </div>
+  );
+}
+
+/** 카톡 "입력 중" — 말풍선 안 점 세 개가 차례로 통통 튄다 */
+function Typing() {
+  return (
+    <span className="rb-chat__typing" role="status" aria-label="하루가 입력하고 있어요">
+      <i />
+      <i />
+      <i />
+    </span>
   );
 }
 
@@ -70,9 +116,27 @@ export interface DoneBar {
 
 export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }) {
   const box = useRef<HTMLDivElement>(null);
+  // 메시지마다 처음 화면에 나온 시각 — 대화 기록(useHaruTalk)에는 시각이 없어서 여기서 적어 둔다
+  const timesRef = useRef<string[]>([]);
+  while (timesRef.current.length < t.log.length) timesRef.current.push(fmtTime(new Date()));
+
+  // 읽음 표시: 내가 보낸 마지막 말은 잠깐 "1"이 떠 있다가 하루가 읽으면(0.8초 뒤) 사라지고 "입력 중"이 나온다
+  // 화면을 열었을 때 이미 있던 메시지(다시 그려진 경우 등)는 읽은 것으로 시작한다
+  const [readCount, setReadCount] = useState(() => t.log.length);
   useEffect(() => {
-    box.current?.scrollTo({ top: box.current.scrollHeight });
-  }, [t.log, t.phase, t.live]);
+    if (readCount >= t.log.length) return;
+    const id = setTimeout(() => setReadCount(t.log.length), 800);
+    return () => clearTimeout(id);
+  }, [t.log.length, readCount]);
+
+  // 새 메시지가 오면 카톡처럼 아래로 부드럽게 따라 내려간다(처음 한 번은 바로)
+  const scrolledOnce = useRef(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: scrolledOnce.current ? 'smooth' : 'auto' });
+    scrolledOnce.current = true;
+  }, [t.log, t.phase, t.live, readCount]);
 
   const listening = t.phase === 'listen';
   // 마지막 줄을 누가 보냈는지 — 말하는 중·생각하는 중 말풍선도 같은 사람이 이어 보내면 사진·꼬리를 다시 붙이지 않는다
@@ -101,20 +165,36 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
 
       {/* 오른쪽: 대화 칸 */}
       <section className="rb-haru-talk__chat" aria-label="하루와 나눈 대화">
+        {/* 카톡 채팅방처럼 위에 대화 상대 이름 줄 */}
+        <header className="rb-chat__head">
+          <span className="rb-chat__head-avatar" aria-hidden />
+          <strong>하루</strong>
+          <span className="rb-chat__head-st">{STATUS[t.phase]}</span>
+        </header>
         <div ref={box} className="rb-haru-talk__log">
-          {t.log.map((l, k) => (
-            <Bubble key={k} ai={l.ai} first={k === 0 || t.log[k - 1].ai !== l.ai}>
-              {l.text}
-            </Bubble>
-          ))}
+          {t.log.map((l, k) => {
+            const lastOfGroup = k === t.log.length - 1 || t.log[k + 1].ai !== l.ai;
+            return (
+              <Bubble
+                key={k}
+                ai={l.ai}
+                first={k === 0 || t.log[k - 1].ai !== l.ai}
+                time={lastOfGroup ? timesRef.current[k] : undefined}
+                unread={!l.ai && k >= readCount}
+              >
+                {l.text}
+              </Bubble>
+            );
+          })}
           {listening && (
             <Bubble ai={false} first={!lastIsMine} live>
               {t.live || '말하는 중…'}
             </Bubble>
           )}
-          {t.phase === 'think' && (
+          {/* 하루가 읽은 뒤에 "입력 중" 점 세 개 — 카톡에서 답장이 오기 직전처럼 */}
+          {t.phase === 'think' && readCount >= t.log.length && (
             <Bubble ai first={lastIsMine}>
-              …
+              <Typing />
             </Bubble>
           )}
         </div>
