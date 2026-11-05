@@ -33,11 +33,11 @@ const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:
  */
 export function HaruCallView({
   onComplete,
-  onRestart,
+  onHungUp,
 }: {
   onComplete: (result: GazeBlinkResult) => void;
-  /** 통화를 끝낸 뒤 "하루와 다시 통화할래요" */
-  onRestart?: () => void;
+  /** 대화를 다 마치고 빨간 버튼으로 통화를 끝냈을 때(결과 저장까지 끝난 뒤) — FaceStage가 "하루가 이렇게 이해했어요"로 넘긴다 */
+  onHungUp: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
@@ -89,6 +89,10 @@ export function HaruCallView({
   }, [talkDone, result, onComplete]);
   // 대화를 다 마친 뒤 빨간 버튼으로 통화를 끝냈는지
   const [hungUp, setHungUp] = useState(false);
+  // 끊었고 결과 저장까지 끝났으면 다음 화면으로 — 결과가 나오기 전에 이 화면이 사라지면 2단계 기록이 저장되지 않아서 기다린다
+  useEffect(() => {
+    if (hungUp && (result || empty)) onHungUp();
+  }, [hungUp, result, empty, onHungUp]);
 
   // 질문 번호가 바뀔 때마다(같은 질문을 다시 묻는 건 제외) 그 시각을 적는다.
   // 3분이 지나 촬영이 끝난 뒤의 질문은 표정·시선 기록이 없으니 적지 않는다(질문별 막대도 그 전 질문까지만)
@@ -358,26 +362,12 @@ export function HaruCallView({
       {mode === 'call' && talkDone && (
         <Stack gap={12} align="center" ta="center">
           <Text fz={18} fw={600} style={{ lineHeight: 1.6 }} aria-live="polite">
-            {hungUp ? '2단계를 마쳤어요' : '하루와 이야기를 마쳤어요'}
+            {hungUp ? '통화를 마쳤어요' : '하루와 이야기를 마쳤어요'}
           </Text>
           <Text fz={14} c="var(--rb-ink-soft)">
-            {hungUp
-              ? empty
-                ? '대답한 구간이 없어서 표정·시선은 살펴보지 못했어요. 3단계는 그대로 할 수 있어요.'
-                : '결과는 3단계 실전 면접을 마친 뒤 최종 리포트에서 함께 보여 드려요.'
-              : '빨간 버튼을 눌러 통화를 끝내 주세요.'}
+            {hungUp ? '나눈 이야기를 정리하고 있어요…' : '빨간 버튼을 눌러 통화를 끝내 주세요.'}
           </Text>
           <div className="rb-call__controls">
-            {hungUp && (
-              <button
-                type="button"
-                className="rb-call__action"
-                disabled={!result && !empty}
-                onClick={() => navigate('/interview')}
-              >
-                {result || empty ? '3단계 시작하기 →' : '결과 정리하는 중…'}
-              </button>
-            )}
             <button
               type="button"
               className="rb-call__hangup"
@@ -389,11 +379,6 @@ export function HaruCallView({
               <PhoneIcon down />
             </button>
           </div>
-          {hungUp && onRestart && (
-            <button type="button" onClick={onRestart} style={linkStyle}>
-              하루와 다시 통화할래요
-            </button>
-          )}
         </Stack>
       )}
 

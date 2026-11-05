@@ -1111,3 +1111,28 @@ a {
 }
 /* 1단계를 마친 뒤 하단 바의 체크 표시 — 누르는 버튼이 아님 */
 .rb-haru-talk__mic[data-done] { cursor: default; }
+/* "하루가 이렇게 이해했어요" 카드(HaruProfileView) — 경량 웹 Profile 화면처럼 왼쪽 항목 이름 · 오른쪽 내용 한 줄씩 */
+.rb-profile__title {
+  margin: 0; font-family: var(--rb-font-display); font-size: clamp(26px, 4vw, 34px); font-weight: 700;
+  letter-spacing: -0.02em; color: var(--rb-ink);
+}
+.rb-profile__title span { color: var(--rb-primary); }
+.rb-profile { margin: 0; border-top: 1.5px solid var(--rb-ink); }
+.rb-profile__row {
+  display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--rb-line); min-height: 60px;
+}
+.rb-profile__row dt { font-size: 14px; color: var(--rb-ink-soft); }
+.rb-profile__row dd { margin: 0; }
+.rb-profile__value {
+  width: 100%; border: 1px solid transparent; border-radius: 8px; background: transparent;
+  padding: 8px 10px; margin-left: -10px; font: inherit; font-size: 16px; color: var(--rb-ink);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.rb-profile__value:hover { background: var(--rb-surface-tint); }
+.rb-profile__value:focus { outline: none; border-color: var(--rb-primary); background: var(--rb-surface); }
+.rb-profile__value::placeholder { color: var(--rb-ink-faint); }
+.rb-profile__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+@media (max-width: 560px) {
+  .rb-profile__row { grid-template-columns: 1fr; gap: 0; padding: 10px 0; }
+}

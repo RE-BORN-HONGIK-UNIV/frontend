@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, Text } from '@/components/ui';
 import { StageHeader } from '@/components/StageHeader';
 import { localProgress } from '@/features/progress/localProgress';
@@ -13,7 +13,7 @@ import { ResultView } from '@/features/interview/views/ResultView';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import { HaruProfileView } from '@/features/haru/HaruProfileView';
 import { FinalReport } from '@/features/report/FinalReport';
-import { loadHaruTalk, profileSourceItems } from '@/features/haru/store';
+import { aboutMeLines, loadHaruTalk, profileIsCurrent, profileSourceItems } from '@/features/haru/store';
 
 /**
  * about: "하루가 이렇게 이해했어요" 카드(1·2단계에서 하루와 나눈 대답이 이 기기에 있을 때만) →
@@ -25,9 +25,19 @@ import { loadHaruTalk, profileSourceItems } from '@/features/haru/store';
 type Step = 'about' | 'intro' | 'test' | 'ready' | 'question' | 'result';
 
 export default function InterviewStage() {
-  const [step, setStep] = useState<Step>(() => (profileSourceItems(loadHaruTalk()).length ? 'about' : 'intro'));
+  // 2단계 끝에서 "하루가 이렇게 이해했어요"를 이미 확인하고 왔으면(넘겨받은 값, 또는 기기에 남은 지금 대답 기준 카드)
+  // 다시 묻지 않고 면접관 소개부터. 대시보드 등에서 바로 왔고 확인한 카드가 없으면 예전처럼 카드부터 보여 준다.
+  const location = useLocation();
+  const [initial] = useState(() => {
+    const passed = (location.state as { aboutMe?: string[] } | null)?.aboutMe;
+    if (passed) return { step: 'intro' as Step, aboutMe: passed };
+    const rec = loadHaruTalk();
+    if (profileIsCurrent(rec)) return { step: 'intro' as Step, aboutMe: aboutMeLines(rec.profile?.items) };
+    return { step: (profileSourceItems(rec).length ? 'about' : 'intro') as Step, aboutMe: [] as string[] };
+  });
+  const [step, setStep] = useState<Step>(initial.step);
   // 사용자가 카드에서 확인한 자기 이야기 — 기본 질문의 소재로 서버에 넘긴다(없으면 빈 목록)
-  const [aboutMe, setAboutMe] = useState<string[]>([]);
+  const [aboutMe, setAboutMe] = useState<string[]>(initial.aboutMe);
   // IntroView에서 유저가 최종 선택한 면접관 tier. 이후 음성·질문 난이도 모두 이 값 기준
   const [tier, setTier] = useState<DifficultyTier>('standard');
   // 면접을 끝까지 마친 뒤 결과 화면에 넘겨줄 이번 면접의 질문·답변 (면접 중 메모리에 모아둔 것)
