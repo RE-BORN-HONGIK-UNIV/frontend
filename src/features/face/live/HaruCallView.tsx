@@ -31,7 +31,14 @@ const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:
  * 표정·시선은 통화 시작 후 최대 3분(MAX_CAPTURE_SEC)까지만 살펴보고, 그 뒤에도 대화는 이어서 할 수 있다.
  * <video>는 대기실과 통화에서 같은 요소를 계속 쓴다(다시 만들면 카메라 연결이 끊김) — 모양만 바꾼다.
  */
-export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkResult) => void }) {
+export function HaruCallView({
+  onComplete,
+  onRestart,
+}: {
+  onComplete: (result: GazeBlinkResult) => void;
+  /** 통화를 끝낸 뒤 "하루와 다시 통화할래요" */
+  onRestart?: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const [result, setResult] = useState<GazeBlinkResult | null>(null);
@@ -64,9 +71,13 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
     if (talkDone) void s.finish();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- s.finish는 매번 새 함수지만 한 번만 동작함
   }, [talkDone]);
+  // 결과가 나오면 바로 저장만 한다(FaceStage) — 화면은 그대로 두고, 사용자가 빨간 버튼으로 통화를 끝내야 "3단계 시작하기"가 나온다.
+  // 예전엔 결과가 나오자마자 "2단계를 마쳤어요" 카드로 넘어가서, 끊지도 않았는데 통화가 혼자 끝난 것처럼 보였다.
   useEffect(() => {
     if (talkDone && result) onComplete(result);
   }, [talkDone, result, onComplete]);
+  // 대화를 다 마친 뒤 빨간 버튼으로 통화를 끝냈는지
+  const [hungUp, setHungUp] = useState(false);
 
   // 질문 번호가 바뀔 때마다(같은 질문을 다시 묻는 건 제외) 그 시각을 적는다.
   // 3분이 지나 촬영이 끝난 뒤의 질문은 표정·시선 기록이 없으니 적지 않는다(질문별 막대도 그 전 질문까지만)
@@ -110,6 +121,8 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
   }, [started, callOn, s.phase, calibrationLooksGood]);
 
   const hangUp = () => {
+    // 하루가 마무리 인사까지 했으면 묻지 않고 끊는다 → 옆에 "3단계 시작하기"
+    if (talkDone) return setHungUp(true);
     if (window.confirm('통화를 끝낼까요? 2단계는 다음에 처음부터 다시 해요.')) navigate('/dashboard');
   };
 
@@ -161,7 +174,13 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
             {mode === 'call' && (
               <>
                 <TileTag top>
-                  <span className="rb-call__dot" /> 연결됨 · {mmss(s.recordingElapsedSec)}
+                  {hungUp ? (
+                    '통화 종료'
+                  ) : (
+                    <>
+                      <span className="rb-call__dot" /> 연결됨 · {mmss(s.recordingElapsedSec)}
+                    </>
+                  )}
                 </TileTag>
                 {!t.bye && !talkDone && <span className="rb-call__qtag">질문 {t.index + 1} / {t.total}</span>}
                 <TileTag>하루</TileTag>
@@ -325,13 +344,42 @@ export function HaruCallView({ onComplete }: { onComplete: (result: GazeBlinkRes
       )}
 
       {mode === 'call' && talkDone && (
-        <Stack gap={6} align="center" ta="center">
-          <Text fz={17} fw={700}>
-            2단계를 마쳤어요
+        <Stack gap={12} align="center" ta="center">
+          <Text fz={18} fw={600} style={{ lineHeight: 1.6 }} aria-live="polite">
+            {hungUp ? '2단계를 마쳤어요' : '하루와 이야기를 마쳤어요'}
           </Text>
-          <Text fz={13} c="var(--rb-ink-soft)">
-            하루 얼굴을 보며 질문 {STAGE2_QUESTIONS.length}개를 끝까지 마쳤어요. 결과를 정리하고 있어요…
+          <Text fz={14} c="var(--rb-ink-soft)">
+            {hungUp
+              ? '결과는 3단계 실전 면접을 마친 뒤 최종 리포트에서 함께 보여 드려요.'
+              : '빨간 버튼을 눌러 통화를 끝내 주세요.'}
           </Text>
+          <div className="rb-call__controls">
+            {hungUp && (
+              <button
+                type="button"
+                className="rb-call__action"
+                disabled={!result}
+                onClick={() => navigate('/interview')}
+              >
+                {result ? '3단계 시작하기 →' : '결과 정리하는 중…'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="rb-call__hangup"
+              onClick={hangUp}
+              disabled={hungUp}
+              aria-label={hungUp ? '통화가 끝났어요' : '통화 끝내기'}
+              title={hungUp ? '통화가 끝났어요' : '통화 끝내기'}
+            >
+              <PhoneIcon down />
+            </button>
+          </div>
+          {hungUp && onRestart && (
+            <button type="button" onClick={onRestart} style={linkStyle}>
+              하루와 다시 통화할래요
+            </button>
+          )}
         </Stack>
       )}
 

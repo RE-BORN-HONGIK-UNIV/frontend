@@ -1021,7 +1021,9 @@ a {
   width: 56px; height: 56px; flex: 0 0 56px; border-radius: 50%; border: none; cursor: pointer;
   display: grid; place-items: center; background: #e5484d; color: #fff; transition: transform 0.15s ease, filter 0.15s ease;
 }
-.rb-call__hangup:hover { transform: scale(1.05); filter: brightness(1.05); }
+.rb-call__hangup:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.05); }
+/* 통화를 끝낸 뒤 — 눌린 채 흐리게 남겨 두고, 옆에 "3단계 시작하기" */
+.rb-call__hangup:disabled { opacity: 0.4; cursor: default; }
 .rb-call__action:focus-visible, .rb-call__hangup:focus-visible { outline: 3px solid var(--rb-primary); outline-offset: 3px; }
 /* 하루에게서 영상 통화가 오는 화면 — 휴대폰 전화 수신 화면처럼 */
 .rb-ring {
