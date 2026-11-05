@@ -69,6 +69,34 @@ function Bubble({
   );
 }
 
+/** 한 글자씩 나오는 간격(ms) — 사람이 치는 것처럼 보이되, 하루 목소리보다 너무 늦지 않게 */
+const TYPE_MS = 35;
+const reduceMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * 하루가 보낸 새 메시지를 한 글자씩 써 내려간다(입력하는 것처럼). animate가 아니면(화면을 열 때 이미 있던 말) 바로 전부.
+ * 글자가 늘 때마다 onTick으로 대화 칸을 아래로 따라 내린다. 움직임 줄이기 설정이면 바로 전부 보인다.
+ */
+function TypeText({ text, animate, onTick }: { text: string; animate: boolean; onTick?: () => void }) {
+  const [shown, setShown] = useState(() => (animate && !reduceMotion() ? 0 : text.length));
+  useEffect(() => {
+    if (shown >= text.length) return;
+    const id = setTimeout(() => setShown((n) => Math.min(text.length, n + 1)), TYPE_MS);
+    return () => clearTimeout(id);
+  }, [shown, text.length]);
+  useEffect(() => {
+    onTick?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 글자 수가 바뀔 때만
+  }, [shown]);
+  return (
+    <>
+      {/* 화면 읽기 프로그램에는 처음부터 전체 문장을 읽어 준다 */}
+      <span aria-hidden>{text.slice(0, shown)}</span>
+      <span className="rb-sr-only">{text}</span>
+    </>
+  );
+}
+
 /** 카톡 "입력 중" — 말풍선 안 점 세 개가 차례로 통통 튄다 */
 function Typing() {
   return (
@@ -116,6 +144,10 @@ export interface DoneBar {
 
 export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }) {
   const box = useRef<HTMLDivElement>(null);
+  // 화면을 열었을 때 이미 있던 메시지 수 — 그 뒤에 온 하루 메시지만 한 글자씩 써 내려간다
+  const [initialCount] = useState(() => t.log.length);
+  const followBottom = () => box.current?.scrollTo({ top: box.current.scrollHeight });
+
   // 메시지마다 처음 화면에 나온 시각 — 대화 기록(useHaruTalk)에는 시각이 없어서 여기서 적어 둔다
   const timesRef = useRef<string[]>([]);
   while (timesRef.current.length < t.log.length) timesRef.current.push(fmtTime(new Date()));
@@ -169,7 +201,6 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
         <header className="rb-chat__head">
           <span className="rb-chat__head-avatar" aria-hidden />
           <strong>하루</strong>
-          <span className="rb-chat__head-st">{STATUS[t.phase]}</span>
         </header>
         <div ref={box} className="rb-haru-talk__log">
           {t.log.map((l, k) => {
@@ -182,7 +213,7 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
                 time={lastOfGroup ? timesRef.current[k] : undefined}
                 unread={!l.ai && k >= readCount}
               >
-                {l.text}
+                {l.ai ? <TypeText text={l.text} animate={k >= initialCount} onTick={followBottom} /> : l.text}
               </Bubble>
             );
           })}
