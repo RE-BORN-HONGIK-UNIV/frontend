@@ -282,14 +282,22 @@ export function HaruCallView({
 
       {mode === 'prep' && (
         <Stack gap={14} align="center">
-          <Text fz={16} ta="center" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <EyeIcon />
-            <b>말하는 동안에는 하루를 봐 주세요</b>
-            <span style={{ color: 'var(--rb-ink-soft)' }}>· 그 밖에는 편하게 봐도 돼요</span>
-          </Text>
-          <Button radius="md" size="lg" disabled={s.phase !== 'camera'} onClick={startCall} styles={{ root: { minWidth: 220 } }}>
-            통화 시작하기
-          </Button>
+          <div style={{ textAlign: 'center' }}>
+            <Text fz={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <EyeIcon />
+              <b>말하는 동안에는 하루를 응시해주세요</b>
+            </Text>
+            <Text fz={14} c="var(--rb-ink-soft)" mt={4}>
+              그 밖에는 편하게 봐도 돼요
+            </Text>
+          </div>
+          {/* 휴대폰 영상 통화처럼 동그란 초록 전화 버튼 — 통화 화면의 빨간 끊기 버튼과 짝 */}
+          <button type="button" className="rb-call__dial" disabled={s.phase !== 'camera'} onClick={startCall}>
+            <span className="rb-call__dial-btn" aria-hidden>
+              <PhoneIcon />
+            </span>
+            <span className="rb-call__dial-label">{s.phase === 'camera' ? '하루와 통화하기' : '카메라를 켜고 있어요…'}</span>
+          </button>
           <button type="button" onClick={() => navigate('/dashboard')} style={linkStyle}>
             오늘은 여기까지 할게요
           </button>

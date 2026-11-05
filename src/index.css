@@ -1297,3 +1297,23 @@ a {
 }
 /* 화면에는 안 보이고 화면 읽기 프로그램만 읽는 글 */
 .rb-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* 2단계 대기실 "하루와 통화하기" — 동그란 초록 전화 버튼 + 아래 작은 글씨(통화 화면 빨간 끊기 버튼과 짝) */
+.rb-call__dial {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  border: none; background: none; padding: 4px; cursor: pointer; font: inherit;
+}
+.rb-call__dial-btn {
+  width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center;
+  background: #30c25f; color: #fff; box-shadow: 0 8px 24px rgba(48, 194, 95, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.rb-call__dial:hover:not(:disabled) .rb-call__dial-btn { transform: scale(1.06); box-shadow: 0 10px 28px rgba(48, 194, 95, 0.45); }
+.rb-call__dial:focus-visible { outline: none; }
+.rb-call__dial:focus-visible .rb-call__dial-btn { outline: 3px solid var(--rb-primary); outline-offset: 4px; }
+.rb-call__dial-label { font-size: 15px; font-weight: 600; color: var(--rb-ink); }
+.rb-call__dial:disabled { cursor: not-allowed; }
+.rb-call__dial:disabled .rb-call__dial-btn { background: var(--rb-line-strong); box-shadow: none; }
+.rb-call__dial:disabled .rb-call__dial-label { color: var(--rb-ink-faint); }
+@media (prefers-reduced-motion: reduce) {
+  .rb-call__dial-btn { transition: none; }
+}
