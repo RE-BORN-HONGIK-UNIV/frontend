@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calibrateBaselineEar,
   calibrateBaselineGaze,
+  calibrateBaselineIris,
   calibrateBaselineTension,
   DEFAULT_BASELINE_EAR,
   DEFAULT_BASELINE_TENSION,
@@ -63,5 +64,17 @@ describe('calibrateBaselineTension (backend calibrate_baseline_tension 포팅)',
   it('값이 하나도 없으면 DEFAULT_BASELINE_TENSION으로 폴백한다', () => {
     expect(calibrateBaselineTension([null, null])).toBe(DEFAULT_BASELINE_TENSION);
     expect(calibrateBaselineTension([])).toBe(DEFAULT_BASELINE_TENSION);
+  });
+});
+
+describe('calibrateBaselineIris (2026-11 — 하루를 볼 때의 눈동자 위치)', () => {
+  it('캘리브레이션 동안 눈동자 위치의 중앙값을 기준으로 잡는다(얼굴 미검출 프레임은 뺌)', () => {
+    expect(
+      calibrateBaselineIris([null, { ox: 0.02, oy: 0.18 }, { ox: 0.0, oy: 0.2 }, { ox: 0.05, oy: 0.5 }]),
+    ).toEqual({ ox: 0.02, oy: 0.2 });
+  });
+
+  it('얼굴이 한 번도 안 잡히면 (0, 0) — 예전과 같은 판정', () => {
+    expect(calibrateBaselineIris([null, null])).toEqual({ ox: 0, oy: 0 });
   });
 });
