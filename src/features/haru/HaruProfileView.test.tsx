@@ -30,7 +30,7 @@ describe('하루가 이렇게 이해했어요 카드', () => {
     render(<HaruProfileView onNext={onNext} />);
     const input = await screen.findByLabelText('관심 있는 것');
     fireEvent.change(input, { target: { value: '집에서 반찬 만들기' } });
-    fireEvent.click(screen.getByText('맞아요, 다음으로 →'));
+    fireEvent.click(screen.getByText('맞아요, 다음으로'));
     expect(onNext).toHaveBeenCalledWith(['부를 이름: 지우', '관심 있는 것: 집에서 반찬 만들기']);
     expect(loadHaruTalk().profile?.items[1].value).toBe('집에서 반찬 만들기');
   });
@@ -55,7 +55,7 @@ describe('하루가 이렇게 이해했어요 카드', () => {
     vi.mocked(api.haruProfile).mockResolvedValue({ items: [{ label: '부를 이름', value: '지우' }], source: 'llm' });
     const first = render(<HaruProfileView onNext={vi.fn()} />);
     await screen.findByDisplayValue('지우');
-    fireEvent.click(screen.getByText('맞아요, 다음으로 →'));
+    fireEvent.click(screen.getByText('맞아요, 다음으로'));
     first.unmount();
     render(<HaruProfileView onNext={vi.fn()} />);
     expect(await screen.findByDisplayValue('지우')).toBeTruthy();

@@ -174,7 +174,7 @@ export default function VoiceStage() {
                 <CheckRow icon={<ShieldIcon />} title="녹음은 분석이 끝나면 바로 지워요">
                   <Text fz={13} c="var(--rb-ink-soft)" mt={4} style={{ lineHeight: 1.6 }}>
                     하루가 대답에 맞춰 반응할 수 있게 대답은 글로 받아써서(크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈
-                    이야기는 3단계 면접 질문을 만들 때 쓰도록 이 기기에만 남고, 3단계 시작 화면에서 지울 수 있어요. 카메라는
+                    이야기는 3단계 면접 질문을 만들 때 쓰도록 이 기기에만 남고, 2단계를 마친 뒤 정리 화면에서 지울 수 있어요. 카메라는
                     2단계에서 따로 물어볼게요.
                   </Text>
                 </CheckRow>
