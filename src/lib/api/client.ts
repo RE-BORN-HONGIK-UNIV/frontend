@@ -97,10 +97,12 @@ export const api = {
 
     /** calibration을 넘기면 그 사람 목소리 기준으로 filler 판정을 보정해서 분석.
    * 넘기지 않으면 백엔드가 이 녹음 자체에서 기준값을 추정 (하위 호환). */
-  analyze: (file: File, calibration?: CalibrationResult | null) => {
+  /** stage: 어느 단계 녹음인지 — 서버는 1단계일 때만 1단계 최신 점수(3단계 난이도·대시보드 기준)로 저장한다 */
+  analyze: (file: File, calibration?: CalibrationResult | null, stage: 1 | 2 | 3 = 1) => {
     if (USE_MOCK) return mockApi.analyze();
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('stage', String(stage));
     if (calibration) fd.append('calibration', JSON.stringify(calibration));
     return request<AnalyzeResult>('/analyze', { method: 'POST', body: fd });
   },

@@ -109,6 +109,19 @@ export const SAMPLE_DETAILS: StageDetails = {
       per_question: { blink_per_min: [28, 21, 19, 22], gaze_avg_sec: [2.1, 3.4, 4.0, 3.8] },
     },
   },
+  // 3단계 면접 중 대답하는 동안의 얼굴(2단계와 같은 분석) — "실전 면접에서는 …(2단계 …)" 줄
+  stage3Face: {
+    at: '2026-10-31T10:32:00Z',
+    result: {
+      blink: { rate_per_min: 20, status: '정상', score: 100, events: [], highlight: null },
+      gaze: { avg_fixation_sec: 4.1, score: 90, highlight: null, segments: [] },
+      expression: {
+        smile_score: 40, tension_score: 80, score: 60, status: '보통', smile_ratio: 0.12, tension_ratio: 0.04,
+        frame_count: 600, highlight: null, segments: [],
+      },
+      previous: null,
+    },
+  },
 };
 
 /** sessionId가 null이라 코치 노트를 요청하지 않고(AI 호출 없음) 기본 카드만 보인다. */

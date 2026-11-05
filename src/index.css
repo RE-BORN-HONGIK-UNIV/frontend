@@ -1136,3 +1136,101 @@ a {
 @media (max-width: 560px) {
   .rb-profile__row { grid-template-columns: 1fr; gap: 0; padding: 10px 0; }
 }
+/* 3단계 시작 화면(Stage3PrepView) — 경량 웹 Prep3 */
+.rb-prep3 {
+  max-width: 820px; margin: 16px auto 0; padding: clamp(24px, 5vw, 44px);
+  background: var(--rb-surface); border: 1px solid var(--rb-line); border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
+}
+.rb-prep3__title {
+  margin: 0; font-family: var(--rb-font-display); font-size: clamp(30px, 5vw, 44px); font-weight: 800;
+  letter-spacing: -0.03em; color: var(--rb-ink);
+}
+.rb-prep3__title em { font-style: normal; color: var(--rb-primary); }
+.rb-prep3__lead { margin: 14px 0 0; font-size: 17px; color: var(--rb-ink-soft); line-height: 1.6; }
+.rb-prep3__guide { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 12px; font-size: 16px; color: var(--rb-ink-soft); line-height: 1.6; }
+.rb-prep3__guide b { color: var(--rb-ink); }
+.rb-prep3__checks { display: grid; gap: 12px; margin: 28px 0 20px; }
+.rb-prep3__check {
+  display: flex; align-items: center; gap: 16px; padding: 18px 22px;
+  border: 1px solid var(--rb-line); border-radius: 16px; background: var(--rb-surface);
+}
+.rb-prep3__check b { display: block; font-size: 17px; color: var(--rb-ink); }
+.rb-prep3__check p { margin: 4px 0 0; font-size: 14px; color: var(--rb-ink-soft); }
+.rb-prep3__ic {
+  flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--rb-primary-tint); color: var(--rb-primary);
+}
+.rb-prep3__ok { display: flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--rb-primary); }
+.rb-prep3__ok i { width: 9px; height: 9px; border-radius: 50%; background: var(--rb-primary); }
+.rb-prep3__ok[data-wait] { color: var(--rb-ink-faint); font-weight: 500; }
+.rb-prep3__ok[data-wait] i { background: #c4c9cf; }
+.rb-prep3__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.rb-prep3__link { border: none; background: none; padding: 4px 0; cursor: pointer; font: inherit; font-size: 14px; color: var(--rb-ink-faint); }
+.rb-prep3__start {
+  border: none; border-radius: 14px; padding: 16px 28px; cursor: pointer; font: inherit; font-size: 17px; font-weight: 700;
+  background: #1c1f22; color: #fff; transition: background-color 0.15s ease;
+}
+.rb-prep3__start:hover:not(:disabled) { background: #000; }
+.rb-prep3__start:disabled { background: var(--rb-line); color: var(--rb-ink-faint); cursor: not-allowed; }
+@media (max-width: 560px) {
+  .rb-prep3__check { flex-wrap: wrap; }
+  .rb-prep3__start { width: 100%; }
+}
+/* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
+.rb-s3 {
+  position: relative; min-height: 100dvh; background: #1d2126; color: #cfd5db;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  padding: 72px 16px 40px;
+}
+.rb-s3__top {
+  position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 28px; font-size: 14px; color: #cfd5db;
+}
+.rb-s3__top b { color: #fff; font-weight: 700; }
+.rb-s3__quit { border: none; background: none; padding: 0; cursor: pointer; font: inherit; color: #cfd5db; }
+.rb-s3__win {
+  width: min(62vw, 1000px); aspect-ratio: 16 / 9; border-radius: 18px;
+  background: #d9dfe5 url('/interviewer/interviewer.jpg') center / cover no-repeat;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.rb-s3__bar {
+  display: flex; align-items: center; gap: 20px; background: #fff; color: var(--rb-ink, #15181c);
+  border-radius: 999px; padding: 10px 12px 10px 24px; white-space: nowrap;
+}
+.rb-s3__bars { display: flex; gap: 4px; align-items: center; height: 24px; }
+.rb-s3__bars i { width: 4px; height: 100%; border-radius: 4px; background: #0e7c74; animation: rbWave 1.2s ease-in-out infinite; }
+.rb-s3__bars i:nth-child(1) { height: 30%; animation-delay: -0.2s; }
+.rb-s3__bars i:nth-child(2) { height: 70%; animation-delay: -0.5s; }
+.rb-s3__bars i:nth-child(3) { height: 100%; animation-delay: -0.1s; }
+.rb-s3__bars i:nth-child(4) { height: 60%; animation-delay: -0.7s; }
+.rb-s3__bars i:nth-child(5) { height: 35%; animation-delay: -0.4s; }
+.rb-s3__bars[data-still] i { animation: none; opacity: 0.35; }
+.rb-s3__st { font-size: 15px; font-weight: 600; min-width: 90px; color: #15181c; }
+.rb-s3__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer;
+  border-radius: 999px; padding: 10px 18px; font: inherit; font-size: 14px; font-weight: 600;
+  background: #0e7c74; color: #fff; transition: background-color 0.15s ease;
+}
+.rb-s3__btn[data-ghost] { background: #fff; color: #4a5059; border: 1px solid #e6e8eb; }
+.rb-s3__btn[data-dark] { background: #15181c; color: #fff; }
+.rb-s3__btn[data-dark]:hover:not(:disabled) { background: #000; }
+.rb-s3__btn:disabled { background: #e6e8eb; color: #5c626b; cursor: default; border-color: transparent; }
+.rb-s3__skip { border: none; background: none; cursor: pointer; font: inherit; font-size: 13px; color: #aab1b8; text-decoration: underline; text-underline-offset: 3px; }
+.rb-s3__end {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  width: min(62vw, 1000px); background: #fff; color: #15181c; border-radius: 18px; padding: 22px 26px;
+}
+.rb-s3__endl { display: flex; gap: 16px; align-items: center; }
+.rb-s3__endl b { display: block; font-size: 17px; }
+.rb-s3__endl span { font-size: 14px; color: #5c626b; }
+.rb-s3__ok { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #0e7c74; display: grid; place-items: center; }
+.rb-s3 .rb-s3__end .rb-s3__btn { padding: 14px 24px; font-size: 15px; border-radius: 12px; }
+@media (max-width: 760px) {
+  .rb-s3__win, .rb-s3__end { width: 100%; }
+  .rb-s3__bar { flex-wrap: wrap; justify-content: center; white-space: normal; border-radius: 20px; padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-s3__bars i { animation: none; }
+}
+.rb-s3__facecam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; top: 0; }

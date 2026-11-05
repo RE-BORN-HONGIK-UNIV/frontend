@@ -348,3 +348,21 @@ export function buildSummary(voice: VoiceReport | null, face: FaceReport | null)
   }
   return { good, next };
 }
+
+/**
+ * 3단계 면접 중(대답하는 동안) 깜빡임·시선·표정을 2단계와 나란히 적는 한 줄씩 — 경량 웹 리포트의
+ * "실전 면접에서 1분에 22번 깜빡였어요(2단계 19번)"처럼. 평가 말 없이 센 값만 쓴다(좋다·나쁘다 판단은 칩이 이미 함).
+ * stage2가 없으면(기기를 바꿔 세부값이 없음) 3단계 값만.
+ */
+export function buildStage3FaceLines(stage3: GazeBlinkResult, stage2?: GazeBlinkResult | null) {
+  const n = (x: number) => Math.round(x);
+  const sec1 = (x: number) => `${Math.round(x * 10) / 10}초`;
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  return {
+    blink: `실전 면접에서는 1분에 ${n(stage3.blink.rate_per_min)}번 깜빡였어요${stage2 ? `(2단계 ${n(stage2.blink.rate_per_min)}번)` : ''}.`,
+    gaze: `실전 면접에서는 면접관을 한 번 볼 때 평균 ${sec1(stage3.gaze.avg_fixation_sec)} 바라봤어요${stage2 ? `(2단계 ${sec1(stage2.gaze.avg_fixation_sec)})` : ''}.`,
+    expr: `실전 면접에서는 미소 지은 시간 ${pct(stage3.expression.smile_ratio)}, 굳은 시간 ${pct(stage3.expression.tension_ratio)}였어요${
+      stage2 ? `(2단계 미소 ${pct(stage2.expression.smile_ratio)}, 굳은 시간 ${pct(stage2.expression.tension_ratio)})` : ''
+    }.`,
+  };
+}
