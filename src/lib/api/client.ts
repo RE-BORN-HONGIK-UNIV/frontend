@@ -244,6 +244,12 @@ export const api = {
       ? mockApi.latestGazeBlink()
       : request<LatestResponse<GazeBlinkLatest>>('/analyze/stage2/latest'),
 
+  /** 1·2단계 최신 결과로 서버가 정한 3단계 난이도(backend GET /interview/anxiety, PR #17). score는 불안도(높을수록 긴장, 화면에 안 보임) */
+  interviewAnxiety: () =>
+    USE_MOCK
+      ? mockApi.interviewAnxiety()
+      : request<{ score: number | null; tier: string; items: Record<string, number> }>('/interview/anxiety'),
+
   // ── '이야기' 자유 게시판 ──────────────────────────────────────
   listPosts: () =>
     USE_MOCK ? mockApi.listPosts() : request<{ posts: PostSummary[] }>('/community/posts'),
