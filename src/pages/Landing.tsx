@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Anchor, Box, Button, Group, SimpleGrid, Stack } from '@/components/ui';
+import { Box, Group, SimpleGrid, Stack } from '@/components/ui';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { RebornWordmark } from '@/components/RebornWordmark';
 import { Reveal } from '@/components/Reveal';
@@ -29,40 +29,6 @@ const panel: React.CSSProperties = {
   borderRadius: 24,
   padding: 44,
 };
-
-function StepIcon({ kind }: { kind: 'voice' | 'gaze' | 'chat' }) {
-  const stroke = kind === 'gaze' ? 'var(--rb-primary-deep)' : 'var(--rb-primary-strong)';
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {kind === 'voice' && <path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" />}
-      {kind === 'gaze' && (
-        <>
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-          <circle cx="12" cy="12" r="3" />
-        </>
-      )}
-      {kind === 'chat' && <path d="M4 5h16v11H9l-4 4z" />}
-    </svg>
-  );
-}
-
-function IconTile({ children, deep = false }: { children: ReactNode; deep?: boolean }) {
-  return (
-    <Box
-      style={{
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: deep ? 'var(--rb-primary-deep-tint)' : 'var(--rb-primary-tint)',
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
 
 /* ── sections ─────────────────────────────────────────────── */
 
