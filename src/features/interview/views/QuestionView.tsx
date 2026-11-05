@@ -8,6 +8,7 @@ import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interv
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
+import { useAnswerLevel } from '@/features/interview/useAnswerLevel';
 import { useLiveFaceSession } from '@/features/face/live/useLiveFaceSession';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { buildStage3Marks } from '@/features/report/stage3Marks';
@@ -103,6 +104,8 @@ export function QuestionView({
   }, [phase]);
 
   const live = useLiveTranscript({ active: phase === 'answering' });
+    // 소리 막대: 대답하는 동안 실제 마이크 음량
+  const micLevel = useAnswerLevel(stream, phase === 'answering');
 
   // 면접 기록(질문·답변 텍스트) 서버 저장. 저장이 실패해도 면접은 계속된다(recorder.ts 참고).
   const recorderRef = useRef<ReturnType<typeof createInterviewRecorder> | null>(null);
@@ -370,12 +373,16 @@ export function QuestionView({
             </Text>
           )}
           <div className="rb-s3__bar" aria-live="polite">
-            <span className="rb-s3__bars" data-still={!(phase === 'asking' || listening) || undefined} aria-hidden>
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
+             <span
+              className="rb-s3__bars"
+              data-still={!(phase === 'asking' || listening) || undefined}
+              data-live={listening || undefined}
+              aria-hidden
+            >
+              {/* 대답하는 동안: 가운데가 가장 크고 양옆으로 작아지게 실제 음량을 나눠 준다. 질문하는 동안은 CSS 애니메이션 */}
+              {[0.45, 0.75, 1, 0.75, 0.45].map((w, i) => (
+                <i key={i} style={listening ? { height: `${Math.max(18, Math.min(100, micLevel * w * 1.6))}%` } : undefined} />
+              ))}
             </span>
             <span className="rb-s3__st">{status[phase]}</span>
             <button

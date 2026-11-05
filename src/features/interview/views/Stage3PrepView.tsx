@@ -77,15 +77,15 @@ export function Stage3PrepView({
         </div>
         <figure className="rb-prep3__who">
           <div className="rb-prep3__photo" role="img" aria-label="오늘 함께할 면접관" />
-          <figcaption>오늘 함께할 면접관</figcaption>
+          <figcaption>오늘 함께할 면접관을 소개합니다</figcaption>
         </figure>
       </div>
 
-      {/* 안내 세 가지 — 1단계 시작 화면 체크리스트처럼 가로 카드 3개(누르는 기능은 없음) */}
+      {/* 안내 세 가지 */}
       <ul className="rb-prep3__guide">
         {[
           { icon: <EarIcon />, title: '듣고 말로 대답해요', desc: '질문은 글로 나오지 않아요. 못 들었으면 "다시 들려주세요"를 눌러요.' },
-          { icon: <ChatIcon />, title: `기본 질문 ${MAIN_QUESTION_COUNT}개예요`, desc: followGuide },
+          { icon: <QuestionIcon />, title: `기본 질문 ${MAIN_QUESTION_COUNT}개예요`, desc: followGuide},
           { icon: <SkipIcon />, title: '넘어가도 괜찮아요', desc: '어려운 질문은 넘어가도 되고, 언제든 그만할 수 있어요.' },
         ].map((g) => (
           <li key={g.title} className="rb-prep3__card">
@@ -104,8 +104,7 @@ export function Stage3PrepView({
           {cam === false ? '카메라 없이도 계속할 수 있어요' : '얼굴이 화면 가운데 와요'}
         </Check>
       </div>
-
-      {/* 안내(동의 절차 아님): 면접 중 질문·답변 텍스트가 저장되고 AI로 전송된다는 점을 알린다(CLAUDE.md 컨벤션 — 예전 IntroView에서 옮김) */}
+      {/* 안내(동의 절차 아님): 면접 중 질문·답변 텍스트가 저장되고 AI로 전송된다는 점을 알린다(CLAUDE.md 컨벤션) */}
       <Text fz={12} c="var(--rb-ink-faint)" style={{ lineHeight: 1.7 }}>
         면접 중 질문과 내 답변 텍스트는 내 계정에 저장되고, 꼬리질문과 코치 노트를 만들기 위해 AI(Anthropic)에 전송돼요.
         영상과 음성은 저장하지 않아요. 저장한 기록은 결과 화면에서 언제든 삭제할 수 있어요.
@@ -116,7 +115,7 @@ export function Stage3PrepView({
           오늘은 여기까지 할게요
         </button>
         <button type="button" className="rb-prep3__start" disabled={!mic || !tier} onClick={() => tier && onStart(tier)}>
-          {tier ? '면접실 입장하기' : '면접을 준비하고 있어요…'}
+          {tier ? '입장하기' : '면접을 준비하고 있어요…'}
         </button>
       </div>
     </div>
@@ -149,7 +148,7 @@ function EarIcon() {
   );
 }
 
-function ChatIcon() {
+function QuestionIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z" />

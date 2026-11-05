@@ -41,13 +41,13 @@ describe('3단계 시작 화면(이제 실전 면접이에요)', () => {
     const onStart = vi.fn();
     renderPrep(media({ audio: true, video: false }), onStart);
     expect(screen.getByText('카메라 없이도 계속할 수 있어요')).toBeTruthy();
-    fireEvent.click(await screen.findByText('면접실 입장하기'));
+    fireEvent.click(await screen.findByText('입장하기'));
     expect(onStart).toHaveBeenCalledWith('standard');
   });
 
   it('마이크가 없으면 시작할 수 없다', async () => {
     renderPrep(media({ audio: false, video: true }));
-    const start = await screen.findByText('면접실 입장하기');
+    const start = await screen.findByText('입장하기');
     expect((start as HTMLButtonElement).disabled).toBe(true);
   });
 });
