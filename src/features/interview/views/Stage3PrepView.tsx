@@ -67,21 +67,33 @@ export function Stage3PrepView({
 
   return (
     <div className="rb-prep3">
-      <h1 className="rb-prep3__title">
-        이제 <em>실전 면접</em>이에요
-      </h1>
-      <p className="rb-prep3__lead">새 면접관이 실제 면접처럼 질문해요. 하루와 나눈 이야기로 만든 질문이라 낯설지 않을 거예요.</p>
+      {/* 위: 제목·설명(왼쪽) + 오늘 함께할 면접관 사진 미리 보기(오른쪽) — 면접실에서 갑자기 낯선 얼굴을 마주하지 않게 */}
+      <div className="rb-prep3__head">
+        <div>
+          <h1 className="rb-prep3__title">
+            이제 <em>실전 면접</em>이에요
+          </h1>
+          <p className="rb-prep3__lead">하루와 나눈 이야기로 만든 질문이라 낯설지 않을 거예요.</p>
+        </div>
+        <figure className="rb-prep3__who">
+          <div className="rb-prep3__photo" role="img" aria-label="오늘 함께할 면접관" />
+          <figcaption>오늘 함께할 면접관</figcaption>
+        </figure>
+      </div>
 
+      {/* 안내 세 가지 — 1단계 시작 화면 체크리스트처럼 가로 카드 3개(누르는 기능은 없음) */}
       <ul className="rb-prep3__guide">
-        <li>
-          <b>질문은 글로 나오지 않아요.</b> 실제 면접처럼 듣고 말로 대답해요. 못 들었으면 &quot;다시 들려주세요&quot;를 눌러요.
-        </li>
-        <li>
-          <b>질문은 {MAIN_QUESTION_COUNT}개예요.</b> {followGuide}
-        </li>
-        <li>
-          <b>어려우면 넘어가도 돼요.</b> 언제든 그만할 수 있어요.
-        </li>
+        {[
+          { icon: <EarIcon />, title: '듣고 말로 대답해요', desc: '질문은 글로 나오지 않아요. 못 들었으면 "다시 들려주세요"를 눌러요.' },
+          { icon: <ChatIcon />, title: `기본 질문 ${MAIN_QUESTION_COUNT}개예요`, desc: followGuide },
+          { icon: <SkipIcon />, title: '넘어가도 괜찮아요', desc: '어려운 질문은 넘어가도 되고, 언제든 그만할 수 있어요.' },
+        ].map((g) => (
+          <li key={g.title} className="rb-prep3__card">
+            <span className="rb-prep3__ic">{g.icon}</span>
+            <b>{g.title}</b>
+            <p>{g.desc}</p>
+          </li>
+        ))}
       </ul>
 
       <div className="rb-prep3__checks">
@@ -104,7 +116,7 @@ export function Stage3PrepView({
           오늘은 여기까지 할게요
         </button>
         <button type="button" className="rb-prep3__start" disabled={!mic || !tier} onClick={() => tier && onStart(tier)}>
-          {tier ? '실전 면접 시작하기' : '면접을 준비하고 있어요…'}
+          {tier ? '면접실 입장하기' : '면접을 준비하고 있어요…'}
         </button>
       </div>
     </div>
@@ -124,6 +136,34 @@ function Check({ icon, title, ok, okText, children }: { icon: ReactNode; title: 
         {ok ? okText : ok === false ? '허용이 필요해요' : '확인하고 있어요'}
       </span>
     </div>
+  );
+}
+
+function EarIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+      <rect x="3" y="14" width="4" height="6" rx="1.5" />
+      <rect x="17" y="14" width="4" height="6" rx="1.5" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z" />
+      <path d="M9 11h6M9 14h4" />
+    </svg>
+  );
+}
+
+function SkipIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 5l8 7-8 7z" />
+      <path d="M17 5v14" />
+    </svg>
   );
 }
 
