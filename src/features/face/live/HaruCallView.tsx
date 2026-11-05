@@ -28,7 +28,7 @@ const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:
  *
  * 시선 기준값(캘리브레이션)은 통화 중 하루가 보일 자리와 같은 자리에 내 얼굴을 띄워 두고 잰다 — 통화 중에는
  * 카메라가 아니라 화면 속 하루를 보게 되므로, 기준을 같은 자리에서 잡아야 "하루를 보는 것"이 정면으로 잡힌다.
- * 표정·시선은 통화 시작 후 최대 3분(MAX_CAPTURE_SEC)까지만 살펴보고, 그 뒤에도 대화는 이어서 할 수 있다.
+ * 표정·시선은 대답하는 동안(앞뒤 1초 제외)만 재고, 잰 시간이 3분(MAX_CAPTURE_SEC)이 되면 멈춘다 — 그 뒤에도 대화는 이어서 할 수 있다.
  * <video>는 대기실과 통화에서 같은 요소를 계속 쓴다(다시 만들면 카메라 연결이 끊김) — 모양만 바꾼다.
  */
 export function HaruCallView({
@@ -42,6 +42,8 @@ export function HaruCallView({
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const [result, setResult] = useState<GazeBlinkResult | null>(null);
+  // 대답한 구간이 없어서(전부 넘김 등) 표정·시선 결과를 만들지 않았는지
+  const [empty, setEmpty] = useState(false);
   const [callOn, setCallOn] = useState(false);
   const [talkDone, setTalkDone] = useState(false);
   const [pip, setPip] = useState(false);
@@ -52,6 +54,9 @@ export function HaruCallView({
     onComplete: setResult,
     getQuestionStarts: () => questionStartsRef.current,
     calibrateOnDemand: true,
+    // 대답하는 동안(앞뒤 1초 제외)만 잰다 — 하루가 말할 때·버튼 누를 때 아래를 본 건 시선 회피로 세지 않는다
+    measureOnlyWhenAnswering: true,
+    onEmpty: () => setEmpty(true),
   });
   // "통화 시작하기"를 눌렀는지(→ 캘리브레이션 → 통화)
   const [started, setStarted] = useState(false);
@@ -64,7 +69,13 @@ export function HaruCallView({
     },
     callOn,
   );
-  const analysisEnded = s.saving || result !== null;
+  const analysisEnded = s.saving || result !== null || empty;
+
+  // 대답 중(듣는 중)일 때만 표정·시선을 잰다
+  useEffect(() => {
+    s.setAnswering(callOn && t.phase === 'listen');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- s.setAnswering은 매번 새 함수지만 ref만 바꿈
+  }, [callOn, t.phase]);
 
   // 대화가 끝났으면 촬영도 끝낸다(이미 3분이 지나 끝났으면 아무 일도 안 함). 결과까지 나오면 결과 화면으로
   useEffect(() => {
@@ -178,7 +189,7 @@ export function HaruCallView({
                     '통화 종료'
                   ) : (
                     <>
-                      <span className="rb-call__dot" /> 연결됨 · {mmss(s.recordingElapsedSec)}
+                      <span className="rb-call__dot" /> 통화중 · {mmss(s.recordingElapsedSec)}
                     </>
                   )}
                 </TileTag>
@@ -350,7 +361,9 @@ export function HaruCallView({
           </Text>
           <Text fz={14} c="var(--rb-ink-soft)">
             {hungUp
-              ? '결과는 3단계 실전 면접을 마친 뒤 최종 리포트에서 함께 보여 드려요.'
+              ? empty
+                ? '대답한 구간이 없어서 표정·시선은 살펴보지 못했어요. 3단계는 그대로 할 수 있어요.'
+                : '결과는 3단계 실전 면접을 마친 뒤 최종 리포트에서 함께 보여 드려요.'
               : '빨간 버튼을 눌러 통화를 끝내 주세요.'}
           </Text>
           <div className="rb-call__controls">
@@ -358,10 +371,10 @@ export function HaruCallView({
               <button
                 type="button"
                 className="rb-call__action"
-                disabled={!result}
+                disabled={!result && !empty}
                 onClick={() => navigate('/interview')}
               >
-                {result ? '3단계 시작하기 →' : '결과 정리하는 중…'}
+                {result || empty ? '3단계 시작하기 →' : '결과 정리하는 중…'}
               </button>
             )}
             <button
@@ -385,7 +398,7 @@ export function HaruCallView({
 
       {mode === 'call' && !talkDone && analysisEnded && (
         <Text fz={12} c="var(--rb-ink-faint)" ta="center">
-          표정·시선은 통화 시작 후 {s.maxCaptureSec / 60}분까지 살펴봤어요. 대화는 이어서 해도 돼요.
+          표정·시선은 대답한 시간으로 {s.maxCaptureSec / 60}분까지 살펴봤어요. 대화는 이어서 해도 돼요.
         </Text>
       )}
 

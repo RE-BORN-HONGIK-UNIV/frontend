@@ -498,7 +498,7 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
             </div>
             {face.gaze.segments && face.gaze.segments.length > 0 && (
               <div>
-                <p className="what">통화 동안의 시선 흐름</p>
+                <p className="what">대답하는 동안의 시선 흐름</p>
                 <div className="bar" style={{ marginTop: 10 }}>
                   {face.gaze.segments.map((g, i) => (
                     <i key={i} className={g.type} style={{ flex: Math.max(0.05, g.end - g.start) }} />
@@ -540,7 +540,7 @@ function FaceSection({ face, loading }: { face: FaceReport | null; loading: bool
             </div>
             {face.expr.segments && face.expr.segments.length > 0 && (
               <div>
-                <p className="what">통화 동안의 표정 흐름</p>
+                <p className="what">대답하는 동안의 표정 흐름</p>
                 <div className="bar" style={{ marginTop: 10 }}>
                   {face.expr.segments.map((g, i) => (
                     <i key={i} className={g.type} style={{ flex: Math.max(0.05, g.end - g.start) }} />
