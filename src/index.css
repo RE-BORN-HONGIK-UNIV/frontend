@@ -995,6 +995,11 @@ a {
   position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
   height: 94%; aspect-ratio: 3 / 4; width: auto; object-fit: cover;
   pointer-events: none; transition: opacity 0.2s ease;
+  /* 브라우저마다 영상 색이 조금씩 달라(색 변환 차이) 통화 칸 배경과 네모 경계가 생기지 않게 좌우·위 가장자리를 녹인다 */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 6%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 6%);
+  mask-composite: intersect;
 }
 /* 통화 칸 테두리: 얇은 초록 */
 .rb-call[data-mode='ring'] .rb-call__haru,
