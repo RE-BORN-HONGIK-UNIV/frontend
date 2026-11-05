@@ -65,6 +65,10 @@ export default function VoiceStage() {
   // checked: 마이크 확인(캘리브레이션)이 끝난 값, calibration: "1단계 시작하기"를 눌러 대화에 넘긴 값
   const [checked, setChecked] = useState<CalibrationResult | null>(null);
   const [calibration, setCalibration] = useState<CalibrationResult | null>(null);
+  // 마이크 확인을 서버가 정리하지 못해 "확인 없이 시작할게요"를 골랐는지, "1단계 시작하기"를 눌렀는지
+  // (확인 없이 시작하면 calibration은 null — 분석은 그대로 되고 개인 기준 보정만 빠진다)
+  const [skipCheck, setSkipCheck] = useState(false);
+  const [started, setStarted] = useState(false);
   // 녹음이 비었는지(마이크를 못 썼거나 대답을 다 넘김)
   const [noAudio, setNoAudio] = useState(false);
   const [talkKey, setTalkKey] = useState(0);
@@ -79,6 +83,8 @@ export default function VoiceStage() {
   const reset = () => {
     setChecked(null);
     setCalibration(null);
+    setSkipCheck(false);
+    setStarted(false);
     setNoAudio(false);
     setTalkKey((k) => k + 1);
     analyze.reset();
@@ -129,8 +135,8 @@ export default function VoiceStage() {
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={1} />
 
-      <Box style={{ maxWidth: calibration ? TALK_MAXW : MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
-        {!calibration ? (
+      <Box style={{ maxWidth: started ? TALK_MAXW : MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
+        {!started ? (
           <Stack gap={16}>
             {/* 위: 가장 중요한 체크리스트 3개 */}
                         <div>
@@ -170,7 +176,7 @@ export default function VoiceStage() {
               </Text>
 
               <Stack gap={12} mt={24}>
-                <CalibrationStep onComplete={setChecked} />
+                <CalibrationStep onComplete={setChecked} onSkip={() => setSkipCheck(true)} />
                 <CheckRow icon={<ShieldIcon />} title="녹음은 분석이 끝나면 바로 지워요">
                   <Text fz={13} c="var(--rb-ink-soft)" mt={4} style={{ lineHeight: 1.6 }}>
                     하루가 대답에 맞춰 반응할 수 있게 대답은 글로 받아써서(크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈
@@ -184,11 +190,19 @@ export default function VoiceStage() {
                 <Text fz={13} c="var(--rb-ink-soft)">
                   하루의 질문 {STAGE1_QUESTIONS.length}개 · 5분쯤 걸려요
                 </Text>
-                <Button radius="md" size="lg" disabled={!checked} onClick={() => checked && setCalibration(checked)}>
+                <Button
+                  radius="md"
+                  size="lg"
+                  disabled={!checked && !skipCheck}
+                  onClick={() => {
+                    setCalibration(checked);
+                    setStarted(true);
+                  }}
+                >
                   1단계 시작하기
                 </Button>
               </Box>
-              {!checked && (
+              {!checked && !skipCheck && (
                 <Text fz={12} c="var(--rb-ink-faint)" mt={8} ta="right">
                   마이크 확인을 마치면 시작할 수 있어요.
                 </Text>
