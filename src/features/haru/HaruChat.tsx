@@ -69,8 +69,8 @@ function Bubble({
   );
 }
 
-/** 한 글자씩 나오는 간격(ms) — 사람이 치는 것처럼 보이되, 하루 목소리보다 너무 늦지 않게 */
-const TYPE_MS = 35;
+/** 한 글자씩 나오는 간격(ms) — 사람이 천천히 치는 것처럼(35ms는 너무 빨라 2026-11 사용자 요청으로 70ms). 하루 목소리보다 너무 늦지 않게 */
+const TYPE_MS = 70;
 const reduceMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 /**
@@ -144,8 +144,9 @@ export interface DoneBar {
 
 export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }) {
   const box = useRef<HTMLDivElement>(null);
-  // 화면을 열었을 때 이미 있던 메시지 수 — 그 뒤에 온 하루 메시지만 한 글자씩 써 내려간다
-  const [initialCount] = useState(() => t.log.length);
+  // 화면을 열었을 때 이미 있던 메시지 수 — 그 뒤에 온 하루 메시지만 한 글자씩 써 내려간다.
+  // 대화가 막 시작될 때는 하루의 첫 인사가 처음부터 들어 있으므로(useHaruTalk) 0으로 봐서 첫 인사도 써 내려간다
+  const [initialCount] = useState(() => (t.phase !== 'done' && t.log.length <= 1 ? 0 : t.log.length));
   const followBottom = () => box.current?.scrollTo({ top: box.current.scrollHeight });
 
   // 메시지마다 처음 화면에 나온 시각 — 대화 기록(useHaruTalk)에는 시각이 없어서 여기서 적어 둔다
