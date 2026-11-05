@@ -68,6 +68,26 @@ import type { Point2D } from './types';
 
 const CALIBRATION_SEC = 5;
 
+/**
+ * measureOnlyWhenAnswering일 때 대답 구간의 앞뒤를 잘라 내는 시간(초).
+ * 2단계 통화에서는 "하루를 보며 대답하기"·"답변 마치기" 버튼을 누르려고 화면 아래를 보게 되는데, 이 순간이
+ * 시선 회피로 잡히면 안 된다. 버튼을 누른 뒤 눈이 하루에게 돌아가는 시간, 마치기 버튼으로 눈이 내려가는 시간을
+ * 각각 1초로 잡았다 — 사람이 시선을 옮겨 다시 고정하는 데 걸리는 시간(단속운동+고정은 보통 수백 ms)보다 넉넉하게
+ * 잡은 값이고, 임계값이 아니라 "언제 재는지"만 정하는 값이라 정확도 검증 대상은 아니다. 실제 사용에서 아직
+ * 버튼 쪽 시선이 남는다면 늘리면 된다.
+ */
+const ANSWER_LEAD_SKIP_SEC = 1;
+const ANSWER_TAIL_TRIM_SEC = 1;
+/** 대답을 이만큼도 안 했으면(전부 넘김 등) 결과를 만들지 않는다 — 0초짜리 결과가 "적게 깜빡였어요"처럼 보이지 않게 */
+const MIN_MEASURED_SEC = 1;
+
+/** 대답 구간 동안 모아 두는 프레임 — 끝의 ANSWER_TAIL_TRIM_SEC를 버리려고 그만큼 늦게 판정한다 */
+interface PendingFrame {
+  t: number;
+  blendshapes: Record<string, number> | null;
+  gazeRaw: { yaw: number; pitch: number; ox: number; oy: number } | null;
+}
+
 /** 서버 저장 응답을 기다리는 최대 시간 — 결과 화면이 네트워크 때문에 오래 막히지 않게. */
 const SAVE_TIMEOUT_MS = 5000;
 
@@ -88,9 +108,22 @@ export interface UseLiveFaceSessionOptions {
    * 2단계 하루 통화: 대기실(하루·내 카메라 나란히)에서는 연결만 확인하고, "통화 시작하기"를 누른 뒤 통화 화면
    * 정중앙(하루가 나올 자리)에 내 얼굴을 5초 띄워 캘리브레이션한다 — 시선 기준을 하루를 볼 자리에서 잡아야 해서. */
   calibrateOnDemand?: boolean;
+  /** true면 촬영 중에도 setAnswering(true)인 동안(앞뒤 1초 제외)만 깜빡임·표정·시선을 잰다.
+   * 2단계 하루 통화: 하루가 말하는 동안이나 버튼을 누르느라 아래를 본 순간이 시선 회피로 잡히지 않게 —
+   * 대기실 안내("말하는 동안에는 하루를 봐 주세요 · 그 밖에는 편하게 봐도 돼요")와 실제 측정을 맞춘다. */
+  measureOnlyWhenAnswering?: boolean;
+  /** measureOnlyWhenAnswering인데 대답한 구간이 거의 없어 결과를 만들지 않았을 때 */
+  onEmpty?: () => void;
 }
 
-export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, calibrateOnDemand = false }: UseLiveFaceSessionOptions) {
+export function useLiveFaceSession({
+  videoRef,
+  onComplete,
+  getQuestionStarts,
+  calibrateOnDemand = false,
+  measureOnlyWhenAnswering = false,
+  onEmpty,
+}: UseLiveFaceSessionOptions) {
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -119,6 +152,57 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, ca
   const gazeFsmRef = useRef(createGazeFsmState());
   const exprFsmRef = useRef(createExpressionFsmState());
   const exprSeriesRef = useRef<[number, number | null, number | null][]>([]);
+
+  // measureOnlyWhenAnswering — 지금 대답 중인지, 대답을 시작한 시각, 아직 판정 안 한 프레임(끝 1초 버리기용),
+  // 이번 대답에서 실제로 판정한 첫·마지막 프레임 시각, 지금까지 판정한 대답 구간들
+  const answeringRef = useRef(false);
+  const answerStartTRef = useRef(0);
+  const pendingFramesRef = useRef<PendingFrame[]>([]);
+  const windowFirstTRef = useRef<number | null>(null);
+  const windowLastTRef = useRef<number | null>(null);
+  const measuredWindowsRef = useRef<{ start: number; end: number }[]>([]);
+
+  const measuredSec = () =>
+    measuredWindowsRef.current.reduce((a, w) => a + (w.end - w.start), 0) +
+    (windowFirstTRef.current !== null && windowLastTRef.current !== null ? windowLastTRef.current - windowFirstTRef.current : 0);
+
+  /** 프레임 하나를 깜빡임·표정·시선에 반영(최종 결과에 들어감) */
+  const measureFrame = (
+    t: number,
+    blendshapes: Record<string, number> | null,
+    gazeRaw: { yaw: number; pitch: number; ox: number; oy: number } | null,
+  ) => {
+    const blinkScore = computeBlinkBlendshapeScore(blendshapes);
+    const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
+    if (blink) blinksRef.current.push(blink);
+
+    stepExpression(exprFsmRef.current, t, blendshapes);
+    const exprFrame = computeExpressionForFrame(blendshapes);
+    exprSeriesRef.current.push([t, exprFrame ? exprFrame.smile : null, exprFrame ? exprFrame.tension : null]);
+
+    // 측정 중인 시점엔 캘리브레이션이 이미 끝난 뒤라(beginRecording은 phase==='ready'에서만 호출 가능)
+    // baseline은 항상 계산돼 있다.
+    stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
+
+    if (windowFirstTRef.current === null) windowFirstTRef.current = t;
+    windowLastTRef.current = t;
+  };
+
+  /** 대답 하나가 끝났을 때 — 남은 프레임(끝 1초)은 버리고, 열려 있던 구간을 닫아 다음 대답과 이어지지 않게 한다 */
+  const closeAnswerWindow = () => {
+    pendingFramesRef.current = [];
+    if (windowFirstTRef.current !== null && windowLastTRef.current !== null) {
+      measuredWindowsRef.current.push({ start: windowFirstTRef.current, end: windowLastTRef.current });
+      flushGaze(gazeFsmRef.current);
+      flushExpression(exprFsmRef.current);
+    }
+    windowFirstTRef.current = null;
+    windowLastTRef.current = null;
+    // 구간 버퍼·깜빡임 상태·시선 스무딩을 새로 — 쌓인 결과(committed)만 남긴다
+    gazeFsmRef.current = { smoothed: null, segmentBuffer: { ...createSegmentBufferState(), committed: gazeFsmRef.current.segmentBuffer.committed } };
+    exprFsmRef.current = { segmentBuffer: { ...createSegmentBufferState(), committed: exprFsmRef.current.segmentBuffer.committed } };
+    blinkFsmRef.current = createBlinkFsmState();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -210,24 +294,21 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, ca
           // recording이 시작된 뒤부터만 최종 결과에 반영 — 캘리브레이션·대기
           // 구간 값은 여기서 버려진다(위 함수 docstring 참고).
           if (isRecordingRef.current) {
-            const blinkScore = computeBlinkBlendshapeScore(blendshapes);
-            const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
-            if (blink) blinksRef.current.push(blink);
+            if (!measureOnlyWhenAnswering) {
+              measureFrame(t, blendshapes, gazeRaw);
+            } else if (answeringRef.current) {
+              // 대답을 시작하고 1초 뒤부터 모으고, 1초 늦게 판정한다 — 대답을 마치면 판정 안 한 마지막 1초는 버려진다
+              if (t - answerStartTRef.current >= ANSWER_LEAD_SKIP_SEC) pendingFramesRef.current.push({ t, blendshapes, gazeRaw });
+              const queue = pendingFramesRef.current;
+              while (queue.length && queue[0].t <= t - ANSWER_TAIL_TRIM_SEC) {
+                const f = queue.shift() as PendingFrame;
+                measureFrame(f.t, f.blendshapes, f.gazeRaw);
+              }
+            }
 
-            stepExpression(exprFsmRef.current, t, blendshapes);
-            const exprFrame = computeExpressionForFrame(blendshapes);
-            exprSeriesRef.current.push([
-              t,
-              exprFrame ? exprFrame.smile : null,
-              exprFrame ? exprFrame.tension : null,
-            ]);
-
-            // isRecordingRef가 true인 시점엔 캘리브레이션이 이미 끝난
-            // 뒤라(beginRecording은 phase==='ready'에서만 호출 가능) baseline은
-            // 항상 계산돼 있다.
-            stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
-
-            if (t - recordingStartTRef.current >= MAX_CAPTURE_SEC) {
+            // 3분 제한: 대답 구간만 재는 경우엔 실제로 잰 시간으로 센다
+            const capturedSec = measureOnlyWhenAnswering ? measuredSec() : t - recordingStartTRef.current;
+            if (capturedSec >= MAX_CAPTURE_SEC) {
               elapsedSecRef.current = t;
               setElapsedSec(t);
               void finish();
@@ -283,10 +364,28 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, ca
     setPhase('recording');
   }
 
+  /** measureOnlyWhenAnswering일 때 — 사용자가 대답을 시작(true)/마침(false)할 때 부른다 */
+  function setAnswering(on: boolean) {
+    if (on === answeringRef.current) return;
+    answeringRef.current = on;
+    if (on) {
+      answerStartTRef.current = elapsedSecRef.current;
+      pendingFramesRef.current = [];
+      // 이전 대답(또는 캘리브레이션) 때의 시선 스무딩 값이 새 대답 첫 프레임에 섞이지 않게
+      gazeFsmRef.current.smoothed = null;
+    } else {
+      closeAnswerWindow();
+    }
+  }
+
   async function finish() {
     if (finishedRef.current) return;
     finishedRef.current = true;
     isRecordingRef.current = false;
+    if (measureOnlyWhenAnswering) {
+      answeringRef.current = false;
+      closeAnswerWindow();
+    }
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -295,7 +394,15 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, ca
     flushGaze(gazeFsmRef.current);
     flushExpression(exprFsmRef.current);
 
-    const durationSec = Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
+    // 대답한 구간이 거의 없으면(전부 넘김 등) 결과를 만들지 않는다 — 0초로 계산한 값이 리포트·이력에 남지 않게
+    if (measureOnlyWhenAnswering && measuredSec() < MIN_MEASURED_SEC) {
+      onEmpty?.();
+      return;
+    }
+
+    const durationSec = measureOnlyWhenAnswering
+      ? measuredSec()
+      : Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
     const blinkResult = scoreBlinkRate(blinksRef.current.length, durationSec);
     const gazeResult = scoreGazeSegments(gazeFsmRef.current.segmentBuffer.committed);
     const expressionSummary = summarizeExpression(exprSeriesRef.current);
@@ -345,6 +452,7 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, ca
         gazeFsmRef.current.segmentBuffer.committed,
         starts.map((s) => recordingStartTRef.current + s),
         elapsedSecRef.current,
+        measureOnlyWhenAnswering ? measuredWindowsRef.current : undefined,
       );
     }
 
@@ -380,6 +488,7 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts, ca
     maxCaptureSec: MAX_CAPTURE_SEC,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,
+    setAnswering,
     finish,
     /** 지금이 촬영 시작부터 몇 초인지 (질문이 바뀐 시각을 적을 때). 촬영 중이 아니면(3분이 지나 끝남 등) null */
     recordingNowSec: () => (isRecordingRef.current ? Math.max(0, elapsedSecRef.current - recordingStartTRef.current) : null),
