@@ -104,7 +104,7 @@ export function Stage3PrepView({
           오늘은 여기까지 할게요
         </button>
         <button type="button" className="rb-prep3__start" disabled={!mic || !tier} onClick={() => tier && onStart(tier)}>
-          {tier ? '실전 면접 시작하기' : '면접을 준비하고 있어요…'}
+          {tier ? '면접실 입장하기' : '면접을 준비하고 있어요…'}
         </button>
       </div>
     </div>
