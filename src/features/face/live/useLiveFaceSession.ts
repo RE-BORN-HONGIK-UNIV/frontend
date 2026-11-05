@@ -23,7 +23,10 @@ import { computeIrisOffset, matrixToHeadPose } from './headPose';
 import { createGazeFsmState, flushGaze, stepGaze } from './gaze';
 import { createSegmentBufferState } from './segmentBuffer';
 import {
+  avgBlendshape,
   computeExpressionForFrame,
+  JAW_OPEN_KEY,
+  SMILE_KEYS,
   createExpressionFsmState,
   flushExpression,
   stepExpression,
@@ -106,6 +109,35 @@ export interface CalibrationSummary {
   detectedRatio: number;
 }
 
+/**
+ * 정확도 검증용 장면 기록 한 줄(debug 모드에서만 — HaruCallView ?debug=1). 판정에 쓰는 원래 값을 그대로 넘기고,
+ * 스무딩·대답 구간 자르기·판정은 검증 스크립트(backend tests/labeling/evaluate_live.py)가 앱과 같은 방식으로 다시 계산한다.
+ * 그래야 같은 기록으로 여러 방식(예: 눈동자 보정 전/후)을 비교할 수 있다.
+ */
+export interface DebugFrame {
+  /** 세션 시작부터 초 */
+  t: number;
+  calibrating: boolean;
+  /** 사용자가 대답 중인지(setAnswering) — 앞뒤 1초 자르기 전 */
+  answering: boolean;
+  face: boolean;
+  yaw: number | null;
+  pitch: number | null;
+  irisX: number | null;
+  irisY: number | null;
+  /** 지금까지 잡힌 캘리브레이션 기준(캘리브레이션 전이면 0) */
+  baseYaw: number;
+  basePitch: number;
+  baseIrisX: number;
+  baseIrisY: number;
+  smileRaw: number | null;
+  jawOpen: number | null;
+  /** 앱이 실제로 쓰는 미소 값(입 벌림 처리 반영) */
+  smileApp: number | null;
+  tensionApp: number | null;
+  blinkScore: number | null;
+}
+
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
   onComplete: (result: GazeBlinkResult) => void;
@@ -126,6 +158,8 @@ export interface UseLiveFaceSessionOptions {
   persist?: boolean;
   /** 잴 수 있는 최대 시간(초). 기본 MAX_CAPTURE_SEC(3분, 2단계 업로드 영상 길이 제한과 같은 값) */
   maxCaptureSec?: number;
+  /** 정확도 검증용 — 주면 매 장면 값을 넘긴다(DebugFrame). 평소엔 안 줌 */
+  onDebugFrame?: (frame: DebugFrame) => void;
 }
 
 export function useLiveFaceSession({
@@ -137,7 +171,11 @@ export function useLiveFaceSession({
   onEmpty,
   persist = true,
   maxCaptureSec = MAX_CAPTURE_SEC,
+  onDebugFrame,
 }: UseLiveFaceSessionOptions) {
+  // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
+  const debugRef = useRef(onDebugFrame);
+  debugRef.current = onDebugFrame;
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -291,6 +329,30 @@ export function useLiveFaceSession({
               RIGHT_EYE_EAR_IDX,
             );
             gazeRaw = { yaw, pitch, ox, oy };
+          }
+
+          if (debugRef.current) {
+            const ef = computeExpressionForFrame(blendshapes);
+            const ct = calibStartTRef.current === null ? null : t - calibStartTRef.current;
+            debugRef.current({
+              t,
+              calibrating: ct !== null && ct <= CALIBRATION_SEC,
+              answering: answeringRef.current,
+              face: landmarks !== null,
+              yaw: gazeRaw?.yaw ?? null,
+              pitch: gazeRaw?.pitch ?? null,
+              irisX: gazeRaw?.ox ?? null,
+              irisY: gazeRaw?.oy ?? null,
+              baseYaw: baselineGazeRef.current.yaw,
+              basePitch: baselineGazeRef.current.pitch,
+              baseIrisX: baselineIrisRef.current.ox,
+              baseIrisY: baselineIrisRef.current.oy,
+              smileRaw: blendshapes ? (avgBlendshape(blendshapes, SMILE_KEYS)) : null,
+              jawOpen: blendshapes ? (blendshapes[JAW_OPEN_KEY] ?? 0) : null,
+              smileApp: ef ? ef.smile : null,
+              tensionApp: ef ? ef.tension : null,
+              blinkScore: computeBlinkBlendshapeScore(blendshapes),
+            });
           }
 
           const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
