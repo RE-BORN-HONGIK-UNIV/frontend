@@ -990,6 +990,12 @@ a {
   background-color: #e3defc !important; /* 하루 그림 자체의 배경색과 같게 — 다르면 그림 둘레에 네모가 보임 */
   transition: filter 0.7s ease, transform 0.7s ease;
 }
+/* 하루가 말할 때의 영상(HaruTalkVideo) — 정지 그림과 똑같이 높이 94%·아래 가운데(영상도 3:4) */
+.rb-call__talk {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  height: 94%; aspect-ratio: 3 / 4; width: auto; object-fit: cover;
+  pointer-events: none; transition: opacity 0.2s ease;
+}
 /* 통화 칸 테두리: 얇은 초록 */
 .rb-call[data-mode='ring'] .rb-call__haru,
 .rb-call[data-mode='calib'] .rb-call__haru,
