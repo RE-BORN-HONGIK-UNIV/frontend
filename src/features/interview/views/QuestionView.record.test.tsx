@@ -6,7 +6,8 @@ import { api } from '@/lib/api/client';
 
 /**
  * 면접 중 질문·답변 텍스트가 서버에 저장되고 다음 질문 생성(AI)에 전달되는지 확인한다.
- * 카메라·음성 인식·TTS는 가짜로 대체하고, 질문 → 답변 시작 → 답변 끝 → 제출까지 한 바퀴 돌린다.
+ * 카메라·음성 인식·TTS는 가짜로 대체하고, 질문 → 대답 시작 → 답변 마치기(받아쓴 그대로 제출)까지 한 바퀴 돌린다.
+ * TTS가 없으면(null) 질문을 글로 보여 주고 "대답 시작하기"를 기다린다.
  */
 vi.mock('@/features/interview/useRecorder', () => ({
   useRecorder: () => ({ start: vi.fn(), stop: vi.fn(async () => new Blob(['x'])) }),
@@ -31,10 +32,9 @@ vi.mock('@/lib/api/client', () => ({
 
 /** 첫 질문(고정)에 한 번 답하고 제출해서, 다음 질문을 요청하는 지점까지 진행 */
 async function answerFirstQuestion() {
-  render(<QuestionView stream={null} tier="warmup" onAllDone={vi.fn()} />);
-  fireEvent.click(await screen.findByText('🎙️ 답변 시작'));
-  fireEvent.click(await screen.findByText('✓ 답변 끝'));
-  fireEvent.click(await screen.findByText('제출하기'));
+  render(<QuestionView stream={null} tier="warmup" onAllDone={vi.fn()} onQuit={vi.fn()} />);
+  fireEvent.click(await screen.findByText('대답 시작하기'));
+  fireEvent.click(await screen.findByText('답변 마치기'));
   await waitFor(() => expect(getNextQuestion).toHaveBeenCalled());
   await new Promise((r) => setTimeout(r, 0)); // 뒤에서 도는 저장 큐가 끝나도록
 }
@@ -54,6 +54,15 @@ describe('QuestionView 면접 기록 저장', () => {
     await answerFirstQuestion();
     const [, , previousAnswer] = vi.mocked(getNextQuestion).mock.calls[0];
     expect(previousAnswer).toBe('내 답변이에요');
+  });
+
+  it('넘어가면 빈 답변으로 다음 질문을 요청한다', async () => {
+    render(<QuestionView stream={null} tier="warmup" onAllDone={vi.fn()} onQuit={vi.fn()} />);
+    fireEvent.click(await screen.findByText('대답 시작하기'));
+    fireEvent.click(await screen.findByText('이 질문은 대답하지 않고 넘어갈게요'));
+    await waitFor(() => expect(getNextQuestion).toHaveBeenCalled());
+    const [, , previousAnswer] = vi.mocked(getNextQuestion).mock.calls[0];
+    expect(previousAnswer).toBeUndefined();
   });
 
   it('서버 저장이 실패해도 면접은 계속된다 (다음 질문이 그대로 나옴)', async () => {

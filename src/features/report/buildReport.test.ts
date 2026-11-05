@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalyzeResult, GazeBlinkResult } from '@/lib/api/types';
 import { TRAINING_TIPS } from '@/features/voice/constants';
-import { buildFaceReport, buildSummary, buildVoiceReport, FIRST_WORDS_SEC } from './buildReport';
+import { buildFaceReport, buildStage3FaceLines, buildSummary, buildVoiceReport, FIRST_WORDS_SEC } from './buildReport';
 
 const analyze = (over: Partial<AnalyzeResult> = {}): AnalyzeResult => ({
   scores: { stability: 80, fluency: 60, pause_ctrl: 40, continuity: 90, calm: 76 },
@@ -196,5 +196,26 @@ describe('아직 값이 없는 칸 (값이 오면 그려짐)', () => {
     expect(f.blink.perQ).toEqual([20, 25]);
     expect(f.gaze.perQ).toEqual([3, 4]);
     expect(f.expr.emo).toEqual({ smile: 12, neutral: 82, tension: 6 });
+  });
+});
+
+describe('실전 면접(3단계) 시선과 표정 줄', () => {
+  const face = (blink: number, gaze: number, smile: number, tension: number) =>
+    ({
+      blink: { rate_per_min: blink, status: '정상', score: 100, events: [], highlight: null },
+      gaze: { avg_fixation_sec: gaze, score: 80, segments: [], highlight: null },
+      expression: { smile_score: 0, tension_score: 0, score: 0, status: '보통', smile_ratio: smile, tension_ratio: tension, frame_count: 1, segments: [], highlight: null },
+      previous: null,
+    }) as unknown as GazeBlinkResult;
+
+  it('2단계 값과 나란히, 센 값만 적는다', () => {
+    const lines = buildStage3FaceLines(face(20.4, 4.12, 0.12, 0.04), face(22, 3.6, 0.18, 0.06));
+    expect(lines.blink).toBe('실전 면접에서는 1분에 20번 깜빡였어요(2단계 22번).');
+    expect(lines.gaze).toBe('실전 면접에서는 면접관을 한 번 볼 때 평균 4.1초 바라봤어요(2단계 3.6초).');
+    expect(lines.expr).toBe('실전 면접에서는 미소 지은 시간 12%, 굳은 시간 4%였어요(2단계 미소 18%, 굳은 시간 6%).');
+  });
+
+  it('2단계 세부값이 없으면 3단계 값만', () => {
+    expect(buildStage3FaceLines(face(20, 4, 0.1, 0)).blink).toBe('실전 면접에서는 1분에 20번 깜빡였어요.');
   });
 });

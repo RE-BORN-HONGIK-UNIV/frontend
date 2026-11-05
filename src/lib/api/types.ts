@@ -50,6 +50,9 @@ export interface AnalyzeResult {
   energy_detail?: { sentence_bars: number[] };
   /** 시간 순 목소리 떨림 정도(0~1, CNN 조각마다). 0에 가까울수록 고름 */
   tremor_detail?: { curve: number[] };
+  /** Whisper가 받아쓴 단어와 녹음 안 시각(초) — 3단계 질문별 말버릇·멈춤 표시를 실제 위치에 놓는 데 쓴다(2026-11 추가).
+   * 대답 내용이라 민감정보: 화면에 그리는 데만 쓰고 로그에 남기지 않는다. */
+  words?: { text: string; start: number; end: number }[];
 }
 
 /** POST /analyze/feedback — LLM coaching paragraph, or null (falls back to template). */

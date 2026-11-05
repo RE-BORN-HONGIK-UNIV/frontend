@@ -1,7 +1,7 @@
 import type { DifficultyTier } from './difficulty';
 
 /**
- * 난이도(tier)별 면접관 정보. IntroView·ReadyView·InterviewerAvatar에서 같이 사용.
+ * 난이도(tier)별 면접관 정보. Stage3PrepView·QuestionView·InterviewerAvatar에서 같이 사용.
  * TODO: 아바타 제작 전까지 emoji로 임시 표시. 완성되면 이미지로 교체.
  */
 export type Interviewer = {
