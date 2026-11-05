@@ -1100,3 +1100,28 @@ a {
 }
 /* 1단계를 마친 뒤 하단 바의 체크 표시 — 누르는 버튼이 아님 */
 .rb-haru-talk__mic[data-done] { cursor: default; }
+/* 하루가 말할 때 입 움직임(HaruAvatar) — 말하는 그림의 입 부분만 기본 그림 위에 겹쳐 열었다 닫았다.
+   간격을 일부러 고르지 않게 해서 기계적으로 똑같이 뻐끔거리지 않게 했다(목소리에 정확히 맞춘 입 모양은 아님). */
+.rb-haru-mouth {
+  position: absolute; inset: 0; pointer-events: none;
+  background: center / cover no-repeat;
+  mask-size: cover; mask-position: center; mask-repeat: no-repeat;
+  -webkit-mask-size: cover; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat;
+  animation: rb-haru-mouth 1.3s ease-in-out infinite;
+}
+@keyframes rb-haru-mouth {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  24% { opacity: 0.15; }
+  34% { opacity: 0.9; }
+  46% { opacity: 0; }
+  58% { opacity: 1; }
+  66% { opacity: 0.6; }
+  76% { opacity: 1; }
+  90% { opacity: 0.1; }
+  100% { opacity: 0; }
+}
+/* 움직임 줄이기 설정이면 입을 연 그림으로 멈춰 둔다(예전처럼) */
+@media (prefers-reduced-motion: reduce) {
+  .rb-haru-mouth { animation: none; opacity: 1; }
+}
