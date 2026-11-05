@@ -182,6 +182,7 @@ export function HaruCallView({
                 <TileTag>하루</TileTag>
               </>
             )}
+            {mode === 'call' && <HaruTalkVideo playing={t.phase === 'speak' && !hungUp} />}
             {mode === 'call' && (
               <>
                 <TileTag top>
@@ -408,6 +409,40 @@ export function HaruCallView({
         </Alert>
       )}
     </Stack>
+  );
+}
+
+/**
+ * 2단계 통화에서 하루가 말할(질문할) 때만 나오는 말하는 영상 — 그 밖에는 정지 그림(HaruAvatar).
+ * haru-talk-call.mp4는 AI로 만든 말하는 영상을 정지 그림(haru.jpg, 1086×1448)과 머리 위치·크기가 같도록
+ * 맞춰 3:4(720×960)로 다시 만든 것(손 흔드는 앞부분·워터마크·소리 제거, 5초 반복). 그래서 그림 칸과 똑같이
+ * 높이 94%·아래 가운데에 놓으면(.rb-call__haru의 background-size/position과 같음) 그림과 영상이 바뀔 때 하루 자리가 안 튄다.
+ * 영상 소스가 원래 세로로 더 길쭉해서(9:16) 어깨 바깥쪽이 잘려 있어, 소매 끝은 배경색으로 부드럽게 흐려 뒀다.
+ * 늘 붙여 두고 보일 때만 재생한다 — 질문마다 새로 불러오면 처음 몇 프레임이 비어 깜빡인다.
+ * 움직임 줄이기 설정이면 영상 없이 정지 그림만 쓴다.
+ */
+function HaruTalkVideo({ playing }: { playing: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    if (playing) void v.play().catch(() => {});
+    else v.pause();
+  }, [playing]);
+  if (reduceMotion) return null;
+  return (
+    <video
+      ref={ref}
+      className="rb-call__talk"
+      src="/haru/haru-talk-call.mp4"
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden
+      style={{ opacity: playing ? 1 : 0 }}
+    />
   );
 }
 

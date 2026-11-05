@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Box, Button, Stack, Text } from '@/components/ui';
 import { getAnxietyScore, getTier, type DifficultyTier, type StageKey } from '../difficulty';
 import { NeedStagesView } from './NeedStagesView';
+
+/**
+ * 개발할 때만(npm run dev) 주소에 ?test=1을 붙이면 1·2단계 기록이 없어도 3단계 화면을 볼 수 있다 —
+ * 마이크를 못 쓰는 곳(도서관 등)에서 화면을 확인하려고. 난이도는 기본(standard)으로 둔다.
+ * import.meta.env.DEV는 배포 빌드(npm run build)에서 false로 바뀌어 이 코드가 통째로 빠지므로,
+ * 실제 사용자는 "두 단계 결과가 모두 있어야 난이도를 정한다"는 규칙(difficulty.ts)을 그대로 따른다.
+ */
+const devSkipStages = () => import.meta.env.DEV && new URLSearchParams(window.location.search).has('test');
 // 면접관 정보는 ReadyView·InterviewerAvatar와 같이 쓰도록 interviewers.ts로 분리
 import { INTERVIEWERS } from '../interviewers';
 
@@ -65,6 +73,11 @@ export function IntroView({ onStart }: { onStart: (tier: DifficultyTier) => void
     setNeedStages(null);
     setRecommendedTier(null);
     getAnxietyScore().then((result) => {
+      if (result.status === 'missing' && devSkipStages()) {
+        setRecommendedTier('standard');
+        setSelectedTier('standard');
+        return;
+      }
       if (result.status === 'missing') {
         setNeedStages({ missing: result.missing, failed: result.failed });
         return;
