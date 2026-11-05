@@ -22,6 +22,7 @@ export default defineConfig({
       '/interview/transcribe': 'http://localhost:5000',
       '/interview/sessions': 'http://localhost:5000',
       '/interview/practice-hint': 'http://localhost:5000',
+      '/interview/anxiety': 'http://localhost:5000',
       '/haru/reply': 'http://localhost:5000',
       '/haru/profile': 'http://localhost:5000',
     },
