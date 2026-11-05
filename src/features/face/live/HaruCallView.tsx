@@ -158,13 +158,13 @@ export function HaruCallView({
   }, [watchingFace, s.faceDetected]);
 
   return (
-    <Stack gap={18}>
+    <Stack gap={35}>
       {mode === 'prep' && (
         <div style={{ textAlign: 'center' }}>
           <h2 className="rb-call__title">
             하루와 <span style={{ color: 'var(--rb-primary)' }}>영상 통화</span>를 준비해요
           </h2>
-          <Text fz={16} c="var(--rb-ink-soft)" mt={8}>
+          <Text fz={16} c="var(--rb-ink-soft)" mt={15}>
             통화가 시작되면 내 화면은 사라지고 하루만 보여요.
           </Text>
         </div>
@@ -274,7 +274,6 @@ export function HaruCallView({
                 </span>
               )}
               <TileTag>나</TileTag>
-              <span className="rb-call__note">영상은 저장하지 않아요</span>
             </>
           )}
         </div>
@@ -282,13 +281,17 @@ export function HaruCallView({
 
       {mode === 'prep' && (
         <Stack gap={14} align="center">
-          <Text fz={16} ta="center" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <EyeIcon />
-            <b>말하는 동안에는 하루를 봐 주세요</b>
-            <span style={{ color: 'var(--rb-ink-soft)' }}>· 그 밖에는 편하게 봐도 돼요</span>
-          </Text>
-          <Button radius="md" size="lg" disabled={s.phase !== 'camera'} onClick={startCall} styles={{ root: { minWidth: 220 } }}>
-            통화 시작하기
+          <div style={{ textAlign: 'center' }}>
+            <Text fz={22} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <EyeIcon />
+              <b>말하는 동안에는 하루를 응시해주세요</b>
+            </Text>
+            <Text fz={16} c="var(--rb-ink-soft)" mt={4}>
+              질문을 받는 동안은 편하게 봐도 돼요
+            </Text>
+          </div>
+          <Button radius="md" size="lg" disabled={s.phase !== 'camera'} onClick={startCall} styles={{ root: { minWidth: 180 } }}>
+            하루와 통화하기
           </Button>
           <button type="button" onClick={() => navigate('/dashboard')} style={linkStyle}>
             오늘은 여기까지 할게요

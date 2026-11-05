@@ -968,9 +968,9 @@ a {
 .rb-call__me { background: #2a2e33; }
 .rb-call__me video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; transition: opacity 0.3s; }
 /* 대기실: 두 칸 나란히 */
-.rb-call[data-mode='prep'] { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.rb-call[data-mode='prep'] { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
 .rb-call[data-mode='prep'] .rb-call__haru,
-.rb-call[data-mode='prep'] .rb-call__me { aspect-ratio: 16 / 10; }
+.rb-call[data-mode='prep'] .rb-call__me { aspect-ratio: 16/9; }
 /* 캘리브레이션·통화: 한 칸(정중앙) — 하루와 내 화면을 같은 자리에 겹친다 */
 .rb-call[data-mode='ring'],
 .rb-call[data-mode='calib'],

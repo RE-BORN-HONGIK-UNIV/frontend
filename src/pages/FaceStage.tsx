@@ -11,7 +11,7 @@ import { stage2OverallScore } from '@/features/progress/stageProgress';
 import { saveStage2Detail } from '@/features/report/stageDetails';
 
 /** 통화 대기실·통화 화면은 경량 웹처럼 넓게(하루·내 카메라 두 칸) */
-const CALL_MAXW = 1180;
+const CALL_MAXW = 1600;
 
 /* ── page ────────────────────────────────────────────────── */
 
@@ -45,7 +45,7 @@ export default function FaceStage() {
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={2} />
 
-      <Box style={{ maxWidth: CALL_MAXW, margin: '0 auto', padding: '40px 16px 0' }}>
+      <Box style={{ maxWidth: CALL_MAXW, margin: '0 auto', padding: '50px 16px 0' }}>
         {profile ? (
           <HaruProfileView
             badge="2단계를 마쳤어요"
