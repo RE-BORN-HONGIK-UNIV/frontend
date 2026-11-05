@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Text } from '@/components/ui';
-import { getAnxietyScore, getTier, type DifficultyTier, type StageKey } from '../difficulty';
+import { getAnxietyScore, type DifficultyTier, type StageKey } from '../difficulty';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '../interviewers';
 import type { useMediaPreview } from '../useMediaPreview';
 import { NeedStagesView } from './NeedStagesView';
@@ -18,7 +18,7 @@ const devSkipStages = () => import.meta.env.DEV && new URLSearchParams(window.lo
  * 3단계 시작 화면 — 경량 웹 Prep3("이제 실전 면접이에요" + 마이크·카메라 확인)을 가져옴.
  *
  * 2026-11 팀 결정(가): 예전 면접관 고르기 화면(IntroView)은 없애고, 난이도는 화면에 보이지 않게
- * 1·2단계 점수로 자동으로 정한다(getTier의 추천 면접관 그대로 — 질문 난이도·꼬리질문 수가 여기서 정해짐).
+ * 1·2단계 결과로 자동으로 정한다(백엔드 GET /interview/anxiety의 tier, 없으면 예전 getTier — 질문 난이도·꼬리질문 수가 여기서 정해짐).
  * 경량 웹은 판넬용 고정 질문이라 난이도가 없었을 뿐, 질문 수준 조절은 남기기로 함.
  * 1·2단계 기록이 없으면 예전처럼 NeedStagesView로 먼저 하고 오게 안내한다.
  *
@@ -44,7 +44,7 @@ export function Stage3PrepView({
         if (devSkipStages()) return setTier('standard');
         return setNeedStages({ missing: result.missing, failed: result.failed });
       }
-      setTier(getTier(result.score).tier);
+      setTier(result.tier);
     });
   }, []);
 

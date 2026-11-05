@@ -25,7 +25,8 @@ export function getTier(score: number): TierInfo {
 export type StageKey = 'stage1' | 'stage2';
 
 export type AnxietyScoreResult =
-  | { status: 'ready'; score: number }
+  /** source: 'server' = 백엔드 GET /interview/anxiety가 정한 난이도, 'local' = 서버가 아직 그 API가 없을 때 예전 0.6:0.4 계산 */
+  | { status: 'ready'; score: number; tier: DifficultyTier; source: 'server' | 'local' }
   /** 난이도를 정할 수 없음 — missing 단계의 결과가 필요. failed는 기록 없음이 아니라 조회 자체가 실패한 경우. */
   | { status: 'missing'; missing: StageKey[]; failed: boolean };
 
@@ -41,7 +42,8 @@ export function resolveAnxietyScore(
   failed = false,
 ): AnxietyScoreResult {
   if (stage1 !== null && stage2 !== null) {
-    return { status: 'ready', score: combineAnxietyScore(stage1, stage2) };
+    const score = combineAnxietyScore(stage1, stage2);
+    return { status: 'ready', score, tier: getTier(score).tier, source: 'local' };
   }
   const missing: StageKey[] = [];
   if (stage1 === null) missing.push('stage1');
@@ -62,7 +64,30 @@ export async function getAnxietyScore(): Promise<AnxietyScoreResult> {
   const stage1 = s1.status === 'fulfilled' ? (s1.value.result?.overallScore ?? null) : null;
   const stage2 = s2.status === 'fulfilled' ? (s2.value.result?.overallScore ?? null) : null;
   const failed = s1.status === 'rejected' || s2.status === 'rejected';
-  return resolveAnxietyScore(stage1, stage2, failed);
+  const local = resolveAnxietyScore(stage1, stage2, failed);
+  if (local.status !== 'ready') return local;
+  // 난이도는 서버가 정한다(backend GET /interview/anxiety — 판넬 불안도 계산식, 경계 20·10, docs/anxiety_근거.md).
+  // 1·2단계가 다 있어야 한다는 규칙은 위에서 그대로 지킨다. 서버가 아직 이 API가 없거나(배포 전) 실패하면
+  // 화면이 막히지 않게 예전 0.6:0.4 계산으로 대신한다.
+  try {
+    const r = await api.interviewAnxiety();
+    return pickServerTier(local, r);
+  } catch {
+    return local;
+  }
+}
+
+/** 서버 응답에 쓸 수 있는 난이도가 있으면 그걸, 없으면 예전 계산(local) — 순수 함수(테스트용) */
+export function pickServerTier(
+  local: Extract<AnxietyScoreResult, { status: 'ready' }>,
+  server: { score: number | null; tier: string } | null | undefined,
+): Extract<AnxietyScoreResult, { status: 'ready' }> {
+  const tier = server?.tier;
+  if (tier === 'warmup' || tier === 'standard' || tier === 'practice') {
+    // 서버 score는 "불안도"(높을수록 긴장)라 예전 score(높을수록 안정)와 뜻이 반대 — 화면에는 쓰지 않고 기록용으로만
+    return { status: 'ready', score: server?.score ?? local.score, tier, source: 'server' };
+  }
+  return local;
 }
 
 /**

@@ -47,6 +47,31 @@ export function calibrateBaselineGaze(poses: (GazeBaseline | null)[]): GazeBasel
   };
 }
 
+/** 눈동자 위치(iris offset, 눈 안에서 눈동자가 가운데서 얼마나 치우쳤는지) 기준값 */
+export interface IrisBaseline {
+  ox: number;
+  oy: number;
+}
+
+export const DEFAULT_BASELINE_IRIS: IrisBaseline = { ox: 0, oy: 0 };
+
+/**
+ * 캘리브레이션 구간 눈동자 위치의 중앙값 — 2026-11 추가(백엔드에는 없음).
+ * 2단계가 "카메라"가 아니라 화면 가운데 "하루"를 보며 대답하는 방식으로 바뀌면서, 카메라보다 아래에 있는 하루를
+ * 고개는 두고 눈만 내려서 보면 눈동자가 아래로 치우쳐 "정면(0) ±0.15" 기준을 넘어 시선 회피로 잘못 셀 수 있었다.
+ * 고개 각도(calibrateBaselineGaze)처럼 "하루를 볼 때의 눈동자 위치"를 기준으로 잡는다. 기준 폭(0.15)은 그대로.
+ * 얼굴이 한 번도 검출되지 않으면 (0, 0) — 예전과 같은 판정.
+ * 정확도 검증 대기: 이 보정이 실제로 오탐을 줄이는지는 새 방식(하루 보기) 라벨링으로 확인할 것(ACCURACY_NOTES.md).
+ */
+export function calibrateBaselineIris(offsets: (IrisBaseline | null)[]): IrisBaseline {
+  const detected = offsets.filter((p): p is IrisBaseline => p !== null);
+  if (detected.length === 0) return DEFAULT_BASELINE_IRIS;
+  return {
+    ox: median(detected.map((p) => p.ox)),
+    oy: median(detected.map((p) => p.oy)),
+  };
+}
+
 export const DEFAULT_BASELINE_TENSION = 0;
 
 /** backend의 calibrate_baseline_tension과 동일 — 캘리브레이션 구간

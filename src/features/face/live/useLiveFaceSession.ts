@@ -11,12 +11,22 @@ import {
   stepBlendshapeBlink,
   type Blink,
 } from './blink';
-import { calibrateBaselineGaze, DEFAULT_BASELINE_GAZE, type GazeBaseline } from './calibration';
+import {
+  calibrateBaselineGaze,
+  calibrateBaselineIris,
+  DEFAULT_BASELINE_GAZE,
+  DEFAULT_BASELINE_IRIS,
+  type GazeBaseline,
+  type IrisBaseline,
+} from './calibration';
 import { computeIrisOffset, matrixToHeadPose } from './headPose';
 import { createGazeFsmState, flushGaze, stepGaze } from './gaze';
 import { createSegmentBufferState } from './segmentBuffer';
 import {
+  avgBlendshape,
   computeExpressionForFrame,
+  JAW_OPEN_KEY,
+  SMILE_KEYS,
   createExpressionFsmState,
   flushExpression,
   stepExpression,
@@ -99,6 +109,35 @@ export interface CalibrationSummary {
   detectedRatio: number;
 }
 
+/**
+ * 정확도 검증용 장면 기록 한 줄(debug 모드에서만 — HaruCallView ?debug=1). 판정에 쓰는 원래 값을 그대로 넘기고,
+ * 스무딩·대답 구간 자르기·판정은 검증 스크립트(backend tests/labeling/evaluate_live.py)가 앱과 같은 방식으로 다시 계산한다.
+ * 그래야 같은 기록으로 여러 방식(예: 눈동자 보정 전/후)을 비교할 수 있다.
+ */
+export interface DebugFrame {
+  /** 세션 시작부터 초 */
+  t: number;
+  calibrating: boolean;
+  /** 사용자가 대답 중인지(setAnswering) — 앞뒤 1초 자르기 전 */
+  answering: boolean;
+  face: boolean;
+  yaw: number | null;
+  pitch: number | null;
+  irisX: number | null;
+  irisY: number | null;
+  /** 지금까지 잡힌 캘리브레이션 기준(캘리브레이션 전이면 0) */
+  baseYaw: number;
+  basePitch: number;
+  baseIrisX: number;
+  baseIrisY: number;
+  smileRaw: number | null;
+  jawOpen: number | null;
+  /** 앱이 실제로 쓰는 미소 값(입 벌림 처리 반영) */
+  smileApp: number | null;
+  tensionApp: number | null;
+  blinkScore: number | null;
+}
+
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
   onComplete: (result: GazeBlinkResult) => void;
@@ -119,6 +158,8 @@ export interface UseLiveFaceSessionOptions {
   persist?: boolean;
   /** 잴 수 있는 최대 시간(초). 기본 MAX_CAPTURE_SEC(3분, 2단계 업로드 영상 길이 제한과 같은 값) */
   maxCaptureSec?: number;
+  /** 정확도 검증용 — 주면 매 장면 값을 넘긴다(DebugFrame). 평소엔 안 줌 */
+  onDebugFrame?: (frame: DebugFrame) => void;
 }
 
 export function useLiveFaceSession({
@@ -130,7 +171,11 @@ export function useLiveFaceSession({
   onEmpty,
   persist = true,
   maxCaptureSec = MAX_CAPTURE_SEC,
+  onDebugFrame,
 }: UseLiveFaceSessionOptions) {
+  // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
+  const debugRef = useRef(onDebugFrame);
+  debugRef.current = onDebugFrame;
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -148,8 +193,11 @@ export function useLiveFaceSession({
   const elapsedSecRef = useRef(0);
   const recordingStartTRef = useRef(0);
 
-  const calibBufferRef = useRef<[number, GazeBaseline | null][]>([]);
+  // 캘리브레이션 5초 동안 모은 고개 각도·눈동자 위치(얼굴 미검출이면 null)
+  const calibBufferRef = useRef<[number, (GazeBaseline & IrisBaseline) | null][]>([]);
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
+  // 하루(통화 중 하루가 나올 자리)를 볼 때의 눈동자 위치 — calibration.ts calibrateBaselineIris 참고
+  const baselineIrisRef = useRef<IrisBaseline>(DEFAULT_BASELINE_IRIS);
   const calibratedRef = useRef(false);
   // 캘리브레이션을 시작한 시각(세션 시작부터 초). calibrateOnDemand면 startCalibration() 전까지 null
   const calibStartTRef = useRef<number | null>(calibrateOnDemand ? null : 0);
@@ -189,7 +237,17 @@ export function useLiveFaceSession({
 
     // 측정 중인 시점엔 캘리브레이션이 이미 끝난 뒤라(beginRecording은 phase==='ready'에서만 호출 가능)
     // baseline은 항상 계산돼 있다.
-    stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
+    stepGaze(
+      gazeFsmRef.current,
+      t,
+      gazeRaw,
+      baselineGazeRef.current.yaw,
+      baselineGazeRef.current.pitch,
+      undefined,
+      undefined,
+      baselineIrisRef.current.ox,
+      baselineIrisRef.current.oy,
+    );
 
     if (windowFirstTRef.current === null) windowFirstTRef.current = t;
     windowLastTRef.current = t;
@@ -273,23 +331,44 @@ export function useLiveFaceSession({
             gazeRaw = { yaw, pitch, ox, oy };
           }
 
+          if (debugRef.current) {
+            const ef = computeExpressionForFrame(blendshapes);
+            const ct = calibStartTRef.current === null ? null : t - calibStartTRef.current;
+            debugRef.current({
+              t,
+              calibrating: ct !== null && ct <= CALIBRATION_SEC,
+              answering: answeringRef.current,
+              face: landmarks !== null,
+              yaw: gazeRaw?.yaw ?? null,
+              pitch: gazeRaw?.pitch ?? null,
+              irisX: gazeRaw?.ox ?? null,
+              irisY: gazeRaw?.oy ?? null,
+              baseYaw: baselineGazeRef.current.yaw,
+              basePitch: baselineGazeRef.current.pitch,
+              baseIrisX: baselineIrisRef.current.ox,
+              baseIrisY: baselineIrisRef.current.oy,
+              smileRaw: blendshapes ? (avgBlendshape(blendshapes, SMILE_KEYS)) : null,
+              jawOpen: blendshapes ? (blendshapes[JAW_OPEN_KEY] ?? 0) : null,
+              smileApp: ef ? ef.smile : null,
+              tensionApp: ef ? ef.tension : null,
+              blinkScore: computeBlinkBlendshapeScore(blendshapes),
+            });
+          }
+
           const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
           if (calibT !== null && calibT <= CALIBRATION_SEC) {
-            calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch } : null]);
+            calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch, ox: gazeRaw.ox, oy: gazeRaw.oy } : null]);
           } else if (calibT !== null && !calibratedRef.current) {
             calibratedRef.current = true;
             const buffer = calibBufferRef.current;
-            const baseline = calibrateBaselineGaze(buffer.map(([, p]) => p));
+            const baseline = calibrateBaselineGaze(buffer.map(([, p]) => (p ? { yaw: p.yaw, pitch: p.pitch } : null)));
             baselineGazeRef.current = baseline;
+            const irisBaseline = calibrateBaselineIris(buffer.map(([, p]) => (p ? { ox: p.ox, oy: p.oy } : null)));
+            baselineIrisRef.current = irisBaseline;
             for (const [bt, bPose] of buffer) {
-              const bRaw = bPose ? { yaw: bPose.yaw, pitch: bPose.pitch, ox: 0, oy: 0 } : null;
-              // 캘리브레이션 버퍼엔 iris offset을 안 남겨뒀으니, 리플레이 시엔
-              // yaw/pitch만으로 판정한다 — 이 5초 구간은 애초에 baseline 계산용
-              // "정면 봐주세요" 구간이라 실제 iris offset도 0에 가까워서 결과에
-              // 미치는 영향이 미미함. 이 리플레이는 gaze FSM의 EMA 스무딩
-              // 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
+              // 이 리플레이는 gaze FSM의 EMA 스무딩 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
               // 초기화하므로 이 구간이 실제 구간 판정에 남지는 않는다.
-              stepGaze(gazeFsmRef.current, bt, bRaw, baseline.yaw, baseline.pitch);
+              stepGaze(gazeFsmRef.current, bt, bPose, baseline.yaw, baseline.pitch, undefined, undefined, irisBaseline.ox, irisBaseline.oy);
             }
             gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
 

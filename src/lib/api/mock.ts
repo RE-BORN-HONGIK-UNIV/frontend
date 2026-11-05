@@ -235,6 +235,11 @@ export const mockApi = {
     return { previous: null }; // mock엔 서버 이력이 없어서 비교는 localProgress 폴백이 맡음
   },
 
+  async interviewAnxiety(): Promise<{ score: number | null; tier: string; items: Record<string, number> }> {
+    await delay();
+    return { score: 14.2, tier: 'standard', items: {} };
+  },
+
   async latestStage1(): Promise<LatestResponse<Stage1Latest>> {
     await delay();
     return {

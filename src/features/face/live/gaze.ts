@@ -51,6 +51,9 @@ export function stepGaze(
   baselinePitch = 0,
   smoothingAlpha = 0.3,
   minSegmentSec = 0.3,
+  /** 캘리브레이션 눈동자 기준(calibrateBaselineIris). 기본 0 = 예전 판정 */
+  baselineIrisX = 0,
+  baselineIrisY = 0,
 ): Segment | null {
   let gazeState: GazeState;
   if (raw === null) {
@@ -64,6 +67,11 @@ export function stepGaze(
       state.smoothed.oy,
       baselineYaw,
       baselinePitch,
+      undefined,
+      undefined,
+      undefined,
+      baselineIrisX,
+      baselineIrisY,
     );
     gazeState = looking ? 'fixation' : 'aversion';
   }
