@@ -38,7 +38,7 @@ push/PR 시 GitHub Actions에서 위 네 개(lint·typecheck·test·build)를 �
 
 ### 테스트 하네스
 
-지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 22개 파일 176개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`(저장·AI 전송 안내)·`QuestionView.record`(면접 기록 저장)·`PracticePage`(맞춤 연습) — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
+지금은 **순수 로직 유닛테스트**가 대부분 (`src/**/*.test.ts`, `vitest.config.ts`, 22개 파일 176개 테스트) — `combineAnxietyScore`/`getTier`/`scoreColor`처럼 입력→출력이 결정적인 함수, 그리고 `features/face/live/*.test.ts`(눈 깜빡임/시선/표정 판정 로직)가 대부분을 차지함. 후자는 대응하는 backend pytest 픽스처를 그대로 옮겨서 수치가 bit-for-bit 일치하는지 검증하는 방식 — 아래 "2단계 실시간 웹캠 분석" 참고. 컴포넌트 테스트(`@testing-library/react`)는 `NeedStagesView`·`Dashboard`·`ResultView`·`Stage3PrepView`(저장·AI 전송 안내)·`QuestionView.record`(면접 기록 저장)·`PracticePage`(맞춤 연습) — 필요해지면 `*.test.tsx`로 추가하면 됨 (`src/test/setup.ts`에 jest-dom matcher와 테스트 간 DOM cleanup이 이미 설정됨).
 
 `vitest.config.ts`를 `vite.config.ts`와 분리해둔 이유: vitest가 내부적으로 물고 있는 vite(rollup 기반)와 이 프로젝트의 vite(rolldown 기반, v8)의 Plugin 타입이 서로 안 맞아서 한 파일에 합치면 `tsc`가 타입 에러를 냄. 백엔드 쪽 계층별 테스트 설계(정확도 검증 하네스 포함)는 `backend/docs/TESTING.md` 참고.
 
@@ -85,7 +85,7 @@ src/
 
 ### 하루 — 1·2단계 대화 상대 (`features/haru/`, 2026-10-31 경량 웹에서 이식)
 
-판넬 OVERVIEW용으로 따로 만든 경량 웹(reborn-lite)의 대화 화면을 가져왔다. 큰 틀(로그인·대시보드·단계별 결과·3단계 면접)은 그대로고, 1·2단계의 "녹음/촬영하는 방식"만 하루와 대화하는 방식으로 바뀜.
+판넬 OVERVIEW용으로 따로 만든 경량 웹(reborn-lite)의 대화 화면을 가져왔다. 큰 틀(로그인·대시보드·단계별 결과·3단계 면접)은 그대로고, 1·2단계의 "녹음/촬영하는 방식"만 하루와 대화하는 방식으로 바뀜. 2026-11에는 3단계 화면도 경량 웹("이제 실전 면접이에요" 시작 화면 → 어두운 면접실 화면)으로 바꿨다 — 면접관 고르기는 없애고 난이도는 1·2단계 점수로 자동(질문 수준·꼬리질문 수는 그대로), 받아쓴 답변 고치기 단계도 뺌(`Stage3PrepView`, `QuestionView`).
 
 - **1단계** (`VoiceStage`): 마이크 캘리브레이션 → 하루와 채팅 모양 목소리 대화(질문 4개) → "1단계를 마쳤어요"(결과는 최종 리포트에서). 사용자가 말하는 구간만 이어 녹음해서(`useAnswerRecorder` — 하루 목소리·기다림은 빠짐) 기존 `/analyze`로 분석. 파일 업로드는 없앰.
 - **2단계** (`FaceStage` → `HaruCallView`): 대기실(캘리브레이션, 통화 중 하루가 보일 자리에 내 얼굴) → 하루와 영상 통화(질문 4개, 내 얼굴은 2초 뒤 사라짐) → "2단계를 마쳤어요"(결과는 최종 리포트에서). 분석은 기존 실시간 촬영 그대로.
