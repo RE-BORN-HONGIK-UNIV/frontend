@@ -68,6 +68,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+/**
+ * 배포 백엔드(Render 무료)는 15분 동안 안 쓰면 잠들고 깨는 데 1분쯤 걸린다. 사이트를 열자마자 /health를
+ * 한 번 불러 미리 깨워 두면, 메인·대시보드를 보는 사이에 깨어나서 1단계 마이크 확인이 덜 기다린다.
+ * 응답은 쓰지 않고 실패해도 무시한다. 목업 모드·개발 서버(같은 주소 프록시)에서는 부르지 않는다.
+ */
+export function wakeBackend() {
+  if (USE_MOCK || !BASE) return;
+  fetch(`${BASE}/health`, { method: 'GET' }).catch(() => {});
+}
+
 export const api = {
   login: (email: string, password: string) =>
     USE_MOCK

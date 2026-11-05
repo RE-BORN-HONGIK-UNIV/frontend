@@ -18,10 +18,13 @@ const TOTAL_SEC = SILENCE_SEC + READ_SEC_1 + READ_SEC_2;
 const READ_SCRIPT_1 = '안녕하세요, 편하게 목소리를 들려주세요.';
 const READ_SCRIPT_2 = '오늘 하루는 어땠나요, 저는 그럭저럭 괜찮았어요. 이제 준비를 시작해볼게요.';
 
-type Phase = 'idle' | 'silence' | 'read1' | 'read2' | 'uploading' | 'done' | 'error';
+// error: 마이크를 못 켬(권한·장치), failed: 녹음은 됐는데 서버가 정리하지 못함(무료 서버가 느리거나 바쁨)
+type Phase = 'idle' | 'silence' | 'read1' | 'read2' | 'uploading' | 'done' | 'error' | 'failed';
 
 interface CalibrationStepProps {
   onComplete: (result: CalibrationResult) => void;
+  /** 서버가 마이크 확인을 정리하지 못했을 때 "확인 없이 시작할게요" — 확인 없이도 1단계 분석은 된다(개인 기준 보정만 빠짐) */
+  onSkip?: () => void;
 }
 
 export function MicIcon() {
@@ -104,7 +107,7 @@ function LevelBars({ level }: { level: number }) {
   );
 }
 
-export function CalibrationStep({ onComplete }: CalibrationStepProps) {
+export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SEC);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -162,7 +165,8 @@ export function CalibrationStep({ onComplete }: CalibrationStepProps) {
             setPhase('done');
             onComplete(r);
           },
-          onError: () => setPhase('error'),
+          // 마이크는 잘 됐는데 서버 쪽 실패 — 예전엔 'error'로 같이 처리해서 "마이크를 쓸 수 없어요"가 떠 헷갈렸다
+          onError: () => setPhase('failed'),
         });
       };
 
@@ -239,7 +243,7 @@ export function CalibrationStep({ onComplete }: CalibrationStepProps) {
     title = '목소리를 확인하고 있어요';
     body = (
       <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-        잠시만 기다려 주세요.
+        잠시만 기다려 주세요. 처음 한 번은 서버를 준비하느라 1분쯤 걸릴 수 있어요.
       </Text>
     );
   } else if (phase === 'done') {
@@ -254,6 +258,26 @@ export function CalibrationStep({ onComplete }: CalibrationStepProps) {
       </Text>
     );
     right = <Status tone={loud ? 'warn' : 'ok'}>{loud ? '조금 커요' : '잘 들려요'}</Status>;
+  } else if (phase === 'failed') {
+    title = '목소리를 확인하지 못했어요';
+    body = (
+      <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
+        마이크는 잘 들렸어요. 서버가 바빠서 정리하지 못했어요(처음엔 서버를 깨우느라 1분쯤 걸릴 수 있어요).
+        {onSkip && (
+          <>
+            {' '}
+            <button type="button" onClick={onSkip} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--rb-primary-strong)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+              확인 없이 시작할게요
+            </button>
+          </>
+        )}
+      </Text>
+    );
+    right = (
+      <Button size="sm" radius="md" variant="default" onClick={start}>
+        다시 시도
+      </Button>
+    );
   } else {
     title = '마이크를 쓸 수 없어요';
     body = (
