@@ -8,6 +8,7 @@ import { saveStageAnswers } from '@/features/haru/store';
 import { linkStyle } from '@/features/haru/styles';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
 import { useLiveFaceSession } from './useLiveFaceSession';
+import { useDebugRecorder } from './useDebugRecorder';
 
 /** 통화 연결 직후 내 화면을 작게 보여 주는 시간 — 실제 영상 통화처럼 "연결됐다"는 느낌만 주고 사라진다(경량 웹과 같은 2초) */
 const PIP_MS = 2000;
@@ -49,8 +50,12 @@ export function HaruCallView({
   const [pip, setPip] = useState(false);
   // 하루가 새 질문을 시작한 시각들(촬영 시작부터 초) — 결과를 질문별로 나누는 데 쓴다
   const questionStartsRef = useRef<number[]>([]);
+  // 정확도 검증 기록 — 주소 뒤 ?debug=1일 때만(영상·장면 값을 통화를 끝낼 때 이 컴퓨터에 내려받음, useDebugRecorder 참고)
+  const [debug] = useState(() => new URLSearchParams(window.location.search).has('debug'));
+  const rec = useDebugRecorder(debug, videoRef);
   const s = useLiveFaceSession({
     videoRef,
+    onDebugFrame: debug ? rec.onFrame : undefined,
     onComplete: setResult,
     getQuestionStarts: () => questionStartsRef.current,
     calibrateOnDemand: true,
@@ -135,10 +140,22 @@ export function HaruCallView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 캘리브레이션이 끝난 순간 한 번
   }, [started, callOn, s.phase, calibrationLooksGood]);
 
-  const hangUp = () => {
-    // 하루가 마무리 인사까지 했으면 묻지 않고 끊는다 → 옆에 "3단계 시작하기"
-    if (talkDone) return setHungUp(true);
-    if (window.confirm('통화를 끝낼까요? 2단계는 다음에 처음부터 다시 해요.')) navigate('/dashboard');
+  // debug: 카메라가 켜지면 녹화 시작
+  useEffect(() => {
+    if (debug && s.phase === 'camera') rec.start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 카메라가 켜진 순간 한 번
+  }, [debug, s.phase]);
+
+  const hangUp = async () => {
+    // 하루가 마무리 인사까지 했으면 묻지 않고 끊는다 → "하루가 이렇게 이해했어요"
+    if (talkDone) {
+      if (debug) await rec.download();
+      return setHungUp(true);
+    }
+    if (window.confirm('통화를 끝낼까요? 2단계는 다음에 처음부터 다시 해요.')) {
+      if (debug) await rec.download();
+      navigate('/dashboard');
+    }
   };
 
   const mode = !started ? 'prep' : callOn ? 'call' : ringing ? 'ring' : 'calib';
@@ -159,6 +176,16 @@ export function HaruCallView({
 
   return (
     <Stack gap={18}>
+      {debug && (
+        <div className="rb-debugrec" role="status">
+          <b>정확도 기록 중</b> · {rec.count}장면{rec.recording ? ' · 영상 녹화 중' : ''}
+          <br />
+          통화를 끝내면 영상과 값 표가 이 컴퓨터에 저장돼요(서버로 안 보냄).
+          <button type="button" onClick={() => void rec.download()}>
+            지금 내려받기
+          </button>
+        </div>
+      )}
       {mode === 'prep' && (
         <div style={{ textAlign: 'center' }}>
           <h2 className="rb-call__title">
