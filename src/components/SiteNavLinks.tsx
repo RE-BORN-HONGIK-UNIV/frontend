@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Anchor, Group } from '@/components/ui';
+import { auth } from '@/lib/auth';
 
 export type SiteNavActive = 'training' | 'community';
 
@@ -27,6 +28,18 @@ export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
       <Anchor component={Link} to ="/faq" c="var(--rb-ink-soft)" fz={14} underline="never">
         자주 묻는 질문
       </Anchor>
+      {/* 메인 화면(active 없음)에서만: 로그인 — 회원으로 이미 로그인했으면 이름(누르면 대시보드).
+          대시보드·커뮤니티 상단에는 대신 "이름님 · 로그아웃"이 따로 있다(PageHeader, CommunityShell) */}
+      {active === undefined &&
+        (auth.isAuthed() && !auth.isGuest ? (
+          <Anchor component={Link} to="/dashboard" c="var(--rb-ink-soft)" fz={14} underline="never">
+            {auth.name || '회원'}님
+          </Anchor>
+        ) : (
+          <Anchor component={Link} to="/login" c="var(--rb-ink-soft)" fz={14} underline="never">
+            로그인
+          </Anchor>
+        ))}
     </Group>
   );
 }
