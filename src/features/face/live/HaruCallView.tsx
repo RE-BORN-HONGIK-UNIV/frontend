@@ -172,10 +172,7 @@ export function HaruCallView({
   }, [watchingFace, s.faceDetected]);
 
   return (
-<<<<<<< HEAD
     <Stack gap={35}>
-=======
-    <Stack gap={18}>
       {debug && (
         <div className="rb-debugrec" role="status">
           <b>정확도 기록 중</b> · {rec.count}장면{rec.recording ? ' · 영상 녹화 중' : ''}
@@ -186,7 +183,6 @@ export function HaruCallView({
           </button>
         </div>
       )}
->>>>>>> 365d0ef9eb2755421a05664e882a34d38fec0e76
       {mode === 'prep' && (
         <div style={{ textAlign: 'center' }}>
           <h2 className="rb-call__title">
