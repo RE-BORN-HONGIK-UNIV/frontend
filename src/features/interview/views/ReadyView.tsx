@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Box, Button, Stack, Text } from '@/components/ui';
 import { getSpeechAudioUrl } from '@/features/interview/api';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
+import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
 import type { DifficultyTier } from '@/features/interview/difficulty';
 
@@ -16,12 +17,16 @@ export function ReadyView({ tier, onStart }: { tier: DifficultyTier; onStart: ()
 
   useEffect(() => {
     let url: string | null = null;
+    let alive = true;
     getSpeechAudioUrl(interviewer.readyGreeting, tier).then((u) => {
       url = u;
       setAudioUrl(u);
+      if (!u && alive) browserSpeak(interviewer.readyGreeting); // Typecast가 안 되면 브라우저 목소리로
     });
-    // 화면을 떠나면 음성 파일 URL 정리 (메모리 누수 방지)
+    // 화면을 떠나면 음성 파일 URL 정리 (메모리 누수 방지), 읽던 브라우저 목소리도 멈춤
     return () => {
+      alive = false;
+      stopSpeak();
       if (url) URL.revokeObjectURL(url);
     };
   }, [interviewer.readyGreeting, tier]);

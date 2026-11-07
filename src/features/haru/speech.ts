@@ -36,7 +36,8 @@ export async function speak(text: string): Promise<void> {
   await browserSpeak(text);
 }
 
-function browserSpeak(text: string) {
+/** 브라우저 기본 목소리로 읽기. 3단계 면접관도 Typecast가 안 될 때 쓴다 */
+export function browserSpeak(text: string) {
   return new Promise<void>((resolve) => {
     if (typeof speechSynthesis === 'undefined') return resolve();
     const u = new SpeechSynthesisUtterance(text);

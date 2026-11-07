@@ -5,6 +5,7 @@ import { useLiveTranscript } from '@/features/interview/useLiveTranscript';
 import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } from '@/features/interview/api';
 import { QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
 import { InterviewerAvatar } from '@/features/interview/InterviewerAvatar';
+import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
@@ -93,7 +94,7 @@ export function QuestionView({
     });
   };
 
-  /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 바로 답변 대기로 넘어감 */
+  /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 브라우저 목소리로 읽고 답변 대기로 넘어감 */
   const ask = async (text: string, kind: 'main' | 'follow_up') => {
     recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
     transcriptRef.current.push({ kind, question: text, answer: '' });
@@ -101,7 +102,12 @@ export function QuestionView({
     setQuestion(text);
     const url = await getSpeechAudioUrl(text, tier);
     setAudio(url);
-    setPhase(url ? 'asking' : 'waiting');
+    if (url) {
+      setPhase('asking');
+      return;
+    }
+    setPhase('waiting');
+    browserSpeak(text);
   };
 
   /** 해당 차례의 질문을 준비. 첫 질문은 고정, 나머지는 백엔드에서 생성 (실패 시 고정 질문으로 대체) */
@@ -141,6 +147,7 @@ export function QuestionView({
   };
 
   const handleStartAnswer = () => {
+    stopSpeak(); // 브라우저 목소리가 아직 읽는 중이면 녹화에 섞이지 않게 멈춤
     live.reset();
     start();
     setPhase('answering');
@@ -193,6 +200,7 @@ export function QuestionView({
       setQuestion('');
       const url = await getSpeechAudioUrl(interviewer.closing, tier);
       setAudio(url);
+      if (!url) browserSpeak(interviewer.closing);
       setPhase('finished');
       return;
     }
