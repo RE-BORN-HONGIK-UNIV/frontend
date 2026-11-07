@@ -36,14 +36,16 @@ export async function speak(text: string): Promise<void> {
   await browserSpeak(text);
 }
 
-function browserSpeak(text: string) {
-  return new Promise<void>((resolve) => {
-    if (typeof speechSynthesis === 'undefined') return resolve();
+/** 브라우저 기본 목소리로 읽기. 끝까지 읽으면 true, 못 읽으면 false (3단계 면접관도 Typecast가 안 될 때 쓴다) */
+export function browserSpeak(text: string) {
+  return new Promise<boolean>((resolve) => {
+    if (typeof speechSynthesis === 'undefined') return resolve(false);
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ko-KR';
     u.voice = speechSynthesis.getVoices().find((v) => v.lang.startsWith('ko')) ?? null;
     u.pitch = 1.1;
-    u.onend = u.onerror = () => resolve();
+    u.onend = () => resolve(true);
+    u.onerror = () => resolve(false);
     speechSynthesis.speak(u);
   });
 }

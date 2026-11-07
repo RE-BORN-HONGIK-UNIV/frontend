@@ -11,6 +11,7 @@ import { api } from '@/lib/api/client';
 import { useAnswerLevel } from '@/features/interview/useAnswerLevel';
 import { useLiveFaceSession } from '@/features/face/live/useLiveFaceSession';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
+import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { buildStage3Marks } from '@/features/report/stage3Marks';
 import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, startStage3Details } from '@/features/report/stageDetails';
 
@@ -140,7 +141,7 @@ export function QuestionView({
     });
   };
 
-  /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 바로 답변 대기로 넘어감 */
+  /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 브라우저 목소리로 읽고, 그것도 안 되면 답변 대기로 넘어감 */
   const ask = async (text: string, kind: 'main' | 'follow_up') => {
     recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
     // 얼굴 분석의 질문별 구간 — 아직 재기 전(시선 기준 잡는 중)이면 0초로
@@ -150,7 +151,12 @@ export function QuestionView({
     setQuestion(text);
     const url = await getSpeechAudioUrl(text, tier);
     setAudio(url);
-    setPhase(url ? 'asking' : 'waiting');
+    if (url) return setPhase('asking');
+    // Typecast가 안 되면 브라우저 목소리로 읽고, 면접관 목소리처럼 다 읽은 뒤 듣기 시작
+    setPhase('asking');
+    const spoke = await browserSpeak(text);
+    if (!spoke) setPhase((p) => (p === 'asking' ? 'waiting' : p));
+    else if (phaseRef.current === 'asking') handleStartAnswer();
   };
 
   /** 해당 차례의 질문을 준비. 첫 질문은 고정, 나머지는 백엔드에서 생성 (실패 시 고정 질문으로 대체) */
@@ -187,6 +193,7 @@ export function QuestionView({
   }, []);
 
   const handleStartAnswer = () => {
+    stopSpeak(); // 브라우저 목소리가 아직 읽는 중이면 녹음에 섞이지 않게 멈춤
     live.reset();
     start();
     setPhase('answering');
@@ -266,6 +273,7 @@ export function QuestionView({
       setQuestion('');
       const url = await getSpeechAudioUrl(interviewer.closing, tier);
       setAudio(url);
+      if (!url) void browserSpeak(interviewer.closing);
       setPhase('finished');
       void finishAnalysis();
       return;

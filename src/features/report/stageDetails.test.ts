@@ -1,8 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { AnalyzeResult } from '@/lib/api/types';
-import { failStage3Voice, loadStageDetails, saveStage3Voice, startStage3Details } from './stageDetails';
+import { failStage3Voice, loadStageDetails, saveStage2Voice, saveStage3Voice, startStage3Details } from './stageDetails';
 
 const voice = { scores: { stability: 80 }, words: [{ text: '저는', start: 0, end: 0.4 }] } as unknown as AnalyzeResult;
+
+describe('2단계 통화 목소리 저장', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('점수는 남기고 받아쓴 단어(대답 내용)는 기기에 남기지 않는다', () => {
+    saveStage2Voice(voice);
+    const d = loadStageDetails();
+    expect(d.stage2Voice?.result.scores).toEqual({ stability: 80 });
+    expect(d.stage2Voice?.result.words).toBeUndefined();
+  });
+});
 
 describe('3단계 분석값 저장', () => {
   beforeEach(() => localStorage.clear());

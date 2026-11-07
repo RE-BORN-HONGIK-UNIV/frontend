@@ -68,6 +68,13 @@ export function saveStage1Detail(result: AnalyzeResult, turnStarts: number[] = [
   save({ ...loadStageDetails(), stage1: { at: now.toISOString(), result, turnStarts } });
 }
 
+/** 2단계 통화 목소리 분석 결과 — 리포트의 1→2→3단계 흐름 막대용. 받아쓴 단어는 남기지 않는다 */
+export function saveStage2Voice(result: AnalyzeResult, now = new Date()) {
+  const { words: _w, ...slim } = result;
+  void _w;
+  save({ ...loadStageDetails(), stage2Voice: { at: now.toISOString(), result: slim } });
+}
+
 export function saveStage2Detail(result: GazeBlinkResult, now = new Date()) {
   // 하이라이트 클립(data URL)은 크기가 커서 빼고 숫자·구간만 남긴다
   save({ ...loadStageDetails(), stage2: { at: now.toISOString(), result: slimFace(result) } });

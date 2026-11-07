@@ -7,6 +7,9 @@ import { STAGE2_QUESTIONS } from '@/features/haru/script';
 import { saveStageAnswers } from '@/features/haru/store';
 import { linkStyle } from '@/features/haru/styles';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
+import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
+import { api } from '@/lib/api/client';
+import { saveStage2Voice } from '@/features/report/stageDetails';
 import { useLiveFaceSession } from './useLiveFaceSession';
 import { useDebugRecorder } from './useDebugRecorder';
 import { useRingtone } from './useRingtone';
@@ -69,14 +72,21 @@ export function HaruCallView({
   // "통화 시작하기"를 눌렀는지(→ 캘리브레이션 → 통화)
   const [started, setStarted] = useState(false);
   // 하루와의 주고받기 — 통화가 연결되면(callOn) 첫 질문을 읽기 시작한다
+  const finishVoiceRef = useRef<ReturnType<typeof useAnswerRecorder>['finish'] | null>(null);
   const t = useHaruTalk(
     STAGE2_QUESTIONS,
     (answers) => {
       saveStageAnswers(2, answers);
       setTalkDone(true);
+      // 2단계 통화 목소리도 1단계처럼 분석한다(stage=2) — 서버는 3단계 불안도에만 쓰고, 기기에는 리포트 흐름 막대용으로 남긴다.
+      // 기다리지 않고 뒤에서 보내며, 실패해도 2단계는 그대로 끝난다(불안도는 1단계 목소리로 계산됨)
+      void finishVoiceRef.current?.().then((r) => r && api.analyze(r.file, null, 2).then((res) => saveStage2Voice(res)).catch(() => {}));
     },
     callOn,
   );
+  // 하루가 말하는 동안은 멈추고 사용자가 대답하는 구간만 녹음한다(1단계와 같은 녹음 설정)
+  const voiceRec = useAnswerRecorder(callOn && t.phase === 'listen');
+  finishVoiceRef.current = voiceRec.finish;
   const analysisEnded = s.saving || result !== null || empty;
 
   // 대답 중(듣는 중)일 때만 표정·시선을 잰다

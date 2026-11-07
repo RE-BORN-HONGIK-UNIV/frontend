@@ -1222,6 +1222,8 @@ a {
   width: 100%; border: 1px solid transparent; border-radius: 8px; background: transparent;
   padding: 8px 10px; margin-left: -10px; font: inherit; font-size: 16px; color: var(--rb-ink);
   transition: border-color 0.15s ease, background-color 0.15s ease;
+  /* 긴 대답도 다 보이게 글 길이만큼 커짐(지원 안 하는 브라우저는 드래그로 키움) */
+  display: block; resize: vertical; field-sizing: content;
 }
 .rb-profile__value:hover { background: var(--rb-surface-tint); }
 .rb-profile__value:focus { outline: none; border-color: var(--rb-primary); background: var(--rb-surface); }

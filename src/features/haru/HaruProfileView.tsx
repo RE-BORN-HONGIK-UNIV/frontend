@@ -102,9 +102,10 @@ export function HaruProfileView({
                     <label htmlFor={`haru-profile-${n}`}>{it.label}</label>
                   </dt>
                   <dd>
-                    <input
+                    <textarea
                       id={`haru-profile-${n}`}
                       className="rb-profile__value"
+                      rows={1}
                       value={it.value}
                       maxLength={80}
                       placeholder="넘어갔어요 · 눌러서 채우기"
