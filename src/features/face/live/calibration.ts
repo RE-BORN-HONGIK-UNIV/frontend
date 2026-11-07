@@ -91,44 +91,82 @@ export function calibrateBaselineTension(tensionValues: (number | null)[]): numb
 }
 
 /**
- * 2단계 캘리브레이션(2026-11, 하루 통화) — "하루의 눈"을 3초 본 뒤 "하루의 어깨"를 2초 본다.
+ * 2단계 캘리브레이션(2026-11, 하루 통화) — "표정 맞추기": 하루의 눈 보기(무표정) → 살짝 찡그리기 → 하루에게 웃기.
  *
- * 왜: 2단계는 카메라가 아니라 화면 속 하루를 보며 대답한다. 팀 결정으로 하루의 얼굴(눈 근처)을 보면 "본다",
- * 하루의 몸을 보면 실제 면접에서 눈을 피하는 것과 같으니 "시선 이탈"로 본다. 얼굴과 몸은 노트북 거리에서 약 10°
- * 차이라 웹캠으로 구분할 수 있지만(눈·코·입은 3~4° 차이라 구분 못 함), 화면 크기·앉은 거리·안경이 사람마다 달라
- * 고정 숫자 하나로는 경계가 맞지 않는다. 그래서 사람마다 "얼굴을 볼 때"와 "몸을 볼 때"를 직접 재 두고,
- * 판정(다음 작업)은 둘 사이를 경계로 쓴다.
+ * 왜: 같은 표정이어도 MediaPipe 값의 크기가 사람마다(같은 사람도 날마다) 크게 다르다. 2단계 녹화 4건을 영상과 대조하니
+ * 미간을 모은 게 영상으로 보이는데 값이 평소 대비 +0.05 안팎인 사람(세연 11/7)과 +0.2까지 오르는 사람(세연 11/5)이 있었고,
+ * 웃는 게 보이는데 미소 값이 0.28에 그친 경우도 있었다. 모두에게 같은 숫자(찡그림 +0.08, 미소 0.35)를 쓰면 값이 작게 나오는
+ * 사람은 계속 놓친다. 그래서 무표정과 함께 그 사람이 직접 지은 찡그림·미소의 크기를 재서 기준을 사람마다 맞춘다
+ * (사람별 정규화 — Baltrušaitis, Mahmoud & Robinson, 2015, IEEE FG). 숫자 근거는 personalThreshold 주석.
  *
- * 얼굴 단계 값은 지금까지처럼 시선·눈동자 기준(calibrateBaselineGaze·calibrateBaselineIris)이 되고,
- * 몸 단계 값(calibrateBodyPose)은 아직 판정에 쓰지 않고 기록만 한다(정확도 기록 도구로 다시 녹화해 경계 방식을 정한 뒤 반영).
- * 단계가 바뀐 직후(BODY_SETTLE_SEC)는 눈을 옮기는 중이라 몸 값에서 뺀다.
+ * 예전 "하루의 어깨 보기" 단계는 뺐다 — 두 번 해 봤는데 어깨 쪽을 볼 때와 눈을 볼 때의 고개·눈동자 값 차이가 0.1~0.3° /
+ * 0.002 수준이라(고개 없이 눈만 내리면 웹캠이 구분하지 못함, Semmelmann & Weigelt, 2018) 경계가 항상 꺼졌다.
+ * 각 단계로 넘어간 직후 0.5초는 표정·눈을 바꾸는 중이라 값에서 뺀다(settle).
  */
 export const CALIB_FACE_SEC = 3;
-export const CALIB_BODY_SEC = 2;
-export const BODY_SETTLE_SEC = 0.5;
-/** 시작 직후(눈을 점으로 옮기는 중)도 값에서 뺀다 — 2026-11 안내 화면·표시 점 추가와 함께 */
-export const FACE_SETTLE_SEC = 0.5;
+export const CALIB_FROWN_SEC = 2;
+export const CALIB_SMILE_SEC = 2;
+export const CALIB_SETTLE_SEC = 0.5;
+export const EXPRESSION_CALIB_TOTAL_SEC = CALIB_FACE_SEC + CALIB_FROWN_SEC + CALIB_SMILE_SEC;
 
-/** 캘리브레이션을 시작한 지 ct초일 때의 단계 — face: 하루의 눈 보기, body: 어깨 보기, settle: 눈을 옮기는 중(처음 0.5초와
- * 어깨로 옮기는 0.5초, 값에서 뺌), null: 끝남.
- * twoStep=false면 예전처럼 total초 내내 face */
-export function calibStepAt(ct: number, twoStep: boolean, total = CALIB_FACE_SEC + CALIB_BODY_SEC): 'face' | 'settle' | 'body' | null {
+export type CalibStep = 'face' | 'frown' | 'smile' | 'settle';
+
+/** 캘리브레이션을 시작한 지 ct초일 때의 단계(null: 끝남). withExpressions=false면 예전처럼 total초 내내 face(settle 없음) */
+export function calibStepAt(ct: number, withExpressions: boolean, total = EXPRESSION_CALIB_TOTAL_SEC): CalibStep | null {
   if (ct < 0 || ct > total) return null;
-  if (twoStep && ct < FACE_SETTLE_SEC) return 'settle';
-  if (!twoStep || ct <= CALIB_FACE_SEC) return 'face';
-  return ct <= CALIB_FACE_SEC + BODY_SETTLE_SEC ? 'settle' : 'body';
+  if (!withExpressions) return 'face';
+  const steps: [CalibStep, number][] = [
+    ['face', CALIB_FACE_SEC],
+    ['frown', CALIB_FROWN_SEC],
+    ['smile', CALIB_SMILE_SEC],
+  ];
+  let start = 0;
+  for (const [step, len] of steps) {
+    if (ct <= start + len) return ct < start + CALIB_SETTLE_SEC ? 'settle' : step;
+    start += len;
+  }
+  return null;
 }
 
-export interface BodyPose extends GazeBaseline, IrisBaseline {}
+/** 지금 화면에 보여 줄 단계(settle은 그 단계에 포함) */
+export function calibStageAt(ct: number, withExpressions: boolean): 'face' | 'frown' | 'smile' {
+  if (!withExpressions || ct <= CALIB_FACE_SEC) return 'face';
+  return ct <= CALIB_FACE_SEC + CALIB_FROWN_SEC ? 'frown' : 'smile';
+}
 
-/** 몸(어깨)을 볼 때의 고개 각도·눈동자 위치 중앙값. 얼굴이 한 번도 안 잡혔으면 null(판정에서 쓰지 않음) */
-export function calibrateBodyPose(poses: (BodyPose | null)[]): BodyPose | null {
-  const detected = poses.filter((p): p is BodyPose => p !== null);
-  if (detected.length === 0) return null;
-  return {
-    yaw: median(detected.map((p) => p.yaw)),
-    pitch: median(detected.map((p) => p.pitch)),
-    ox: median(detected.map((p) => p.ox)),
-    oy: median(detected.map((p) => p.oy)),
-  };
+const quantile = (values: number[], q: number) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+};
+
+/**
+ * 사람별 판정 기준 = 무표정 + (직접 지은 표정 − 무표정) × 1/3, 단 [min, max] 안으로. 표정을 못 쟀거나(얼굴 미검출)
+ * 무표정보다 오르지 않았으면 fallback.
+ *
+ * - 직접 지은 표정은 그 단계 값의 상위 10%(최고점 한두 장면의 잡음에 흔들리지 않게).
+ * - 1/3: 시키는 표정(캘리브레이션)이 대답 중 자연스러운 표정보다 크기 때문에 가운데(1/2)보다 낮게. 4건 녹화로 확인 —
+ *   찡그림을 평소 대비 +0.04 / +0.06 / +0.08에서 보면, 세연 11/7(찡그림 최대 +0.12)은 +0.04에서 찡그린 질문 30%·다른 질문 0%,
+ *   세연 11/5(찡그림 최대 +0.18)은 +0.06에서 찡그린 질문 44%·웃는 질문 2%로 가장 나았다 — 둘 다 "찡그림 크기 × 1/3"에 가깝다.
+ *   (1/2이면 각각 14%·약 25%로 덜 잡힘.)
+ * - 찡그림 [+0.04, +0.08]: 0.04는 무표정으로 말할 때 흔들림(평소 대비 상위 5%: 0.009~0.019, 3명)보다 확실히 위,
+ *   0.08은 지금 쓰는 임시값(4명 무표정 질문 오탐 0) — 이보다 엄격해지지 않게.
+ * - 미소 [0.15, 0.35]: 0.35는 검증된 기존 기준(이보다 엄격해지지 않게), 0.15는 웃지 않고 말할 때 원래 미소 값(4명 상위 1%:
+ *   0.00~0.17)보다 위. 입 벌림 규칙(말하는 입 모양 오탐 방지)은 그대로 둔다.
+ */
+export const PERSONAL_FRACTION = 1 / 3;
+
+export function personalThreshold(
+  neutral: (number | null)[],
+  posed: (number | null)[],
+  opts: { min: number; max: number; fallback: number; relative: boolean },
+): number {
+  const n = neutral.filter((v): v is number => v !== null);
+  const p = posed.filter((v): v is number => v !== null);
+  if (!n.length || !p.length) return opts.fallback;
+  const base = median(n);
+  const peak = quantile(p, 0.9);
+  if (peak <= base) return opts.fallback;
+  // relative: 판정 값이 이미 "무표정 대비"(찡그림)면 무표정을 더하지 않는다
+  const th = (opts.relative ? 0 : base) + (peak - base) * PERSONAL_FRACTION;
+  return Math.min(opts.max, Math.max(opts.min, th));
 }

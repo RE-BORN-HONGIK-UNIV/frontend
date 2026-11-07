@@ -58,8 +58,9 @@ export function HaruCallView({
     onComplete: setResult,
     getQuestionStarts: () => questionStartsRef.current,
     calibrateOnDemand: true,
-    // 하루의 눈 3초 → 하루의 어깨 2초(몸을 보는 것도 시선 이탈 — 경계를 사람마다 잡으려고, calibration.ts calibStepAt)
-    bodyCalibration: true,
+    // 표정 맞추기: 하루의 눈 보기(무표정) 3초 → 찡그리기 2초 → 웃기 2초 — 표정 값 크기가 사람마다 달라서
+    // 찡그림·미소 기준을 사람마다 맞춘다(calibration.ts personalThreshold)
+    expressionCalibration: true,
     // 대답하는 동안(앞뒤 1초 제외)만 잰다 — 하루가 말할 때·버튼 누를 때 아래를 본 건 시선 회피로 세지 않는다
     measureOnlyWhenAnswering: true,
     onEmpty: () => setEmpty(true),
@@ -248,35 +249,39 @@ export function HaruCallView({
             )}
             {mode === 'calib' && guiding && (
               <div className="rb-call__guide" role="dialog" aria-label="연결 전 안내">
-                <b>연결 전에 5초만 맞출게요</b>
+                <b>연결 전에 7초만 표정을 풀어 볼게요</b>
                 <ol>
                   <li>
-                    <i aria-hidden /> 초록 점이 <em>하루의 눈</em>에 나오면 그곳을 봐 주세요
+                    <i aria-hidden /> <em>하루의 눈</em>(초록 점)을 보며 편하게 무표정
                   </li>
                   <li>
-                    <i aria-hidden /> 점이 <em>어깨 쪽</em>으로 내려가면 따라 봐 주세요
+                    <i aria-hidden /> <em>찡그려 보세요</em>가 나오면 미간을 살짝 모아요
+                  </li>
+                  <li>
+                    <i aria-hidden /> <em>웃어 보세요</em>가 나오면 하루에게 웃어 줘요
                   </li>
                 </ol>
-                <span>그동안은 편하게 무표정으로 있어 주세요</span>
+                <span>표정이 얼마나 잘 보이는지는 사람마다 달라서, 나에게 맞추는 거예요</span>
                 <button type="button" onClick={ready}>
                   준비됐어요
                 </button>
               </div>
             )}
             {mode === 'calib' && s.phase === 'calibrating' && (
-              // 하루 그림(높이 94%·아래 가운데)에서 눈은 그림 위에서 34%, 어깨 사이(가슴 위)는 63% → 칸 기준 6 + 94 × 비율
-              <span
-                className="rb-calib-dot"
-                data-step={s.calibrationStep ?? 'face'}
-                style={{ top: s.calibrationStep === 'body' ? '65%' : '38%' }}
-                aria-hidden
-              />
+              // 하루 그림(높이 94%·아래 가운데)에서 눈은 그림 위에서 34% → 칸 기준 6 + 94 × 0.34 ≈ 38%. 7초 내내 여기를 본다
+              <span className="rb-calib-dot" data-step={s.calibrationStep ?? 'face'} style={{ top: '38%' }} aria-hidden />
             )}
             {mode === 'calib' && !guiding && (
               <div className="rb-call__calib" aria-live="polite">
                 {s.phase === 'calibrating' && (
                   <>
-                    <b>{s.calibrationStep === 'body' ? '이번엔 어깨 쪽 점을 봐 주세요' : '하루의 눈(초록 점)을 봐 주세요'}</b>
+                    <b>
+                      {s.calibrationStep === 'frown'
+                        ? '찡그려 보세요 — 미간을 살짝 모아요'
+                        : s.calibrationStep === 'smile'
+                          ? '웃어 보세요 — 하루에게 미소를'
+                          : '하루의 눈(초록 점)을 보며 무표정'}
+                    </b>
                     <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
                     <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
                   </>

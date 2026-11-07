@@ -15,19 +15,18 @@ import {
 import {
   calibrateBaselineGaze,
   calibrateBaselineIris,
-  calibrateBodyPose,
   calibrateBaselineTension,
   calibStepAt,
-  CALIB_FACE_SEC,
+  calibStageAt,
+  EXPRESSION_CALIB_TOTAL_SEC,
+  personalThreshold,
   DEFAULT_BASELINE_GAZE,
-  type BodyPose,
   DEFAULT_BASELINE_IRIS,
   type GazeBaseline,
   type IrisBaseline,
 } from './calibration';
 import { computeIrisOffset, matrixToHeadPose } from './headPose';
-import { createGazeFsmState, flushGaze, makeVerticalBoundary, markClosuresAsAversion, stepGaze } from './gaze';
-import type { VerticalBoundary } from './headPose';
+import { createGazeFsmState, flushGaze, markClosuresAsAversion, stepGaze } from './gaze';
 import { createSegmentBufferState } from './segmentBuffer';
 import {
   avgBlendshape,
@@ -88,7 +87,7 @@ import type { Point2D } from './types';
  * 로컬) 이력으로 폴백.
  */
 
-// 두 단계(bodyCalibration)면 하루의 눈 3초 + 어깨 2초(CALIB_FACE_SEC + CALIB_BODY_SEC) — 전체 길이는 예전과 같은 5초
+// 기본 5초(화면 가운데 보기). 표정 맞추기(expressionCalibration)면 눈 3초 + 찡그림 2초 + 미소 2초 = 7초(calibration.ts)
 const CALIBRATION_SEC = 5;
 
 /**
@@ -149,13 +148,11 @@ export interface DebugFrame {
   smileApp: number | null;
   tensionApp: number | null;
   blinkScore: number | null;
-  /** 캘리브레이션 단계 — 0 아님, 1 하루의 눈 보기, 2 어깨로 옮기는 중(값에서 뺌), 3 하루의 어깨 보기 */
-  calibStep: 0 | 1 | 2 | 3;
-  /** 몸(어깨)을 볼 때의 고개 각도·눈동자 위치(캘리브레이션이 끝나기 전·한 단계 방식이면 null) — 판정 경계를 정하려고 기록 */
-  bodyYaw: number | null;
-  bodyPitch: number | null;
-  bodyIrisX: number | null;
-  bodyIrisY: number | null;
+  /** 캘리브레이션 단계 — 0 아님, 1 하루의 눈 보기(무표정), 2 표정을 바꾸는 중(값에서 뺌), 3 찡그리기, 4 웃기 */
+  calibStep: 0 | 1 | 2 | 3 | 4;
+  /** 이 사람의 판정 기준(표정 맞추기 결과, 끝나기 전엔 기본값) — 찡그림은 평소 대비, 미소는 미소 값 그대로 */
+  tensionThreshold: number;
+  smileThreshold: number;
   /** 판정 방식을 바꾸려고 함께 모으는 표정 값(MediaPipe blendshape, 왼·오른쪽 평균) — 아직 판정에는 안 씀.
    * lookH는 (오른쪽을 봄) − (왼쪽을 봄): eyeLookOutLeft·eyeLookInRight 평균 − eyeLookInLeft·eyeLookOutRight 평균 */
   lookDown: number | null;
@@ -174,7 +171,7 @@ export interface DebugFrame {
 }
 
 const avgKeys = (bs: Record<string, number> | null, keys: string[]) => (bs ? avgBlendshape(bs, keys) : null);
-const CALIB_STEP_CODE = { face: 1, settle: 2, body: 3 } as const;
+const CALIB_STEP_CODE = { face: 1, settle: 2, frown: 3, smile: 4 } as const;
 
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -198,9 +195,9 @@ export interface UseLiveFaceSessionOptions {
   maxCaptureSec?: number;
   /** 정확도 검증용 — 주면 매 장면 값을 넘긴다(DebugFrame). 평소엔 안 줌 */
   onDebugFrame?: (frame: DebugFrame) => void;
-  /** true면 캘리브레이션을 두 단계로 — 하루의 눈 3초 → 하루의 어깨 2초(calibration.ts calibStepAt 참고).
-   * 화면이 calibrationStep에 맞춰 안내를 바꿔야 한다. 기본 false(5초 내내 화면 가운데를 봄) */
-  bodyCalibration?: boolean;
+  /** true면 캘리브레이션에 표정 맞추기를 더한다 — 하루의 눈 보기(무표정) 3초 → 찡그리기 2초 → 웃기 2초
+   * (calibration.ts calibStepAt·personalThreshold). 화면이 calibrationStep에 맞춰 안내를 바꿔야 한다. 기본 false(5초 무표정) */
+  expressionCalibration?: boolean;
 }
 
 export function useLiveFaceSession({
@@ -213,8 +210,9 @@ export function useLiveFaceSession({
   persist = true,
   maxCaptureSec = MAX_CAPTURE_SEC,
   onDebugFrame,
-  bodyCalibration = false,
+  expressionCalibration = false,
 }: UseLiveFaceSessionOptions) {
+  const calibrationSec = expressionCalibration ? EXPRESSION_CALIB_TOTAL_SEC : CALIBRATION_SEC;
   // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
   const debugRef = useRef(onDebugFrame);
   debugRef.current = onDebugFrame;
@@ -241,8 +239,13 @@ export function useLiveFaceSession({
   // 하루(통화 중 하루가 나올 자리)를 볼 때의 눈동자 위치 — calibration.ts calibrateBaselineIris 참고
   const baselineIrisRef = useRef<IrisBaseline>(DEFAULT_BASELINE_IRIS);
   // 두 단계 캘리브레이션: 하루의 어깨를 볼 때 값(모으는 중·결과). 결과는 아직 판정에 안 쓰고 기록만
-  const bodyBufferRef = useRef<(BodyPose | null)[]>([]);
-  const bodyPoseRef = useRef<BodyPose | null>(null);
+  // 표정 맞추기: 찡그릴 때 미간 값·웃을 때 미소 값, 그리고 무표정 때 미소 값
+  const frownCalibRef = useRef<(number | null)[]>([]);
+  const smileCalibRef = useRef<(number | null)[]>([]);
+  const neutralSmileCalibRef = useRef<(number | null)[]>([]);
+  // 이 사람의 판정 기준(표정 맞추기를 안 했거나 못 쟀으면 기본값)
+  const tensionThresholdRef = useRef(TENSION_DELTA_THRESHOLD);
+  const smileThresholdRef = useRef(SMILE_THRESHOLD);
   const calibratedRef = useRef(false);
   // 캘리브레이션을 시작한 시각(세션 시작부터 초). calibrateOnDemand면 startCalibration() 전까지 null
   const calibStartTRef = useRef<number | null>(calibrateOnDemand ? null : 0);
@@ -253,8 +256,6 @@ export function useLiveFaceSession({
   const exprFsmRef = useRef(createExpressionFsmState());
   const exprSeriesRef = useRef<[number, number | null, number | null][]>([]);
   // 2026-11 판정 변경(gaze.ts·blink.ts·expression.ts 주석 참고)
-  // 위아래 경계(하루의 눈 ↔ 어깨). 두 단계 캘리브레이션이 아니거나 차이가 흔들림보다 작으면 null(예전 판정)
-  const verticalRef = useRef<VerticalBoundary | null>(null);
   // 0.4초 넘게 감긴 구간(웃어서 가늘어진 건 뺌) — 끝날 때 시선 이탈로 바꾼다
   const longClosuresRef = useRef<Blink[]>([]);
   // 지금 감겨 있는 동안 원래 미소 값의 최댓값 — 웃어서 눈이 가늘어진 건지 보려고
@@ -291,11 +292,11 @@ export function useLiveFaceSession({
     if (blink) {
       // 0.4초까지만 깜빡임. 더 길면 아래를 본 것 — 웃느라 눈이 가늘어진 게 아니면 시선 이탈로 넘긴다
       if (isBlinkLength(blink)) blinksRef.current.push(blink);
-      else if (closureSmileMaxRef.current < SMILE_THRESHOLD) longClosuresRef.current.push(blink);
+      else if (closureSmileMaxRef.current < smileThresholdRef.current) longClosuresRef.current.push(blink);
     }
     if (!blinkFsmRef.current.inBlink) closureSmileMaxRef.current = 0;
 
-    stepExpression(exprFsmRef.current, t, blendshapes, baselineTensionRef.current, undefined, TENSION_DELTA_THRESHOLD);
+    stepExpression(exprFsmRef.current, t, blendshapes, baselineTensionRef.current, undefined, tensionThresholdRef.current, smileThresholdRef.current);
     const exprFrame = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
     exprSeriesRef.current.push([t, exprFrame ? exprFrame.smile : null, exprFrame ? exprFrame.tension : null]);
 
@@ -311,7 +312,6 @@ export function useLiveFaceSession({
       undefined,
       baselineIrisRef.current.ox,
       baselineIrisRef.current.oy,
-      verticalRef.current,
     );
 
     if (windowFirstTRef.current === null) windowFirstTRef.current = t;
@@ -401,11 +401,10 @@ export function useLiveFaceSession({
           }
 
           const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
-          const calibStep = calibT === null ? null : calibStepAt(calibT, bodyCalibration, CALIBRATION_SEC);
+          const calibStep = calibT === null ? null : calibStepAt(calibT, expressionCalibration, calibrationSec);
 
           if (debugRef.current) {
             const ef = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
-            const body = bodyPoseRef.current;
             debugRef.current({
               t,
               calibrating: calibStep !== null,
@@ -425,10 +424,8 @@ export function useLiveFaceSession({
               tensionApp: ef ? ef.tension : null,
               blinkScore: computeBlinkBlendshapeScore(blendshapes),
               calibStep: calibStep === null ? 0 : CALIB_STEP_CODE[calibStep],
-              bodyYaw: body?.yaw ?? null,
-              bodyPitch: body?.pitch ?? null,
-              bodyIrisX: body?.ox ?? null,
-              bodyIrisY: body?.oy ?? null,
+              tensionThreshold: tensionThresholdRef.current,
+              smileThreshold: smileThresholdRef.current,
               lookDown: avgKeys(blendshapes, ['eyeLookDownLeft', 'eyeLookDownRight']),
               lookUp: avgKeys(blendshapes, ['eyeLookUpLeft', 'eyeLookUpRight']),
               lookH:
@@ -448,25 +445,35 @@ export function useLiveFaceSession({
           if (calibStep === 'face') {
             calibBufferRef.current.push([t, pose]);
             tensionCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, TENSION_KEYS) : null);
-          } else if (calibStep === 'body') {
-            bodyBufferRef.current.push(pose);
+            neutralSmileCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, SMILE_KEYS) : null);
+          } else if (calibStep === 'frown') {
+            frownCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, TENSION_KEYS) : null);
+          } else if (calibStep === 'smile') {
+            smileCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, SMILE_KEYS) : null);
           } else if (calibStep === null && calibT !== null && !calibratedRef.current) {
             calibratedRef.current = true;
             // 시선·눈동자 기준은 "하루의 눈"을 본 구간에서만 잡는다(두 단계면 처음 3초, 아니면 5초 전체)
             const buffer = calibBufferRef.current;
-            bodyPoseRef.current = bodyCalibration ? calibrateBodyPose(bodyBufferRef.current) : null;
             const baseline = calibrateBaselineGaze(buffer.map(([, p]) => (p ? { yaw: p.yaw, pitch: p.pitch } : null)));
             baselineGazeRef.current = baseline;
             const irisBaseline = calibrateBaselineIris(buffer.map(([, p]) => (p ? { ox: p.ox, oy: p.oy } : null)));
             baselineIrisRef.current = irisBaseline;
             baselineTensionRef.current = calibrateBaselineTension(tensionCalibRef.current);
-            verticalRef.current = bodyCalibration
-              ? makeVerticalBoundary(
-                  buffer.map(([, p]) => (p ? { pitch: p.pitch, oy: p.oy } : null)),
-                  { pitch: baseline.pitch, oy: irisBaseline.oy },
-                  bodyPoseRef.current,
-                )
-              : null;
+            if (expressionCalibration) {
+              // 표정 맞추기 — 이 사람의 찡그림·미소 크기로 기준을 맞춘다(calibration.ts personalThreshold)
+              tensionThresholdRef.current = personalThreshold(tensionCalibRef.current, frownCalibRef.current, {
+                min: 0.04,
+                max: TENSION_DELTA_THRESHOLD,
+                fallback: TENSION_DELTA_THRESHOLD,
+                relative: true,
+              });
+              smileThresholdRef.current = personalThreshold(neutralSmileCalibRef.current, smileCalibRef.current, {
+                min: 0.15,
+                max: SMILE_THRESHOLD,
+                fallback: SMILE_THRESHOLD,
+                relative: false,
+              });
+            }
             for (const [bt, bPose] of buffer) {
               // 이 리플레이는 gaze FSM의 EMA 스무딩 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
               // 초기화하므로 이 구간이 실제 구간 판정에 남지는 않는다.
@@ -496,7 +503,7 @@ export function useLiveFaceSession({
               // 하루 말을 들을 때: 미소만 잰다(입을 다물고 있어 입 벌림 규칙이 검증된 상황 — expression.ts combineSmileRatio)
               const ef = computeExpressionForFrame(blendshapes);
               listenSmileRef.current.frames += 1;
-              if (ef && ef.smile >= SMILE_THRESHOLD) listenSmileRef.current.hits += 1;
+              if (ef && ef.smile >= smileThresholdRef.current) listenSmileRef.current.hits += 1;
             }
 
             // 3분 제한: 대답 구간만 재는 경우엔 실제로 잰 시간으로 센다
@@ -539,9 +546,11 @@ export function useLiveFaceSession({
     if (phase !== 'camera' && phase !== 'ready') return;
     calibratedRef.current = false;
     calibBufferRef.current = [];
-    bodyBufferRef.current = [];
-    bodyPoseRef.current = null;
-    verticalRef.current = null;
+    frownCalibRef.current = [];
+    smileCalibRef.current = [];
+    neutralSmileCalibRef.current = [];
+    tensionThresholdRef.current = TENSION_DELTA_THRESHOLD;
+    smileThresholdRef.current = SMILE_THRESHOLD;
     tensionCalibRef.current = [];
     baselineTensionRef.current = 0;
     calibStartTRef.current = elapsedSecRef.current;
@@ -608,7 +617,7 @@ export function useLiveFaceSession({
     // 0.4초 넘게 감긴 구간(아래를 봄)은 시선 이탈로 — gaze.ts markClosuresAsAversion
     const gazeSegments = markClosuresAsAversion(gazeFsmRef.current.segmentBuffer.committed, longClosuresRef.current);
     const gazeResult = scoreGazeSegments(gazeSegments);
-    const answerSummary = summarizeExpression(exprSeriesRef.current, TENSION_MIN_SEC, TENSION_DELTA_THRESHOLD);
+    const answerSummary = summarizeExpression(exprSeriesRef.current, TENSION_MIN_SEC, tensionThresholdRef.current, smileThresholdRef.current);
     // 미소는 대답 + 하루 말을 들을 때(measureOnlyWhenAnswering일 때만 듣기 프레임이 있음), 긴장은 대답 중만
     const expressionSummary = {
       ...answerSummary,
@@ -695,16 +704,14 @@ export function useLiveFaceSession({
     saving,
     faceDetected,
     calibrationSummary,
-    calibrationSec: CALIBRATION_SEC,
+    calibrationSec,
     /** 캘리브레이션을 시작한 뒤 지난 초(시작 전이면 0) */
     calibrationElapsedSec: calibStartTRef.current === null ? 0 : Math.max(0, elapsedSec - calibStartTRef.current),
-    /** 캘리브레이션 중 지금 볼 곳 — face: 하루의 눈, body: 하루의 어깨(settle 포함). 캘리브레이션 중이 아니면 null */
+    /** 캘리브레이션 중 지금 단계 — face: 하루의 눈 보기(무표정), frown: 찡그리기, smile: 웃기. 캘리브레이션 중이 아니면 null */
     calibrationStep:
       phase !== 'calibrating' || calibStartTRef.current === null
         ? null
-        : !bodyCalibration || elapsedSec - calibStartTRef.current <= CALIB_FACE_SEC
-          ? ('face' as const)
-          : ('body' as const),
+        : calibStageAt(elapsedSec - calibStartTRef.current, expressionCalibration),
     startCalibration,
     maxCaptureSec,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
