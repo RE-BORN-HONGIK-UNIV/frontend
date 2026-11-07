@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
 import { localProgress, visitDays } from '@/features/progress/localProgress';
 import { lastSevenDays, plantFor } from '@/features/progress/streak';
-import { buildHistory, formatHistoryDate, nextStep } from '@/features/progress/history';
+import { buildHistory, formatHistoryDate } from '@/features/progress/history';
 import { useStageProgress } from '@/features/progress/useStageProgress';
 
 type Status = 'done' | 'available' | 'locked';
@@ -153,8 +153,8 @@ export default function Dashboard() {
   const completed = STAGES.filter((s) => s.status === 'done').length;
   const pct = Math.round((completed / STAGES.length) * 100);
   const firstVisit = completed === 0;
-  // 마이페이지: 다음에 할 단계로 바로 가는 버튼 + 지난 기록(점수 없이 언제 무엇을 했는지)
-  const next = nextStep(s1.done, s2.done, s3.done);
+  // 마이페이지: 지난 기록(점수 없이 언제 무엇을 했는지). 위 진행 현황 카드는 보기만 — '이어서 하기' 버튼은 아래 단계 카드와
+  // 겹쳐서 뺐다(2026-11)
   const history = buildHistory(s1.at, s2.at, sessions);
 
   const handleReset = () => {
@@ -253,13 +253,6 @@ export default function Dashboard() {
                       ? '모든 단계를 완료했어요! 정말 잘하셨어요 🎉'
                       : '꾸준히 잘 나아가고 있어요 💪'}
                 </Text>
-                {/* 이어서 하기 — 아직 안 한 가장 앞 단계로. 다 했으면 아래 '최종 리포트 다시 보기' 카드와 겹쳐서 버튼을 빼고
-                    진행 현황만 보여 준다 */}
-                {next.to !== '/report' && (
-                  <Button fullWidth radius="md" size="md" mt={10} onClick={() => navigate(next.to)}>
-                    {next.label} →
-                  </Button>
-                )}
               </Paper>
 
               <Text fz={17} fw={700} c="var(--rb-primary-strong)" mt={10}>

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Text } from '@/components/ui';
 import { getAnxietyScore, type DifficultyTier, type StageKey } from '../difficulty';
 import { getInterviewer, MAIN_QUESTION_COUNT } from '../interviewers';
 import type { useMediaPreview } from '../useMediaPreview';
 import { NeedStagesView } from './NeedStagesView';
+import { getSpeechAudioUrl } from '../api';
+import { auth } from '@/lib/auth';
 
 /**
  * 개발할 때만(npm run dev) 주소에 ?test=1을 붙이면 1·2단계 기록이 없어도 3단계 화면을 볼 수 있다 —
@@ -24,6 +26,12 @@ const devSkipStages = () => import.meta.env.DEV && new URLSearchParams(window.lo
  *
  * 예전 기기 점검(MediaTestView)의 장치 고르기·문장 읽기 확인도 경량 웹처럼 권한 확인만 남겼다 —
  * 마이크가 연결돼야 시작할 수 있고, 카메라는 없어도 계속할 수 있다.
+ *
+ * 2026-11 화면 정리(E+B): 제목·사진·카드 3개·확인 줄 2개·안내 문단이 한 화면에 흩어져 읽기 어려웠고, 사진 크게 + 안내 줄이는
+ * 방식은 2단계 영상 통화 대기실과 비슷해졌다. 2단계는 '친구와 영상 통화', 3단계는 '면접 보러 가기'로 느낌을 나눈다 —
+ *   B. 면접관이 먼저 인사: 사진 옆 말풍선 + 면접관 목소리(TTS, 한 번 자동, '다시 듣기')
+ *   E. 실제 면접 전에 받는 안내문처럼 '오늘의 면접 안내' 한 장에 질문·대답 방식·마음 편히·준비(마이크·카메라)를 줄로 모음
+ * 면접관 이름은 난이도를 드러내서 쓰지 않는다(난이도는 화면에 보이지 않게).
  */
 export function Stage3PrepView({
   media,
@@ -57,8 +65,7 @@ export function Stage3PrepView({
   }
 
   const interviewer = tier ? getInterviewer(tier) : null;
-  const followGuide =
-    interviewer && interviewer.followUps > 0 ? '대답에 따라 한두 번 더 물어볼 수 있어요.' : '하나씩 천천히 물어볼게요.';
+  const followGuide = interviewer && interviewer.followUps > 0 ? '대답에 따라 한두 번 더 물어볼 수 있어요' : '하나씩 천천히 물어볼게요';
 
   // 마이크·카메라: 권한을 받아 스트림이 연결됐는지만 본다
   const asking = media.status === 'idle' || media.status === 'requesting';
@@ -67,45 +74,44 @@ export function Stage3PrepView({
 
   return (
     <div className="rb-prep3">
-      {/* 위: 제목·설명(왼쪽) + 오늘 함께할 면접관 사진 미리 보기(오른쪽) — 면접실에서 갑자기 낯선 얼굴을 마주하지 않게 */}
-      <div className="rb-prep3__head">
-        <div>
-          <h1 className="rb-prep3__title">
-            이제 <em>실전 면접</em>이에요
+      {/* B. 면접관이 먼저 인사 — 면접실에서 갑자기 낯선 얼굴·목소리를 마주하지 않게 */}
+      <Greeting tier={tier} />
+
+      {/* E. 오늘의 면접 안내 — 안내문 한 장 */}
+      <section className="rb-prep3__notice" aria-labelledby="rb-prep3-notice-title">
+        <header>
+          <h1 id="rb-prep3-notice-title">
+            오늘의 <em>면접 안내</em>
           </h1>
-          <p className="rb-prep3__lead">하루와 나눈 이야기로 만든 질문이라 낯설지 않을 거예요.</p>
-        </div>
-        <figure className="rb-prep3__who">
-          <div className="rb-prep3__photo" role="img" aria-label="오늘 함께할 면접관" />
-          <figcaption>오늘 함께할 면접관을 소개합니다</figcaption>
-        </figure>
-      </div>
+          <span className="rb-prep3__tag">실전 면접</span>
+        </header>
+        <dl>
+          <div>
+            <dt>질문</dt>
+            <dd>
+              기본 질문 {MAIN_QUESTION_COUNT}개 · {followGuide}
+            </dd>
+          </div>
+          <div>
+            <dt>대답</dt>
+            <dd>듣고 말로 대답해요. 못 들었으면 &ldquo;다시 들려주세요&rdquo;</dd>
+          </div>
+          <div>
+            <dt>마음 편히</dt>
+            <dd>어려운 질문은 넘어가도 되고, 언제든 그만할 수 있어요</dd>
+          </div>
+          <div>
+            <dt>준비</dt>
+            <dd className="rb-prep3__ready">
+              <Status label="마이크" ok={mic} okText="잘 들려요" failText="브라우저에서 마이크를 허용해 주세요" />
+              <Status label="카메라" ok={cam} okText="잘 보여요" failText="카메라 없이도 계속할 수 있어요" />
+            </dd>
+          </div>
+        </dl>
+      </section>
 
-      {/* 안내 세 가지 */}
-      <ul className="rb-prep3__guide">
-        {[
-          { icon: <EarIcon />, title: '듣고 말로 대답해요', desc: '질문은 글로 나오지 않아요. 못 들었으면 "다시 들려주세요"를 눌러요.' },
-          { icon: <QuestionIcon />, title: `기본 질문 ${MAIN_QUESTION_COUNT}개예요`, desc: followGuide},
-          { icon: <SkipIcon />, title: '넘어가도 괜찮아요', desc: '어려운 질문은 넘어가도 되고, 언제든 그만할 수 있어요.' },
-        ].map((g) => (
-          <li key={g.title} className="rb-prep3__card">
-            <span className="rb-prep3__ic">{g.icon}</span>
-            <b>{g.title}</b>
-            <p>{g.desc}</p>
-          </li>
-        ))}
-      </ul>
-
-      <div className="rb-prep3__checks">
-        <Check icon={<MicIcon />} title="마이크" ok={mic} okText="잘 들려요">
-          {mic === false ? '브라우저에서 마이크를 허용해 주세요' : '오늘 연습 잘 부탁드려요'}
-        </Check>
-        <Check icon={<CamIcon />} title="카메라" ok={cam} okText="잘 보여요">
-          {cam === false ? '카메라 없이도 계속할 수 있어요' : '얼굴이 화면 가운데 와요'}
-        </Check>
-      </div>
       {/* 안내(동의 절차 아님): 면접 중 질문·답변 텍스트가 저장되고 AI로 전송된다는 점을 알린다(CLAUDE.md 컨벤션) */}
-      <Text fz={12} c="var(--rb-ink-faint)" style={{ lineHeight: 1.7 }}>
+      <Text fz={12} c="var(--rb-ink-faint)" style={{ lineHeight: 1.7 }} mt={18}>
         면접 중 질문과 내 답변 텍스트는 내 계정에 저장되고, 꼬리질문과 코치 노트를 만들기 위해 AI(Anthropic)에 전송돼요.
         영상과 음성은 저장하지 않아요. 저장한 기록은 결과 화면에서 언제든 삭제할 수 있어요.
       </Text>
@@ -122,64 +128,64 @@ export function Stage3PrepView({
   );
 }
 
-function Check({ icon, title, ok, okText, children }: { icon: ReactNode; title: string; ok: boolean | null; okText: string; children: ReactNode }) {
+/** 면접관 사진 + 말풍선 인사. 난이도가 정해지면 그 면접관 목소리로 한 번 읽어 주고, '다시 듣기'로 또 들을 수 있다.
+ * 브라우저가 자동 재생을 막으면(사용자가 아직 아무것도 누르지 않은 경우) 조용히 넘어가고 버튼으로 듣는다. */
+function Greeting({ tier }: { tier: DifficultyTier | null }) {
+  const name = auth.name;
+  const line = `안녕하세요${name ? `, ${name} 님` : ''}. 오늘 함께 이야기 나눌 면접관이에요. 편하게 대답해 주세요.`;
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+
+  const play = useCallback(async () => {
+    if (!tier) return;
+    try {
+      if (!urlRef.current) urlRef.current = await getSpeechAudioUrl(line, tier);
+      if (!urlRef.current) return;
+      audioRef.current?.pause();
+      const audio = new Audio(urlRef.current);
+      audioRef.current = audio;
+      audio.onended = () => setSpeaking(false);
+      setSpeaking(true);
+      await audio.play();
+    } catch {
+      setSpeaking(false);
+    }
+  }, [line, tier]);
+
+  // 난이도가 정해지면 한 번 자동으로 인사
+  useEffect(() => {
+    void play();
+  }, [play]);
+
+  useEffect(
+    () => () => {
+      audioRef.current?.pause();
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    },
+    [],
+  );
+
   return (
-    <div className="rb-prep3__check">
-      <span className="rb-prep3__ic">{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <b>{title}</b>
-        <p>{children}</p>
+    <div className="rb-prep3__greet">
+      <div className="rb-prep3__photo" role="img" aria-label="오늘 함께할 면접관" data-speaking={speaking || undefined} />
+      <div className="rb-prep3__bubble">
+        <small>오늘의 면접관</small>
+        <p>{line}</p>
+        <button type="button" className="rb-prep3__replay" onClick={() => void play()} disabled={!tier}>
+          🔊 {speaking ? '말하는 중…' : '다시 듣기'}
+        </button>
       </div>
-      <span className="rb-prep3__ok" data-wait={!ok || undefined}>
-        <i />
-        {ok ? okText : ok === false ? '허용이 필요해요' : '확인하고 있어요'}
-      </span>
     </div>
   );
 }
 
-function EarIcon() {
+/** 준비 줄 — 마이크·카메라 하나씩: 점 + 이름 + 상태 */
+function Status({ label, ok, okText, failText }: { label: string; ok: boolean | null; okText: string; failText: string }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
-      <rect x="3" y="14" width="4" height="6" rx="1.5" />
-      <rect x="17" y="14" width="4" height="6" rx="1.5" />
-    </svg>
-  );
-}
-
-function QuestionIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z" />
-      <path d="M9 11h6M9 14h4" />
-    </svg>
-  );
-}
-
-function SkipIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M5 5l8 7-8 7z" />
-      <path d="M17 5v14" />
-    </svg>
-  );
-}
-
-function MicIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-    </svg>
-  );
-}
-
-function CamIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="6" width="13" height="12" rx="2" />
-      <path d="m16 10 5-3v10l-5-3" />
-    </svg>
+    <span className="rb-prep3__status" data-state={ok ? 'ok' : ok === false ? 'fail' : 'wait'}>
+      <i aria-hidden />
+      <b>{label}</b> {ok ? okText : ok === false ? failText : '확인하고 있어요'}
+    </span>
   );
 }
