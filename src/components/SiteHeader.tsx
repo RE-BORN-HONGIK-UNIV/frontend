@@ -5,10 +5,12 @@ import { SiteNavLinks, type SiteNavActive } from './SiteNavLinks';
 import { Anchor, Group, Text } from '@/components/ui';
 import { LogoutButton } from './LogoutButton';
 import { auth } from '@/lib/auth';
+import { useAuthVersion } from '@/lib/useAuthVersion';
 
 /** 오른쪽 끝 계정 — 모든 화면 같게(예전엔 메인은 '로그인', 다른 화면은 '이름님 · 로그아웃'이라 메뉴가 밀려 보였다).
  * 로그인했으면(게스트 포함) 이름 + 로그아웃(게스트는 기록이 사라진다고 먼저 알림), 아니면 로그인 */
 function Account() {
+  useAuthVersion(); // 로그인 상태가 바뀌면 바로 다시 그림(로그아웃 뒤 새로고침 없이 '로그인'으로)
   if (!auth.isAuthed())
     return (
       <Anchor component={Link} to="/login" c="var(--rb-ink-soft)" fz={14} underline="never">
