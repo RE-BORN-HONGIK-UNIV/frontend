@@ -18,6 +18,7 @@ import {
   calibrateBodyPose,
   calibrateBaselineTension,
   calibStepAt,
+  CALIB_FACE_SEC,
   DEFAULT_BASELINE_GAZE,
   type BodyPose,
   DEFAULT_BASELINE_IRIS,
@@ -701,7 +702,7 @@ export function useLiveFaceSession({
     calibrationStep:
       phase !== 'calibrating' || calibStartTRef.current === null
         ? null
-        : calibStepAt(Math.max(0, elapsedSec - calibStartTRef.current), bodyCalibration, CALIBRATION_SEC) === 'face'
+        : !bodyCalibration || elapsedSec - calibStartTRef.current <= CALIB_FACE_SEC
           ? ('face' as const)
           : ('body' as const),
     startCalibration,

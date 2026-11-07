@@ -106,11 +106,15 @@ export function calibrateBaselineTension(tensionValues: (number | null)[]): numb
 export const CALIB_FACE_SEC = 3;
 export const CALIB_BODY_SEC = 2;
 export const BODY_SETTLE_SEC = 0.5;
+/** 시작 직후(눈을 점으로 옮기는 중)도 값에서 뺀다 — 2026-11 안내 화면·표시 점 추가와 함께 */
+export const FACE_SETTLE_SEC = 0.5;
 
-/** 캘리브레이션을 시작한 지 ct초일 때의 단계 — face: 하루의 눈 보기, body: 어깨 보기(옮기는 중 settle), null: 끝남.
+/** 캘리브레이션을 시작한 지 ct초일 때의 단계 — face: 하루의 눈 보기, body: 어깨 보기, settle: 눈을 옮기는 중(처음 0.5초와
+ * 어깨로 옮기는 0.5초, 값에서 뺌), null: 끝남.
  * twoStep=false면 예전처럼 total초 내내 face */
 export function calibStepAt(ct: number, twoStep: boolean, total = CALIB_FACE_SEC + CALIB_BODY_SEC): 'face' | 'settle' | 'body' | null {
   if (ct < 0 || ct > total) return null;
+  if (twoStep && ct < FACE_SETTLE_SEC) return 'settle';
   if (!twoStep || ct <= CALIB_FACE_SEC) return 'face';
   return ct <= CALIB_FACE_SEC + BODY_SETTLE_SEC ? 'settle' : 'body';
 }

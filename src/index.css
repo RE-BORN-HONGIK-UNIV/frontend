@@ -1093,6 +1093,31 @@ a {
   background: rgba(21, 24, 28, 0.72); color: #fff; border-radius: 14px; padding: 14px 18px; overflow: hidden;
 }
 .rb-call__calib:empty { display: none; }
+/* 캘리브레이션 전 안내(응답 직후) — 읽을 시간을 따로 준다 */
+.rb-call__guide {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; width: min(420px, 88%);
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+  background: rgba(21, 24, 28, 0.82); color: #fff; border-radius: 16px; padding: 20px 22px;
+}
+.rb-call__guide b { font-size: 18px; text-align: center; }
+.rb-call__guide { word-break: keep-all; }
+.rb-call__guide ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; }
+.rb-call__guide li { padding-left: 18px; position: relative; }
+.rb-call__guide li i { position: absolute; left: 0; top: 0.5em; width: 10px; height: 10px; border-radius: 50%; background: #34d27b; }
+.rb-call__guide em { font-style: normal; color: #7ee2a8; font-weight: 700; }
+.rb-call__guide > span { font-size: 13px; opacity: 0.8; text-align: center; }
+.rb-call__guide button {
+  margin-top: 4px; align-self: center; border: 0; border-radius: 999px; padding: 10px 26px;
+  background: #34d27b; color: #10301e; font-weight: 700; font-size: 15px; cursor: pointer;
+}
+/* 캘리브레이션 중 볼 곳 — 하루의 눈(38%)에서 어깨 쪽(65%)으로 부드럽게 내려간다 */
+.rb-calib-dot {
+  position: absolute; left: 50%; z-index: 3; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+  background: #34d27b; box-shadow: 0 0 0 4px rgba(52, 210, 123, 0.35); transition: top 0.45s ease;
+  animation: rb-calib-pulse 1s ease-in-out infinite;
+}
+@keyframes rb-calib-pulse { 50% { box-shadow: 0 0 0 9px rgba(52, 210, 123, 0.15); } }
+@media (prefers-reduced-motion: reduce) { .rb-calib-dot { animation: none; transition: none; } }
 .rb-call__calib b { font-size: 17px; }
 .rb-call__calib span { font-size: 13px; opacity: 0.85; }
 .rb-call__calib i { position: absolute; left: 0; bottom: 0; height: 3px; background: #34d27b; transition: width 0.2s linear; }
