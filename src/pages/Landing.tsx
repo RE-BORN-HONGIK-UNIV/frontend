@@ -217,7 +217,7 @@ function Hero() {
         </Box>
         <Group gap={10} mt={2}>
           <Link to="/voice" className="rb-start-cta">
-  <span className="rb-start-cta__box">무료로 시작하기</span>
+  <span className="rb-start-cta__box">가입 없이 바로 시작하기</span>
 </Link>
         </Group>
         </Stack>
