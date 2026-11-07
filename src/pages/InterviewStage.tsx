@@ -78,11 +78,26 @@ export default function InterviewStage() {
   }
 
   return (
-    <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
+    <Box
+      style={{
+        minHeight: '100dvh',
+        background: 'var(--rb-bg)',
+        paddingBottom: step === 'prep' ? 0 : 60,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* 면접이 끝나면(result) 최종 통합 리포트를 보여 주므로 4단계 "결과"로 표시 */}
       <StageHeader current={step === 'result' ? 4 : 3} />
 
-      <Box style={{ maxWidth: step === 'result' ? 1072 : 960, margin: '0 auto', padding: '20px 16px 0' }}>
+      {/* 시작 화면(prep)은 머리줄 아래 남은 높이의 가운데에 — 위·아래 여백을 같게(예전엔 위 20px, 아래가 크게 비었음) */}
+      <Box
+        style={
+          step === 'prep'
+            ? { flex: 1, width: '100%', maxWidth: 960, margin: '0 auto', padding: '32px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }
+            : { width: '100%', maxWidth: step === 'result' ? 1072 : 960, margin: '0 auto', padding: '20px 16px 0' }
+        }
+      >
         {step === 'about' && (
           <HaruProfileView
             onNext={(lines) => {
@@ -97,6 +112,7 @@ export default function InterviewStage() {
         {/* 3단계를 마치면 1·2·3단계를 한 장에 모은 최종 리포트(경량 웹 흐름). 3단계 부분은 기존 결과 화면 그대로 */}
         {step === 'result' && result && (
           <FinalReport
+            writingIntro
             answeredCount={result.turns.filter((t) => t.answer.trim()).length}
             interview={
               <ResultView

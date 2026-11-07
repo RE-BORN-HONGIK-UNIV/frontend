@@ -1,10 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { Box, Group, IconPanelLeft, Text, Title } from '@/components/ui';
-import { RebornWordmark } from '@/components/RebornWordmark';
-import { SiteNavLinks } from '@/components/SiteNavLinks';
-import { auth } from '@/lib/auth';
-import { LogoutButton } from '@/components/LogoutButton';
+import { SiteHeader } from '@/components/SiteHeader';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { CommunitySidebar } from './CommunitySidebar';
 
@@ -60,9 +56,12 @@ export function CommunityShell({
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <Box style={{ background: 'var(--rb-surface)', borderBottom: '1px solid var(--rb-line)' }}>
-        <Group justify="space-between" style={{ padding: '20px 40px' }}>
-          <Group gap={16}>
-            {!isMobile && (
+        <SiteHeader
+          bordered={false}
+          active="community"
+          // 사이드바 버튼은 로고 뒤에 — 예전엔 로고 앞에 있어 이 화면만 로고가 46px 오른쪽에 놓였다
+          afterLogo={
+            !isMobile && (
               <button
                 type="button"
                 onClick={toggleSidebar}
@@ -72,23 +71,9 @@ export function CommunityShell({
               >
                 <IconPanelLeft />
               </button>
-            )}
-            <Link to="/">
-              <RebornWordmark size={36} animate={false} />
-            </Link>
-          </Group>
-          <Group gap={32}>
-          <SiteNavLinks active="community" />
-          <Group gap={14}>
-            <Text fz={14} c="var(--rb-ink-soft)">
-              {auth.name || '회원'}님
-            </Text>
-            {/* 로그아웃 → 가운데 확인 창(게스트는 기록이 저장되지 않는다고 알림) → 이 기기 기록 지우고 메인으로.
-                다음 "무료로 시작하기"는 새 게스트·새 닉네임부터. 로그인은 메인 화면 상단에서 */}
-            <LogoutButton />
-          </Group>
-        </Group>
-      </Group>
+            )
+          }
+        />
       </Box>
 
       <Box style={{ padding: '28px 28px 0' }}>

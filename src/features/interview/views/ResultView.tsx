@@ -355,11 +355,13 @@ export function ResultView({
             return (
               <div key={card.kind} className="rb-step-card" style={{ animationDelay: `${index * CARD_STAGGER_MS}ms` }}>
                 {actionable ? (
-                  <button type="button" onClick={() => handleCard(card)} style={{ ...style, cursor: 'pointer' }}>
+                  <button type="button" className="rb-step-card__box" onClick={() => handleCard(card)} style={{ ...style, cursor: 'pointer' }}>
                     {content}
                   </button>
                 ) : (
-                  <Box style={style}>{content}</Box>
+                  <Box className="rb-step-card__box" style={style}>
+                    {content}
+                  </Box>
                 )}
               </div>
             );

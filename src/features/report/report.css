@@ -154,3 +154,22 @@
   .rb-report .rows li { grid-template-columns: 1fr auto; }
   .rb-report .rows li > div { grid-column: 1 / -1; grid-row: 3; }
 }
+
+/* 면접 직후 '리포트를 쓰고 있어요' (FinalReport WritingIntro) — 실제 기다림이 아니라 잠깐의 사이 */
+.rb-report-writing { max-width: 440px; margin: 12vh auto 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.rb-report-writing .pen { font-size: 40px; animation: rbPenWrite 0.9s ease-in-out infinite alternate; }
+.rb-report-writing h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--rb-ink); }
+.rb-report-writing h1 em { font-style: normal; color: var(--rb-primary-strong); }
+.rb-report-writing ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.rb-report-writing li { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--rb-ink-faint); transition: color 0.3s; }
+.rb-report-writing li[data-state='now'], .rb-report-writing li[data-state='done'] { color: var(--rb-ink); }
+.rb-report-writing li i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; border: 2px solid var(--rb-line); color: #fff; flex: none; }
+.rb-report-writing li[data-state='done'] i { background: var(--rb-primary); border-color: var(--rb-primary); }
+.rb-report-writing li[data-state='now'] i { border-color: var(--rb-primary); border-top-color: transparent; animation: rbSpin 0.8s linear infinite; }
+@keyframes rbPenWrite { from { transform: translateX(-6px) rotate(-6deg); } to { transform: translateX(6px) rotate(4deg); } }
+@keyframes rbSpin { to { transform: rotate(360deg); } }
+/* 쓰고 나서 리포트가 부드럽게 나타남 */
+.rb-report--reveal { animation: rbPageIn 420ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .rb-report-writing .pen, .rb-report-writing li[data-state='now'] i, .rb-report--reveal { animation: none; }
+}

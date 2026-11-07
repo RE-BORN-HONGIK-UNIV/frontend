@@ -19,6 +19,9 @@ const READ_SCRIPT_1 = '안녕하세요, 편하게 목소리를 들려주세요.'
 const READ_SCRIPT_2 = '오늘 하루는 어땠나요, 저는 그럭저럭 괜찮았어요. 이제 준비를 시작해볼게요.';
 
 // error: 마이크를 못 켬(권한·장치), failed: 녹음은 됐는데 서버가 정리하지 못함(무료 서버가 느리거나 바쁨)
+/** 목소리 확인을 기다리는 최대 시간 — 서버를 처음 깨우면 모델을 불러오느라 1분쯤 걸려서 넉넉히 2분 */
+const CALIBRATE_TIMEOUT_MS = 120_000;
+
 type Phase = 'idle' | 'silence' | 'read1' | 'read2' | 'uploading' | 'done' | 'error' | 'failed';
 
 interface CalibrationStepProps {
@@ -159,14 +162,21 @@ export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
         setPhase('uploading');
         cleanupStream();
 
+        // 서버가 끝내 답하지 않으면(배포 중·다른 분석이 Whisper를 오래 쓰는 중 등) '확인하고 있어요'에서 영영 멈춰
+        // 있었다 — 2분이 지나면 실패로 보고 "확인 없이 시작할게요"를 보여 준다. 그 뒤에 답이 오면 그 결과를 쓴다.
+        const giveUp = setTimeout(() => setPhase((p) => (p === 'uploading' ? 'failed' : p)), CALIBRATE_TIMEOUT_MS);
         calibrate.mutate(file, {
           onSuccess: (r) => {
+            clearTimeout(giveUp);
             setResult(r);
             setPhase('done');
             onComplete(r);
           },
           // 마이크는 잘 됐는데 서버 쪽 실패 — 예전엔 'error'로 같이 처리해서 "마이크를 쓸 수 없어요"가 떠 헷갈렸다
-          onError: () => setPhase('failed'),
+          onError: () => {
+            clearTimeout(giveUp);
+            setPhase('failed');
+          },
         });
       };
 

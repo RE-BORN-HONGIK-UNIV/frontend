@@ -574,6 +574,10 @@ a {
     transform: translateY(0) scaleY(1);
   }
 }
+/* 3단계 결과 '다음 한 걸음' 카드 — 마우스를 올리면 살짝 진해진다 */
+.rb-step-card__box { transition: background-color 0.15s ease, border-color 0.15s ease; }
+.rb-step-card__box:hover { background-color: var(--rb-surface-tint) !important; border-color: var(--rb-line-strong) !important; }
+.rb-step-card__box:hover[style*='--rb-primary'] { border-color: var(--rb-primary) !important; }
 .rb-step-card {
   transform-origin: top center;
   animation: rbStepUnfold 480ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
@@ -824,7 +828,6 @@ a {
 }
 .rb-haru-talk__haru > [role='img'] { max-width: 190px; }
 .rb-haru-talk__who { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.rb-haru-talk__hint { margin-top: 14px; font-size: 14px; line-height: 1.6; color: var(--rb-ink-soft); max-width: 9em; }
 .rb-haru-talk__chat { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .rb-haru-talk__log {
   flex: 1;
@@ -906,7 +909,6 @@ a {
   .rb-haru-talk__haru > [role='img'] { max-width: 64px; flex: 0 0 64px; }
   .rb-haru-talk__who { align-items: flex-start; }
   .rb-haru-talk__who strong { font-size: 17px !important; }
-  .rb-haru-talk__hint { margin-top: 2px; max-width: none; font-size: 12px; }
   .rb-haru-talk__chat { border-radius: 18px; }
   .rb-haru-talk__log { padding: 18px 16px; }
   .rb-haru-talk__bar { padding: 14px 16px; gap: 12px; }
@@ -1225,49 +1227,57 @@ a {
 }
 /* 3단계 시작 화면(Stage3PrepView) — 경량 웹 Prep3 */
 .rb-prep3 {
-  max-width: 820px; margin: 16px auto 0; padding: clamp(24px, 5vw, 44px);
+  width: 100%; box-sizing: border-box; max-width: 820px; margin: 0 auto; padding: clamp(24px, 5vw, 44px);
   background: var(--rb-surface); border: 1px solid var(--rb-line); border-radius: 24px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
 }
-.rb-prep3__title {
-  margin: 0; font-family: var(--rb-font-display); font-size: clamp(30px, 5vw, 44px); font-weight: 800;
-  letter-spacing: -0.03em; color: var(--rb-ink);
-}
-.rb-prep3__title em { font-style: normal; color: var(--rb-primary); }
-.rb-prep3__lead { margin: 14px 0 0; font-size: 17px; color: var(--rb-ink-soft); line-height: 1.6; }
-/* 위: 제목·설명 + 면접관 사진 미리 보기 */
-.rb-prep3__head { display: grid; grid-template-columns: 1fr 260px; gap: 28px; align-items: center; }
-.rb-prep3__who { margin: 0; display: grid; gap: 8px; justify-items: center; }
+/* B. 면접관 인사 — 사진 + 말풍선 */
+.rb-prep3__greet { display: flex; align-items: center; gap: 20px; }
 .rb-prep3__photo {
-  width: 100%; aspect-ratio: 16 / 10; border-radius: 16px;
-  background: #d9dfe5 url('/interviewer/interviewer.jpg') center 20% / cover no-repeat;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  flex: none; width: 132px; height: 132px; border-radius: 50%;
+  background: #d9dfe5 url('/interviewer/interviewer.jpg') center 22% / cover no-repeat;
+  box-shadow: 0 0 0 4px var(--rb-surface), 0 0 0 6px var(--rb-primary-tint), 0 10px 26px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.3s ease;
 }
-.rb-prep3__who figcaption { font-size: 13px; color: var(--rb-ink-soft); }
-/* 안내 세 가지 — 1단계 시작 화면 체크리스트(GuideChecklist)와 같은 모양의 가로 카드 3개, 누르는 기능 없음 */
-.rb-prep3__guide { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.rb-prep3__card {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
-  background: var(--rb-surface); border: 1px solid var(--rb-line); border-radius: 12px; padding: 14px;
+.rb-prep3__photo[data-speaking] { box-shadow: 0 0 0 4px var(--rb-surface), 0 0 0 7px var(--rb-primary), 0 10px 26px rgba(0, 0, 0, 0.12); }
+.rb-prep3__bubble {
+  position: relative; flex: 1; min-width: 0; background: var(--rb-surface-tint); border: 1px solid var(--rb-line);
+  border-radius: 18px; padding: 16px 20px;
 }
-.rb-prep3__card .rb-prep3__ic { width: 36px; height: 36px; border-radius: 10px; margin-bottom: 2px; }
-.rb-prep3__card b { font-size: 14px; font-weight: 700; color: var(--rb-primary-strong); }
-.rb-prep3__card p { margin: 0; font-size: 12px; color: var(--rb-ink-soft); line-height: 1.5; }
-.rb-prep3__checks { display: grid; gap: 12px; margin: 28px 0 20px; }
-.rb-prep3__check {
-  display: flex; align-items: center; gap: 16px; padding: 18px 22px;
-  border: 1px solid var(--rb-line); border-radius: 16px; background: var(--rb-surface);
+.rb-prep3__bubble::before {
+  content: ''; position: absolute; left: -9px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%) rotate(45deg);
+  background: var(--rb-surface-tint); border-left: 1px solid var(--rb-line); border-bottom: 1px solid var(--rb-line);
 }
-.rb-prep3__check b { display: block; font-size: 17px; color: var(--rb-ink); }
-.rb-prep3__check p { margin: 4px 0 0; font-size: 14px; color: var(--rb-ink-soft); }
-.rb-prep3__ic {
-  flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
-  background: var(--rb-primary-tint); color: var(--rb-primary);
+.rb-prep3__bubble small { font-size: 12px; font-weight: 700; color: var(--rb-primary-strong); }
+.rb-prep3__bubble p { margin: 4px 0 8px; font-size: 17px; line-height: 1.6; color: var(--rb-ink); word-break: keep-all; }
+.rb-prep3__replay {
+  border: 1px solid var(--rb-line-strong); background: var(--rb-surface); color: var(--rb-ink-soft); border-radius: 999px;
+  padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; transition: background-color 0.15s ease;
 }
-.rb-prep3__ok { display: flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--rb-primary); }
-.rb-prep3__ok i { width: 9px; height: 9px; border-radius: 50%; background: var(--rb-primary); }
-.rb-prep3__ok[data-wait] { color: var(--rb-ink-faint); font-weight: 500; }
-.rb-prep3__ok[data-wait] i { background: #c4c9cf; }
+.rb-prep3__replay:hover:not(:disabled) { background: var(--rb-surface-tint); }
+/* E. 오늘의 면접 안내 — 안내문 한 장 */
+.rb-prep3__notice { margin-top: 28px; border: 1px solid var(--rb-line-strong); border-radius: 18px; overflow: hidden; }
+.rb-prep3__notice header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px;
+  background: var(--rb-surface-tint); border-bottom: 1px dashed var(--rb-line-strong);
+}
+.rb-prep3__notice h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--rb-ink); }
+.rb-prep3__notice h1 em { font-style: normal; color: var(--rb-primary); }
+.rb-prep3__tag {
+  font-size: 12px; font-weight: 700; color: var(--rb-primary-strong); border: 1.5px solid var(--rb-primary);
+  border-radius: 6px; padding: 3px 8px; letter-spacing: 0.04em;
+}
+.rb-prep3__notice dl { margin: 0; padding: 6px 24px; }
+.rb-prep3__notice dl > div { display: grid; grid-template-columns: 88px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rb-line); }
+.rb-prep3__notice dl > div:last-child { border-bottom: none; }
+.rb-prep3__notice dt { font-size: 14px; font-weight: 700; color: var(--rb-ink-soft); }
+.rb-prep3__notice dd { margin: 0; font-size: 15px; line-height: 1.6; color: var(--rb-ink); word-break: keep-all; }
+.rb-prep3__ready { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.rb-prep3__status { display: inline-flex; align-items: center; gap: 7px; color: var(--rb-ink-soft); }
+.rb-prep3__status b { color: var(--rb-ink); font-weight: 700; }
+.rb-prep3__status i { width: 9px; height: 9px; border-radius: 50%; background: var(--rb-line-strong); }
+.rb-prep3__status[data-state='ok'] i { background: var(--rb-primary); box-shadow: 0 0 0 3px var(--rb-primary-tint); }
+.rb-prep3__status[data-state='fail'] i { background: #e5a23b; }
 .rb-prep3__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 .rb-prep3__link { border: none; background: none; padding: 4px 0; cursor: pointer; font: inherit; font-size: 14px; color: var(--rb-ink-faint); }
 .rb-prep3__start {
@@ -1276,13 +1286,10 @@ a {
 }
 .rb-prep3__start:hover:not(:disabled) { background: #000; }
 .rb-prep3__start:disabled { background: var(--rb-line); color: var(--rb-ink-faint); cursor: not-allowed; }
-@media (max-width: 760px) {
-  .rb-prep3__head { grid-template-columns: 1fr; }
-  .rb-prep3__who { max-width: 320px; }
-  .rb-prep3__guide { grid-template-columns: 1fr; }
-}
 @media (max-width: 560px) {
-  .rb-prep3__check { flex-wrap: wrap; }
+  .rb-prep3__greet { flex-direction: column; text-align: center; }
+  .rb-prep3__bubble::before { left: 50%; top: -9px; transform: translateX(-50%) rotate(135deg); }
+  .rb-prep3__notice dl > div { grid-template-columns: 1fr; gap: 4px; }
   .rb-prep3__start { width: 100%; }
 }
 /* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
@@ -1414,3 +1421,37 @@ a {
   display: block; margin-top: 6px; border: 1px solid rgba(255, 255, 255, 0.5); background: none; color: #fff;
   border-radius: 6px; padding: 3px 8px; font: inherit; cursor: pointer;
 }
+
+/* 마이페이지 '연습 발자국' (Dashboard.tsx, streak.ts) */
+.rb-plant {
+  flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 30px;
+  background: var(--rb-primary-tint); animation: rbPlantSway 3.2s ease-in-out infinite alternate; transform-origin: 50% 90%;
+}
+@keyframes rbPlantSway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+.rb-week { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.rb-week li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--rb-ink-faint); }
+.rb-week li i {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 14px;
+  background: var(--rb-bg); border: 1px dashed var(--rb-line-strong);
+}
+.rb-week li[data-visited] i { background: var(--rb-primary-tint); border: 1px solid var(--rb-primary); }
+.rb-week li[data-today] span { color: var(--rb-primary-strong); font-weight: 700; }
+.rb-week li[data-today] i { box-shadow: 0 0 0 2px var(--rb-surface), 0 0 0 4px var(--rb-primary); }
+@media (prefers-reduced-motion: reduce) { .rb-plant { animation: none; } }
+
+/* 맨 위 머리줄(SiteHeader) — 모든 화면 같은 높이·여백·로고 자리 */
+html { scrollbar-gutter: stable; background: var(--rb-bg); } /* 긴 화면↔짧은 화면을 오갈 때 스크롤바가 생기고 사라지며 가로가 밀리지 않게 */
+.rb-siteheader {
+  position: relative; z-index: 5; box-sizing: border-box; height: 80px; padding: 0 40px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--rb-surface);
+}
+.rb-siteheader[data-bordered] { border-bottom: 1px solid var(--rb-line); }
+.rb-siteheader__left, .rb-siteheader__right { display: flex; align-items: center; }
+.rb-siteheader__left { gap: 14px; }
+.rb-siteheader__left > a { display: flex; }
+.rb-siteheader__right { gap: 32px; }
+@media (max-width: 760px) { .rb-siteheader { padding: 0 16px; height: 64px; } }
+
+/* 공용 버튼(ui/Button) hover — 진한 초록으로 바뀌지 않고, 커서가 올라갔다는 걸 알아챌 정도로만(라이트는 4% 어둡게, 다크는 12% 밝게) */
+.rb-btn:hover:not(:disabled) { filter: brightness(0.96); }
+:root[data-theme='dark'] .rb-btn:hover:not(:disabled) { filter: brightness(1.12); }

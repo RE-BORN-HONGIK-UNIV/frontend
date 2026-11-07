@@ -107,6 +107,57 @@ function useStageReports(given?: StageDetails) {
   return { voice, face, loading, marks: local.stage3Marks ?? null, marksStatus: local.stage3VoiceStatus ?? null, real };
 }
 
+/** "2026년 11월 7일 (토) 19:54:12" */
+export function reportDateTime(d: Date): string {
+  const day = d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  const week = d.toLocaleDateString('ko-KR', { weekday: 'short' });
+  const time = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  return `${day} (${week}) ${time}`;
+}
+
+const WRITING_STEPS = ['말하기 습관을 살펴보고 있어요', '시선과 표정을 모으고 있어요', '실전 면접을 돌아보고 있어요'];
+const WRITING_STEP_MS = 650;
+
+/**
+ * 면접 직후 리포트가 '띡' 나타나지 않게, 하루가 리포트를 쓰는 것처럼 잠깐(약 2.3초) 보여 준다 — 실제로 기다리는 건
+ * 아니고(값은 이미 있음) 마음의 준비를 하는 짧은 사이. 단계 줄이 하나씩 체크된다. '동작 줄이기' 설정이면 건너뜀.
+ * 반환: 지금 단계(0~3), 끝났으면 null
+ */
+function useWritingIntro(enabled: boolean): number | null {
+  const [step, setStep] = useState<number | null>(() =>
+    enabled && !(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) ? 0 : null,
+  );
+  useEffect(() => {
+    if (step === null) return;
+    const t = setTimeout(() => setStep(step >= WRITING_STEPS.length ? null : step + 1), step >= WRITING_STEPS.length ? 350 : WRITING_STEP_MS);
+    return () => clearTimeout(t);
+  }, [step]);
+  return step;
+}
+
+function WritingIntro({ name, step }: { name: string | null; step: number }) {
+  return (
+    <main className="rb-report">
+      <div className="rb-report-writing" role="status" aria-live="polite">
+        <span className="pen" aria-hidden>
+          ✍️
+        </span>
+        <h1>
+          {name ? `${name} 님의` : '나의'} <em>리포트</em>를 쓰고 있어요
+        </h1>
+        <ul>
+          {WRITING_STEPS.map((label, i) => (
+            <li key={label} data-state={i < step ? 'done' : i === step ? 'now' : 'todo'}>
+              <i aria-hidden>{i < step ? '✓' : ''}</i>
+              {label}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </main>
+  );
+}
+
 /**
  * 최종 통합 리포트 — 3단계 면접을 마친 뒤 1·2·3단계를 한 장에 모은다(경량 웹 Result.tsx에서 가져옴).
  * 1·2단계는 단계마다 따로 결과를 보여 주지 않고 여기서 처음 보여 준다.
@@ -121,6 +172,7 @@ export function FinalReport({
   details,
   date,
   notice,
+  writingIntro = false,
 }: {
   /** 3단계에서 대답한 질문 수 — 3단계 기록이 없으면 null */
   answeredCount: number | null;
@@ -131,14 +183,18 @@ export function FinalReport({
   date?: string;
   /** 제목 위 안내 (예시 화면 표시 등) */
   notice?: ReactNode;
+  /** true면 처음에 'OO 님의 리포트를 쓰고 있어요'를 잠깐 보여 준다(면접 직후). 다시 보기에선 끔 */
+  writingIntro?: boolean;
 }) {
   const { voice, face, loading, marks, marksStatus, real } = useStageReports(details);
   const summary = buildSummary(voice, face);
-  const [today] = useState(() => (date ? new Date(date) : new Date()).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }));
+  const [today] = useState(() => reportDateTime(date ? new Date(date) : new Date()));
   const name = auth.name;
+  const writing = useWritingIntro(writingIntro);
+  if (writing !== null) return <WritingIntro name={name} step={writing} />;
 
   return (
-    <main className="rb-report">
+    <main className="rb-report rb-report--reveal">
       {notice}
       <header>
         <h1>
@@ -147,7 +203,8 @@ export function FinalReport({
         <div className="meta">
           <span className="t">{answeredCount === null ? '3단계 전' : '3단계 완료'}</span>
           <span>{today}</span>
-          {answeredCount !== null && <span>실전 면접 질문 {answeredCount}개에 대답</span>}
+          {/* 받아쓰기가 비어 0개로 나오던 경우('질문 0개에 대답') — 대답 수가 없으면 마쳤다는 것만 */}
+          {answeredCount !== null && <span>{answeredCount > 0 ? `실전 면접 질문 ${answeredCount}개에 대답` : '실전 면접을 끝까지 마쳤어요'}</span>}
         </div>
       </header>
 
