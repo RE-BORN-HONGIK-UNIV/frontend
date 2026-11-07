@@ -119,9 +119,13 @@ export default function Dashboard() {
       subtitle: '페이스 터치',
       desc: s2.done
         ? `표정·시선 분석 완료 · 종합 점수 ${s2.score}점`
-        : '시선 처리와 표정을 분석해 비언어적 소통 능력을 교정합니다.',
+        : !s1.done
+          ? '1단계를 마치면 열려요.'
+          : '시선 처리와 표정을 분석해 비언어적 소통 능력을 교정합니다.',
       path: '/face',
-      status: s2.done ? 'done' : 'available',
+      // 2026-11: 훈련은 메인 "무료로 시작하기" → 1단계부터 순서대로 진행하고, 이 화면은 내 기록을 보는 곳으로 쓴다.
+      // 앞 단계를 마쳐야 다음 단계 카드가 열린다(이미 마친 단계는 다시 할 수 있게 열어 둠)
+      status: s2.done ? 'done' : s1.done ? 'available' : 'locked',
     },
     {
       id: 3,
@@ -129,11 +133,12 @@ export default function Dashboard() {
       subtitle: 'Adaptive Interview',
       desc: s3.done
         ? `모의 면접 완료 · ${getInterviewer((s3.tier ?? 'standard') as DifficultyTier).name} 면접관`
-        : '앞 단계 결과를 바탕으로 맞춤형 난이도의 모의 면접을 진행합니다.',
+        : !(s1.done && s2.done)
+          ? `${s1.done ? '2단계' : '1·2단계'}를 마치면 열려요.`
+          : '앞 단계 결과를 바탕으로 맞춤형 난이도의 모의 면접을 진행합니다.',
       path: '/interview',
-      // 1·2단계 기록이 없으면 InterviewStage가 해당 단계로 안내하므로 카드는 항상 열어둔다
-      // (완료한 뒤에도 다시 면접할 수 있게 'done'이어도 클릭은 열려 있음)
-      status: s3.done ? 'done' : 'available',
+      // 1·2단계를 마쳐야 열린다(완료한 뒤에도 다시 면접할 수 있게 'done'이어도 클릭은 열려 있음)
+      status: s3.done ? 'done' : s1.done && s2.done ? 'available' : 'locked',
     },
   ];
 
@@ -306,7 +311,7 @@ export default function Dashboard() {
                           </Text>
                           {locked && (
                             <Badge size="xs" variant="light" color="gray">
-                              준비 중
+                              잠김
                             </Badge>
                           )}
                           {stage.status === 'done' && (

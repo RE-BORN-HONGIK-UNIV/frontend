@@ -46,13 +46,23 @@ describe('Dashboard 단계 진행 표시', () => {
     vi.mocked(api.listInterviewSessions).mockResolvedValue({ sessions: [] });
   });
 
-  it('서버에 기록이 없으면 완료 배지가 없고 3단계 카드는 열려 있다', async () => {
+  it('서버에 기록이 없으면 완료 배지가 없고 2·3단계 카드는 잠겨 있다', async () => {
     server(null, null);
     renderDashboard();
     await waitFor(() => expect(api.latestGazeBlink).toHaveBeenCalled());
     expect(screen.queryByText('완료 ✓')).toBeNull();
-    expect(screen.queryByText('준비 중')).toBeNull();
-    expect(screen.getByText(/맞춤형 난이도의 모의 면접을 진행합니다/)).toBeTruthy();
+    expect(screen.getAllByText('잠김').length).toBe(2);
+    expect(screen.getByText('1단계를 마치면 열려요.')).toBeTruthy();
+    expect(screen.getByText('1·2단계를 마치면 열려요.')).toBeTruthy();
+  });
+
+  it('1단계만 마치면 2단계는 열리고 3단계는 잠겨 있다', async () => {
+    server(S1, null);
+    renderDashboard();
+    expect(await screen.findByText('음성 분석 완료 · 종합 점수 80점')).toBeTruthy();
+    expect(screen.getAllByText('잠김').length).toBe(1);
+    expect(screen.getByText('2단계를 마치면 열려요.')).toBeTruthy();
+    expect(screen.getByText(/시선 처리와 표정을 분석해/)).toBeTruthy();
   });
 
   it('서버에 2단계 기록이 있으면 2단계 카드가 점수와 함께 완료로 표시된다', async () => {
