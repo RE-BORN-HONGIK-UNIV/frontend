@@ -74,12 +74,14 @@ export function summarizeExpression(
   /** 이 시간(초) 넘게 이어진 긴장만 센다(TENSION_MIN_SEC). 기본 0 = backend와 같음 */
   minTensionSec = 0,
   tensionThreshold = TENSION_THRESHOLD,
+  /** 사람별 미소 기준(표정 맞추기, calibration.ts personalThreshold). 기본 = backend와 같음 */
+  smileThreshold = SMILE_THRESHOLD,
 ): ExpressionSummary {
   const valid = series.filter((s): s is [number, number, number] => s[1] !== null);
   if (valid.length === 0) {
     return { smileRatio: 0.0, tensionRatio: 0.0, frameCount: 0 };
   }
-  const smileHits = valid.filter(([, smile]) => smile >= SMILE_THRESHOLD).length;
+  const smileHits = valid.filter(([, smile]) => smile >= smileThreshold).length;
   const tensionHits = countSustained(valid.map(([t, , tension]) => [t, tension >= tensionThreshold]), minTensionSec);
   const n = valid.length;
   return {
@@ -93,9 +95,14 @@ export type ExpressionState = 'smile' | 'tension' | 'neutral';
 
 /** backend detect_expression_segments 루프 본문의 상태 분류 부분 — 같은
  * 프레임에서 미소·긴장 둘 다 임계값을 넘기면 미소를 우선한다. */
-export function classifyExpressionState(smile: number | null, tension: number, tensionThreshold = TENSION_THRESHOLD): ExpressionState {
+export function classifyExpressionState(
+  smile: number | null,
+  tension: number,
+  tensionThreshold = TENSION_THRESHOLD,
+  smileThreshold = SMILE_THRESHOLD,
+): ExpressionState {
   if (smile === null) return 'neutral';
-  if (smile >= SMILE_THRESHOLD) return 'smile';
+  if (smile >= smileThreshold) return 'smile';
   if (tension >= tensionThreshold) return 'tension';
   return 'neutral';
 }
@@ -132,9 +139,10 @@ export function stepExpression(
   baselineTension = 0,
   minSegmentSec = 0.3,
   tensionThreshold = TENSION_THRESHOLD,
+  smileThreshold = SMILE_THRESHOLD,
 ): Segment | null {
   const frame = computeExpressionForFrame(blendshapes, baselineTension);
-  const exprState = classifyExpressionState(frame ? frame.smile : null, frame ? frame.tension : 0, tensionThreshold);
+  const exprState = classifyExpressionState(frame ? frame.smile : null, frame ? frame.tension : 0, tensionThreshold, smileThreshold);
   return stepSegmentBuffer(state.segmentBuffer, t, exprState, minSegmentSec);
 }
 
@@ -172,6 +180,9 @@ export function combineSmileRatio(answer: ExpressionSummary, listenSmileHits: nu
  * "숫자 없이"(그 사람 캘리브레이션 흔들림의 몇 배 같은 통계 기준)는 3명 녹화로 확인해 보니 쓸 수 없었다 —
  * 무표정 흔들림이 사람마다 0.001~0.011로 크게 다르고, 말할 때 흔들림이 캘리브레이션(말 안 함)보다 3배 커서
  * 2명은 평범하게 말하기만 해도 긴장으로 잡혔다.
+ *
+ * 2단계 하루 통화는 표정 맞추기로 사람마다 [+0.04, +0.08] 안에서 기준을 정한다(calibration.ts personalThreshold).
+ * 아래 +0.08은 표정 맞추기를 안 하거나 못 쟀을 때(3단계 면접 등)의 기본값이자 사람별 기준의 상한.
  *
  * ⚠️ 임시값(2026-11, 발표 전): 평소 대비 +0.08, 이어진 시간 조건 없음(0초).
  * 받은 3명 녹화(대답 중 장면, 질문별)로 후보를 비교해 고름 — backend step2/ACCURACY_NOTES.md "찡그림 임시값":
