@@ -755,7 +755,11 @@ a {
   grid-template-areas: 'logo steps exit';
   align-items: center;
   gap: 12px;
-  padding: 14px 40px;
+  /* 높이·여백·로고 크기를 다른 화면 머리줄(.rb-siteheader: 80px, 좌우 40px, 로고 36)과 같게 — 단계 화면만 낮아(약 66px)
+     메인·마이페이지와 오갈 때 흰 머리줄 높이가 달라 보였다 */
+  box-sizing: border-box;
+  min-height: 80px;
+  padding: 0 40px;
 }
 .rb-stagebar__logo { grid-area: logo; justify-self: start; display: inline-flex; }
 .rb-stagebar__nav { grid-area: steps; }
@@ -786,6 +790,7 @@ a {
   .rb-stagebar {
     grid-template-columns: 1fr auto;
     grid-template-areas: 'logo exit' 'steps steps';
+    min-height: 0;
     padding: 10px 16px 12px;
     gap: 8px;
   }

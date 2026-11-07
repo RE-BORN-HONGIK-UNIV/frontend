@@ -51,7 +51,8 @@ describe('Dashboard 단계 진행 표시', () => {
     renderDashboard();
     await waitFor(() => expect(api.latestGazeBlink).toHaveBeenCalled());
     expect(screen.queryByText('완료 ✓')).toBeNull();
-    expect(screen.getAllByText('잠김').length).toBe(2);
+    // 2·3단계 + 최종 리포트
+    expect(screen.getAllByText('잠김').length).toBe(3);
     expect(screen.getByText('1단계를 마치면 열려요.')).toBeTruthy();
     expect(screen.getByText('1·2단계를 마치면 열려요.')).toBeTruthy();
   });
@@ -60,7 +61,8 @@ describe('Dashboard 단계 진행 표시', () => {
     server(S1, null);
     renderDashboard();
     expect(await screen.findByText('목소리 대화를 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
-    expect(screen.getAllByText('잠김').length).toBe(1);
+    // 3단계 + 최종 리포트
+    expect(screen.getAllByText('잠김').length).toBe(2);
     expect(screen.getByText('2단계를 마치면 열려요.')).toBeTruthy();
     expect(screen.getByText(/하루와 영상 통화하며 시선과 표정을/)).toBeTruthy();
   });
