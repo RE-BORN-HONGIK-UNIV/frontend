@@ -75,6 +75,10 @@ export function useDebugRecorder(enabled: boolean, videoRef: RefObject<HTMLVideo
   const [count, setCount] = useState(0);
   const [recording, setRecording] = useState(false);
   const downloadedRef = useRef(false);
+  const summarySavedRef = useRef(false);
+  // 세 파일(영상·장면 값·요약)이 같은 이름으로 묶이게 시각을 한 번만 정한다
+  const stampRef = useRef<string | null>(null);
+  const stamp = () => (stampRef.current ??= new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'));
 
   const onFrame = useCallback((f: DebugFrame) => {
     if (!enabled) return;
@@ -106,11 +110,10 @@ export function useDebugRecorder(enabled: boolean, videoRef: RefObject<HTMLVideo
       new Promise<void>((resolve) => {
         if (!enabled || downloadedRef.current) return resolve();
         downloadedRef.current = true;
-        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const finish = () => {
           const csv = [HEADER.join(','), ...rowsRef.current].join('\n');
-          save(new Blob([csv], { type: 'text/csv' }), `reborn-stage2-${stamp}.csv`);
-          if (chunksRef.current.length) save(new Blob(chunksRef.current, { type: 'video/webm' }), `reborn-stage2-${stamp}.webm`);
+          save(new Blob([csv], { type: 'text/csv' }), `reborn-stage2-${stamp()}.csv`);
+          if (chunksRef.current.length) save(new Blob(chunksRef.current, { type: 'video/webm' }), `reborn-stage2-${stamp()}.webm`);
           setRecording(false);
           resolve();
         };
@@ -123,5 +126,22 @@ export function useDebugRecorder(enabled: boolean, videoRef: RefObject<HTMLVideo
     [enabled],
   );
 
-  return { onFrame, start, download, count, recording };
+  /**
+   * 2단계 결과 요약(서버 Stage2Result에 저장되는 것과 같은 값) — 3단계 불안도 기준값(backend step3/anxiety.py)을
+   * 사람별로 맞춰 보는 데 쓴다. 결과가 나오면 한 번 내려받는다(얼굴이 없는 숫자만).
+   */
+  const saveSummary = useCallback(
+    (v: { avgFixationSec: number; blinkRatePerMin: number; tensionRatio: number; smileRatio: number }) => {
+      if (!enabled || summarySavedRef.current) return;
+      summarySavedRef.current = true;
+      const csv = [
+        'avg_fixation_sec,blink_rate_per_min,tension_ratio,smile_ratio',
+        [v.avgFixationSec, v.blinkRatePerMin, v.tensionRatio, v.smileRatio].map(cell).join(','),
+      ].join('\n');
+      save(new Blob([csv], { type: 'text/csv' }), `reborn-stage2-${stamp()}-summary.csv`);
+    },
+    [enabled],
+  );
+
+  return { onFrame, start, download, saveSummary, count, recording };
 }

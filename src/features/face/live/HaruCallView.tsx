@@ -91,6 +91,17 @@ export function HaruCallView({
   useEffect(() => {
     if (talkDone && result) onComplete(result);
   }, [talkDone, result, onComplete]);
+  // debug: 결과가 나오면 요약 값(서버에 저장되는 세 값 등)도 내려받는다 — 3단계 불안도 기준값 맞추기용
+  useEffect(() => {
+    if (debug && result)
+      rec.saveSummary({
+        avgFixationSec: result.gaze.avg_fixation_sec,
+        blinkRatePerMin: result.blink.rate_per_min,
+        tensionRatio: result.expression.tension_ratio,
+        smileRatio: result.expression.smile_ratio,
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 결과가 나온 순간 한 번
+  }, [debug, result]);
   // 대화를 다 마친 뒤 빨간 버튼으로 통화를 끝냈는지
   const [hungUp, setHungUp] = useState(false);
   // 끊었고 결과 저장까지 끝났으면 다음 화면으로 — 결과가 나오기 전에 이 화면이 사라지면 2단계 기록이 저장되지 않아서 기다린다
@@ -177,7 +188,7 @@ export function HaruCallView({
         <div className="rb-debugrec" role="status">
           <b>정확도 기록 중</b> · {rec.count}장면{rec.recording ? ' · 영상 녹화 중' : ''}
           <br />
-          통화를 끝내면 영상과 값 표가 이 컴퓨터에 저장돼요(서버로 안 보냄).
+          통화를 끝내면 영상·값 표·요약(-summary.csv)이 이 컴퓨터에 저장돼요(서버로 안 보냄).
           <button type="button" onClick={() => void rec.download()}>
             지금 내려받기
           </button>
