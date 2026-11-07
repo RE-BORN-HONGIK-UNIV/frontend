@@ -43,7 +43,13 @@ export function HaruProfileView({
     let cancelled = false;
     api
       .haruProfile(source)
-      .then((r) => !cancelled && setItems(r.items))
+      .then((r) => {
+        if (cancelled) return;
+        setItems(r.items);
+        // 서버가 AI 없이 대답을 그대로 줬을 때도(키·한도 문제 등, source 'fallback') 고쳐 달라고 알린다 —
+        // 예전엔 요청이 실패했을 때만 알려서, 대답 문장이 통째로 들어간 카드를 정리된 것처럼 보여 줬다
+        setFailed(r.source === 'fallback');
+      })
       .catch(() => {
         if (cancelled) return;
         setFailed(true);

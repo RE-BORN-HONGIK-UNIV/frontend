@@ -42,6 +42,13 @@ describe('하루가 이렇게 이해했어요 카드', () => {
     expect(screen.getByText(/대답을 그대로 가져왔어요/)).toBeTruthy();
   });
 
+  it('서버가 AI 없이 대답을 그대로 줬을 때도 고쳐 달라고 알린다', async () => {
+    vi.mocked(api.haruProfile).mockResolvedValue({ items: [{ label: '부를 이름', value: '지우' }], source: 'fallback' });
+    render(<HaruProfileView onNext={vi.fn()} />);
+    expect(await screen.findByDisplayValue('지우')).toBeTruthy();
+    expect(screen.getByText(/대답을 그대로 가져왔어요/)).toBeTruthy();
+  });
+
   it('지우고 넘어가면 기록이 사라지고 아무 이야기도 넘기지 않는다', async () => {
     vi.mocked(api.haruProfile).mockResolvedValue({ items: [], source: 'fallback' });
     const onNext = vi.fn();
