@@ -344,14 +344,28 @@ export default function Dashboard() {
                 p={20}
                 radius="lg"
                 withBorder
-                onClick={() => navigate('/report')}
-                style={{ background: 'var(--rb-primary-tint)', borderColor: 'var(--rb-line)', cursor: 'pointer' }}
+                // 3단계를 마치기 전엔 2·3단계 카드처럼 잠근다 — 흐리게, 누를 수 없게(자물쇠·화살표 없이)
+                onClick={() => s3.done && navigate('/report')}
+                aria-disabled={!s3.done || undefined}
+                style={{
+                  background: s3.done ? 'var(--rb-primary-tint)' : 'var(--rb-surface-tint)',
+                  borderColor: 'var(--rb-line)',
+                  cursor: s3.done ? 'pointer' : 'default',
+                  opacity: s3.done ? 1 : 0.6,
+                }}
               >
                 <Group gap={16} wrap="nowrap" align="center">
                   <Box style={{ flex: 1, minWidth: 0 }}>
-                    <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }}>
-                      REPORT
-                    </Text>
+                    <Group gap={8} mb={2}>
+                      <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }}>
+                        REPORT
+                      </Text>
+                      {!s3.done && (
+                        <Badge size="xs" variant="light" color="gray">
+                          잠김
+                        </Badge>
+                      )}
+                    </Group>
                     <Text fz={17} fw={700}>
                       최종 리포트 다시 보기
                     </Text>
@@ -361,9 +375,11 @@ export default function Dashboard() {
                         : '3단계까지 마치면 1·2·3단계를 한 장에 모은 리포트가 만들어져요.'}
                     </Text>
                   </Box>
-                  <Text fz={20} fw={700} c="var(--rb-primary)" style={{ flexShrink: 0 }}>
-                    →
-                  </Text>
+                  {s3.done && (
+                    <Text fz={20} fw={700} c="var(--rb-primary)" style={{ flexShrink: 0 }}>
+                      →
+                    </Text>
+                  )}
                 </Group>
               </Paper>
 
