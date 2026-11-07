@@ -135,6 +135,13 @@ export function HaruCallView({
   // 자리를 보게 되므로 기준이 가장 정확하다. 얼굴 위치는 대기실 오른쪽 칸에서 이미 확인해서 내 얼굴은 다시 안 띄운다
   const accept = () => {
     setRinging(false);
+    setGuiding(true);
+  };
+  // 응답한 뒤 바로 재지 않고, 무엇을 볼지 먼저 안내한다 — 안내 글을 읽느라 '하루의 눈 보기' 3초를 놓치지 않게.
+  // "준비됐어요"를 누르면 5초를 재는데, 그동안은 글 대신 초록 점(눈 → 어깨)만 따라 보면 된다
+  const [guiding, setGuiding] = useState(false);
+  const ready = () => {
+    setGuiding(false);
     s.startCalibration();
   };
   // 거절: 대기실로
@@ -239,21 +246,38 @@ export function HaruCallView({
                 <TileTag>하루</TileTag>
               </>
             )}
-            {mode === 'calib' && (
+            {mode === 'calib' && guiding && (
+              <div className="rb-call__guide" role="dialog" aria-label="연결 전 안내">
+                <b>연결 전에 5초만 맞출게요</b>
+                <ol>
+                  <li>
+                    <i aria-hidden /> 초록 점이 <em>하루의 눈</em>에 나오면 그곳을 봐 주세요
+                  </li>
+                  <li>
+                    <i aria-hidden /> 점이 <em>어깨 쪽</em>으로 내려가면 따라 봐 주세요
+                  </li>
+                </ol>
+                <span>그동안은 편하게 무표정으로 있어 주세요</span>
+                <button type="button" onClick={ready}>
+                  준비됐어요
+                </button>
+              </div>
+            )}
+            {mode === 'calib' && s.phase === 'calibrating' && (
+              // 하루 그림(높이 94%·아래 가운데)에서 눈은 그림 위에서 34%, 어깨 사이(가슴 위)는 63% → 칸 기준 6 + 94 × 비율
+              <span
+                className="rb-calib-dot"
+                data-step={s.calibrationStep ?? 'face'}
+                style={{ top: s.calibrationStep === 'body' ? '65%' : '38%' }}
+                aria-hidden
+              />
+            )}
+            {mode === 'calib' && !guiding && (
               <div className="rb-call__calib" aria-live="polite">
                 {s.phase === 'calibrating' && (
                   <>
-                    {s.calibrationStep === 'body' ? (
-                      <>
-                        <b>이번엔 하루의 어깨를 봐 주세요</b>
-                        <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
-                      </>
-                    ) : (
-                      <>
-                        <b>연결 중… 하루의 눈을 봐 주세요</b>
-                        <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
-                      </>
-                    )}
+                    <b>{s.calibrationStep === 'body' ? '이번엔 어깨 쪽 점을 봐 주세요' : '하루의 눈(초록 점)을 봐 주세요'}</b>
+                    <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
                     <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
                   </>
                 )}

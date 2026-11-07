@@ -82,8 +82,10 @@ describe('calibrateBaselineIris (2026-11 — 하루를 볼 때의 눈동자 위�
 });
 
 describe('2단계 캘리브레이션(하루의 눈 3초 → 어깨 2초)', () => {
-  it('처음 3초는 얼굴, 옮기는 0.5초는 빼고, 나머지는 몸, 5초가 지나면 끝', () => {
-    expect(calibStepAt(0, true)).toBe('face');
+  it('처음 0.5초는 빼고 3초까지 얼굴, 옮기는 0.5초는 빼고, 나머지는 몸, 5초가 지나면 끝', () => {
+    // 처음 0.5초는 눈을 점으로 옮기는 중이라 뺀다
+    expect(calibStepAt(0, true)).toBe('settle');
+    expect(calibStepAt(0.6, true)).toBe('face');
     expect(calibStepAt(3, true)).toBe('face');
     expect(calibStepAt(3.2, true)).toBe('settle');
     expect(calibStepAt(3.6, true)).toBe('body');
