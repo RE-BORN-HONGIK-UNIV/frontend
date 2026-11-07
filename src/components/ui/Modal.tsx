@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { RADIUS } from './styleProps';
 
@@ -21,7 +22,9 @@ export function Modal({ opened, onClose, title, radius = 'md', children }: Modal
 
   if (!opened) return null;
 
-  return (
+  // body 바로 아래에 띄운다 — 머리줄(.rb-siteheader, position: relative + z-index 5) 안에서 그리면 그 층에 갇혀,
+  // 화면에 따라 z-index가 더 큰 요소(사이드바·떠 있는 카드 등) 아래로 깔려 안 보일 수 있었다(로그아웃 확인 창)
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -55,6 +58,7 @@ export function Modal({ opened, onClose, title, radius = 'md', children }: Modal
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
