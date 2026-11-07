@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
-import { daysSince, localProgress } from '@/features/progress/localProgress';
+import { localProgress } from '@/features/progress/localProgress';
+import { buildHistory, formatHistoryDate, nextStep } from '@/features/progress/history';
 import { useStageProgress } from '@/features/progress/useStageProgress';
 import { getInterviewer } from '@/features/interview/interviewers';
 import type { DifficultyTier } from '@/features/interview/difficulty';
@@ -90,7 +91,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const name = auth.name || '회원';
   // 1·2·3단계 모두 서버에 저장된 기록 기준 (서버 조회가 안 될 때만 브라우저 메모로 대신 보여줌)
-  const { stage1: s1, stage2: s2, stage3: s3 } = useStageProgress();
+  const { stage1: s1, stage2: s2, stage3: s3, sessions } = useStageProgress();
 
   const [streak, setStreak] = useState(1);
   useEffect(() => setStreak(localProgress.bumpStreak()), []);
@@ -145,7 +146,9 @@ export default function Dashboard() {
   const completed = STAGES.filter((s) => s.status === 'done').length;
   const pct = Math.round((completed / STAGES.length) * 100);
   const firstVisit = completed === 0;
-  const gap = daysSince(s1.at);
+  // 마이페이지: 다음에 할 단계로 바로 가는 버튼 + 지난 기록(점수 없이 언제 무엇을 했는지)
+  const next = nextStep(s1.done, s2.done, s3.done);
+  const history = buildHistory(s1.at, s2.at, sessions);
 
   const handleReset = () => {
     // 서버에 저장된 1·2단계 분석 기록은 지우지 못한다(완료 표시도 서버 기준이라 그대로 남음).
@@ -161,7 +164,7 @@ export default function Dashboard() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        eyebrow={<Badge variant="light" color="brand">내 속도로 하는 AI 면접 연습</Badge>}
+        eyebrow={<Badge variant="light" color="brand">마이페이지</Badge>}
         title={`안녕하세요, ${name} 님 🌱`}
         subtitle="오늘도 당신의 속도로, 천천히 나아가요"
         rightExtra={
@@ -243,15 +246,17 @@ export default function Dashboard() {
                   ))}
                 </Group>
 
-                <Box mt={14} style={{ background: 'var(--rb-bg)', borderRadius: 10, padding: 10 }}>
-                  <Text fz={13} fw={500} c="var(--rb-primary-strong)" ta="center">
-                    {completed === 0
-                      ? '천천히, 당신의 속도로 시작해보세요 🌱'
-                      : completed === STAGES.length
-                        ? '모든 단계를 완료했어요! 정말 잘하셨어요 🎉'
-                        : '꾸준히 잘 나아가고 있어요 💪'}
-                  </Text>
-                </Box>
+                <Text fz={13} fw={500} c="var(--rb-primary-strong)" ta="center" mt={14}>
+                  {completed === 0
+                    ? '천천히, 당신의 속도로 시작해보세요 🌱'
+                    : completed === STAGES.length
+                      ? '모든 단계를 완료했어요! 정말 잘하셨어요 🎉'
+                      : '꾸준히 잘 나아가고 있어요 💪'}
+                </Text>
+                {/* 이어서 하기 — 아직 안 한 가장 앞 단계로(다 했으면 최종 리포트) */}
+                <Button fullWidth radius="md" size="md" mt={10} onClick={() => navigate(next.to)}>
+                  {next.label} →
+                </Button>
               </Paper>
 
               <Text fz={17} fw={700} c="var(--rb-primary-strong)" mt={10}>
@@ -377,13 +382,46 @@ export default function Dashboard() {
             <Stack gap={16}>
               <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
                 <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mb={8}>
-                  최근 활동
+                  지난 기록
                 </Text>
-                <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
-                  {s1.done
-                    ? `${gap && gap > 0 ? `${gap}일 전 · ` : ''}1단계 종합 ${s1.score}점`
-                    : '아직 완료한 훈련이 없어요. 첫 훈련을 시작하면 여기에 기록이 쌓여요.'}
-                </Text>
+                {history.length === 0 ? (
+                  <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
+                    아직 완료한 훈련이 없어요. 첫 훈련을 시작하면 여기에 기록이 쌓여요.
+                  </Text>
+                ) : (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {history.map((h) => (
+                      <li key={h.key}>
+                        <div
+                          role={h.to ? 'link' : undefined}
+                          tabIndex={h.to ? 0 : undefined}
+                          onClick={() => h.to && navigate(h.to)}
+                          onKeyDown={(e) => h.to && e.key === 'Enter' && navigate(h.to)}
+                          style={{
+                            display: 'flex',
+                            gap: 12,
+                            alignItems: 'baseline',
+                            padding: '8px 6px',
+                            borderRadius: 8,
+                            cursor: h.to ? 'pointer' : 'default',
+                          }}
+                        >
+                          <Text fz={12} c="var(--rb-ink-faint)" style={{ width: 52, flexShrink: 0 }}>
+                            {formatHistoryDate(h.at)}
+                          </Text>
+                          <Box style={{ minWidth: 0 }}>
+                            <Text fz={14} fw={600}>
+                              {h.title}
+                            </Text>
+                            <Text fz={12} c={h.to ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}>
+                              {h.detail}
+                            </Text>
+                          </Box>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Paper>
 
               <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-primary-tint)', borderColor: 'var(--rb-line)' }}>

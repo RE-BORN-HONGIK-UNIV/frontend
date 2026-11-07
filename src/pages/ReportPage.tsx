@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Box } from '@/components/ui';
 import { StageHeader } from '@/components/StageHeader';
 import { api } from '@/lib/api/client';
@@ -11,12 +11,17 @@ import { SAMPLE_DETAILS, SAMPLE_INTERVIEW } from '@/features/report/sample';
 
 type Latest = { result: InterviewResult; tier: DifficultyTier; at: string } | null;
 
-/** 가장 최근에 끝까지 마친 면접 — 질문·답변까지 불러온다. 없거나 못 불러오면 null */
-async function loadLatestInterview(): Promise<Latest> {
-  const { sessions } = await api.listInterviewSessions();
-  const done = sessions.filter((s) => s.completedAt).sort((a, b) => (b.completedAt! > a.completedAt! ? 1 : -1))[0];
-  if (!done) return null;
-  const d = await api.getInterviewSession(done.id);
+/** 가장 최근에 끝까지 마친 면접(sessionId를 주면 그 면접 — 마이페이지 "지난 기록") — 질문·답변까지 불러온다.
+ * 없거나 못 불러오면 null */
+async function loadLatestInterview(sessionId?: number): Promise<Latest> {
+  let id = sessionId;
+  if (id === undefined) {
+    const { sessions } = await api.listInterviewSessions();
+    const done = sessions.filter((s) => s.completedAt).sort((a, b) => (b.completedAt! > a.completedAt! ? 1 : -1))[0];
+    if (!done) return null;
+    id = done.id;
+  }
+  const d = await api.getInterviewSession(id);
   return {
     tier: d.tier,
     at: d.completedAt ?? d.startedAt,
@@ -47,16 +52,20 @@ function Shell({ children }: { children: React.ReactNode }) {
 export default function ReportPage() {
   const navigate = useNavigate();
   const [latest, setLatest] = useState<Latest | undefined>(undefined);
+  // /report?session=12 — 마이페이지 "지난 기록"에서 고른 면접
+  const [params] = useSearchParams();
+  const sessionParam = Number(params.get('session'));
+  const sessionId = Number.isInteger(sessionParam) && sessionParam > 0 ? sessionParam : undefined;
 
   useEffect(() => {
     let cancelled = false;
-    loadLatestInterview()
+    loadLatestInterview(sessionId)
       .catch(() => null)
       .then((r) => !cancelled && setLatest(r));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sessionId]);
 
   const interview =
     latest === undefined ? (
