@@ -97,6 +97,7 @@ export default function InterviewStage() {
         {/* 3단계를 마치면 1·2·3단계를 한 장에 모은 최종 리포트(경량 웹 흐름). 3단계 부분은 기존 결과 화면 그대로 */}
         {step === 'result' && result && (
           <FinalReport
+            writingIntro
             answeredCount={result.turns.filter((t) => t.answer.trim()).length}
             interview={
               <ResultView

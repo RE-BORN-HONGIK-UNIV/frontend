@@ -9,6 +9,7 @@ import { linkStyle } from '@/features/haru/styles';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
 import { useLiveFaceSession } from './useLiveFaceSession';
 import { useDebugRecorder } from './useDebugRecorder';
+import { useRingtone } from './useRingtone';
 
 // 예전엔 통화 연결 직후 2초 동안 오른쪽에 내 화면을 작게 띄웠는데(경량 웹), 2026-11 사용자 요청으로 뺐다 —
 // 통화 중에는 내 얼굴을 보이지 않는다(시선이 내 얼굴로 가지 않게).
@@ -177,6 +178,8 @@ export function HaruCallView({
   };
 
   const mode = !started ? 'prep' : callOn ? 'call' : ringing ? 'ring' : 'calib';
+  // 전화 오는 화면에서 부드러운 벨소리(응답·거절하면 멈춤)
+  useRingtone(mode === 'ring');
   const cameraOn = s.phase !== 'idle' && s.phase !== 'loading' && s.phase !== 'error';
   const calibLeft = Math.max(0, s.calibrationSec - s.calibrationElapsedSec);
 

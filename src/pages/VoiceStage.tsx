@@ -111,9 +111,8 @@ export default function VoiceStage() {
         ? analyze.error instanceof ApiError
           ? analyze.error.message
           : '목소리를 정리하지 못했어요. 다시 보내 볼까요?'
-        : analyze.isPending
-          ? '목소리를 정리하고 있어요 · 기다리지 않고 바로 2단계로 가도 돼요'
-          : '결과는 3단계까지 마친 뒤 최종 리포트에서 함께 봐요',
+        : // 정리 중이어도 같은 문구 — '정리하고 있어요 · 기다리지 않아도 돼요'는 기다려야 하나 헷갈리게 해서 뺐다
+          '결과는 3단계까지 마친 뒤 최종 리포트에서 함께 봐요',
     actions: (
       <>
         {analyze.isError && !noAudio && (
