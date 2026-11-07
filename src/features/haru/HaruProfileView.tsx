@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Group, LoadingBar, Paper, Stack, Text, TextInput } from '@/components/ui';
+import { Alert, Badge, Button, Group, LoadingBar, Paper, Stack, Text, Textarea } from '@/components/ui';
 import { api } from '@/lib/api/client';
 import type { HaruProfileItem } from '@/lib/api/types';
 import { aboutMeLines, clearHaruTalk, loadHaruTalk, profileIsCurrent, profileSourceItems, saveProfile } from './store';
@@ -77,12 +77,15 @@ export function HaruProfileView({ onNext }: { onNext: (aboutMe: string[]) => voi
               </Alert>
             )}
             {items.map((it, n) => (
-              <TextInput
+              <Textarea
                 key={it.label}
                 id={`haru-profile-${n}`}
                 label={it.label}
                 value={it.value}
                 maxLength={80}
+                minRows={1}
+                // 긴 대답도 다 보이게 글 길이만큼 칸이 커짐(지원 안 하는 브라우저는 드래그로 키움)
+                style={{ fieldSizing: 'content' }}
                 placeholder="넘어갔어요 · 눌러서 채우기"
                 onChange={(e) => setItems(items.map((x, m) => (m === n ? { ...x, value: e.target.value } : x)))}
               />
