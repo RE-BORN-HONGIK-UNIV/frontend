@@ -97,11 +97,33 @@ export function isLookingAtCamera(
   // 캘리브레이션에서 잡은 "하루를 볼 때의 눈동자 위치"(calibrateBaselineIris) — 기본 0이면 예전과 같은 판정
   baselineIrisX = 0,
   baselineIrisY = 0,
+  // 두 단계 캘리브레이션(하루의 눈 → 어깨)으로 잡은 위아래 경계 — 몸 쪽으로 절반 넘게 내려가면 시선 이탈(gaze.ts makeVerticalBoundary)
+  vertical: VerticalBoundary | null = null,
 ): boolean {
   return (
     Math.abs(yaw - baselineYaw) < yawThresh &&
     Math.abs(pitch - baselinePitch) < pitchThresh &&
     Math.abs(irisOffsetX - baselineIrisX) < irisThresh &&
-    Math.abs(irisOffsetY - baselineIrisY) < irisThresh
+    Math.abs(irisOffsetY - baselineIrisY) < irisThresh &&
+    !crossesTowardBody(vertical, pitch, irisOffsetY)
   );
+}
+
+/** 위아래 한 채널(고개 pitch 또는 눈동자 oy)의 "하루의 눈을 볼 때" 값과 "하루의 어깨를 볼 때" 값 */
+export interface VerticalChannel {
+  face: number;
+  body: number;
+}
+
+/** 위아래 경계 — 캘리브레이션에서 얼굴·몸 차이가 측정 흔들림보다 확실히 컸던 채널만 들어 있다(없으면 예전 판정만) */
+export interface VerticalBoundary {
+  pitch?: VerticalChannel;
+  oy?: VerticalChannel;
+}
+
+/** 지금 값이 얼굴 → 몸 방향으로 절반(가운데) 이상 갔는지. 위로 가는 쪽(반대 방향)은 예전 기준(±10°, ±0.15)만 본다 */
+export function crossesTowardBody(vertical: VerticalBoundary | null, pitch: number, oy: number): boolean {
+  if (!vertical) return false;
+  const past = (c: VerticalChannel | undefined, v: number) => !!c && (v - c.face) / (c.body - c.face) >= 0.5;
+  return past(vertical.pitch, pitch) || past(vertical.oy, oy);
 }

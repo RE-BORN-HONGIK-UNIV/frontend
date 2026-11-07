@@ -135,3 +135,19 @@ export function stepExpression(
 export function flushExpression(state: ExpressionFsmState): Segment | null {
   return flushSegmentBuffer(state.segmentBuffer);
 }
+
+/**
+ * 미소 비율 = (대답 중 미소 프레임 + 하루 말을 들을 때 미소 프레임) / (둘의 프레임 수) — 2026-11.
+ *
+ * 2단계를 "대답하는 동안만" 재게 바꾸면서 미소는 거의 입을 벌린 프레임에서만 재게 됐고, 입 벌림 규칙
+ * (JAW_OPEN_GATE — 말하는 입 모양 오탐을 20건→5건으로 줄인 검증된 규칙, backend ACCURACY_NOTES.md)에 걸려
+ * 말하며 웃는 미소를 대부분 놓쳤다(3명 중 1명은 영상에서 계속 웃는데 9%만 잡힘). 규칙·숫자는 그대로 두고, 그
+ * 규칙이 검증된 상황(입을 다문 때)이 많은 "하루 말을 들을 때"도 미소만 함께 잰다. 긴장·시선·깜빡임은 여전히 대답 중만.
+ * 3명 녹화로 확인: 웃지 않고 대답한 질문에서 미소로 잘못 잡힌 프레임 0개(입 벌림 규칙이 말하는 입 모양을 막음).
+ */
+export function combineSmileRatio(answer: ExpressionSummary, listenSmileHits: number, listenFrames: number): number {
+  const n = answer.frameCount + listenFrames;
+  if (n === 0) return 0;
+  if (listenFrames === 0) return answer.smileRatio;
+  return pyRound((Math.round(answer.smileRatio * answer.frameCount) + listenSmileHits) / n, 4);
+}

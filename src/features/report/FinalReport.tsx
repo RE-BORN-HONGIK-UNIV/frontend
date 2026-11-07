@@ -548,11 +548,11 @@ function FaceSection({ face, loading, real }: { face: FaceReport | null; loading
               {face.expr.smilePct !== null && face.expr.tensionPct !== null && (
                 <div className="vs">
                   <div>
-                    <small>미소 지은 시간</small>
+                    <small>대화 중 미소 지은 시간</small>
                     <b>{face.expr.smilePct}%</b>
                   </div>
                   <div>
-                    <small>굳은 시간</small>
+                    <small>대답할 때 굳은 시간</small>
                     <b>{face.expr.tensionPct}%</b>
                   </div>
                 </div>
