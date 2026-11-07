@@ -58,6 +58,8 @@ export function HaruCallView({
     onComplete: setResult,
     getQuestionStarts: () => questionStartsRef.current,
     calibrateOnDemand: true,
+    // 하루의 눈 3초 → 하루의 어깨 2초(몸을 보는 것도 시선 이탈 — 경계를 사람마다 잡으려고, calibration.ts calibStepAt)
+    bodyCalibration: true,
     // 대답하는 동안(앞뒤 1초 제외)만 잰다 — 하루가 말할 때·버튼 누를 때 아래를 본 건 시선 회피로 세지 않는다
     measureOnlyWhenAnswering: true,
     onEmpty: () => setEmpty(true),
@@ -91,6 +93,17 @@ export function HaruCallView({
   useEffect(() => {
     if (talkDone && result) onComplete(result);
   }, [talkDone, result, onComplete]);
+  // debug: 결과가 나오면 요약 값(서버에 저장되는 세 값 등)도 내려받는다 — 3단계 불안도 기준값 맞추기용
+  useEffect(() => {
+    if (debug && result)
+      rec.saveSummary({
+        avgFixationSec: result.gaze.avg_fixation_sec,
+        blinkRatePerMin: result.blink.rate_per_min,
+        tensionRatio: result.expression.tension_ratio,
+        smileRatio: result.expression.smile_ratio,
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 결과가 나온 순간 한 번
+  }, [debug, result]);
   // 대화를 다 마친 뒤 빨간 버튼으로 통화를 끝냈는지
   const [hungUp, setHungUp] = useState(false);
   // 끊었고 결과 저장까지 끝났으면 다음 화면으로 — 결과가 나오기 전에 이 화면이 사라지면 2단계 기록이 저장되지 않아서 기다린다
@@ -172,21 +185,17 @@ export function HaruCallView({
   }, [watchingFace, s.faceDetected]);
 
   return (
-<<<<<<< HEAD
     <Stack gap={35}>
-=======
-    <Stack gap={18}>
       {debug && (
         <div className="rb-debugrec" role="status">
           <b>정확도 기록 중</b> · {rec.count}장면{rec.recording ? ' · 영상 녹화 중' : ''}
           <br />
-          통화를 끝내면 영상과 값 표가 이 컴퓨터에 저장돼요(서버로 안 보냄).
+          통화를 끝내면 영상·값 표·요약(-summary.csv)이 이 컴퓨터에 저장돼요(서버로 안 보냄).
           <button type="button" onClick={() => void rec.download()}>
             지금 내려받기
           </button>
         </div>
       )}
->>>>>>> 365d0ef9eb2755421a05664e882a34d38fec0e76
       {mode === 'prep' && (
         <div style={{ textAlign: 'center' }}>
           <h2 className="rb-call__title">
@@ -234,8 +243,17 @@ export function HaruCallView({
               <div className="rb-call__calib" aria-live="polite">
                 {s.phase === 'calibrating' && (
                   <>
-                    <b>연결 중… 하루를 봐 주세요</b>
-                    <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                    {s.calibrationStep === 'body' ? (
+                      <>
+                        <b>이번엔 하루의 어깨를 봐 주세요</b>
+                        <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                      </>
+                    ) : (
+                      <>
+                        <b>연결 중… 하루의 눈을 봐 주세요</b>
+                        <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                      </>
+                    )}
                     <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
                   </>
                 )}

@@ -151,3 +151,19 @@ export function detectBlinksFromBlendshapeBatch(
   }
   return blinks;
 }
+
+/**
+ * 깜빡임으로 셀 최대 길이(초) — 2026-11 추가.
+ *
+ * 근거: 사람의 깜빡임 한 번은 0.1~0.4초다(Schiffman, *Sensation and Perception: An Integrated Approach*, 2001 —
+ * Harvard BioNumbers ID 100706에 수록). 이보다 오래 감긴 건 일반 깜빡임과 다른 현상으로 따로 다룬다(Caffier,
+ * Erdmann & Ullsperger, 2003, Eur J Appl Physiol 89:319–325 — 긴 눈 감김은 졸림 지표로 별도 분석).
+ * 실측(2단계 하루 통화 3명, 영상과 장면 값 대조 — backend step2/ACCURACY_NOTES.md "2026-11 하루 통화 재검증"):
+ * 0.4초 이하로 잡힌 깜빡임은 영상에서도 실제 깜빡임이었고, 0.4초를 넘긴 6건은 모두 깜빡임이 아니었다
+ * (아래를 봄 3.3초·1.0초, 찡그려 눈이 가늘어짐 1.45초, 웃어 눈이 가늘어짐 0.5초 등).
+ * 아래를 보면 눈꺼풀이 눈을 따라 내려가서(Becker & Fuchs, 1988, J Neurophysiol 60:1227–1252, "lid saccade")
+ * eyeBlink 값이 감은 것처럼 올라가기 때문 — 그래서 긴 감김은 시선 쪽에서 "딴 곳 봄"으로 다룬다(gaze.ts markClosuresAsAversion).
+ */
+export const MAX_BLINK_DURATION = 0.4;
+
+export const isBlinkLength = (b: Blink, max = MAX_BLINK_DURATION) => b.end - b.start <= max;
