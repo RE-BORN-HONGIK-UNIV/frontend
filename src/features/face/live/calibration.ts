@@ -74,7 +74,10 @@ export function calibrateBaselineIris(offsets: (IrisBaseline | null)[]): IrisBas
 
 export const DEFAULT_BASELINE_TENSION = 0;
 
-/** backend의 calibrate_baseline_tension과 동일 — 캘리브레이션 구간
+/** 2026-11부터 실시간 2단계는 이 값을 실제로 쓴다(찡그림을 "평소 얼굴 대비"로 — expression.ts 찡그림 판정 구조).
+ * 아래 옛 설명(업로드 방식에서는 과보정이라 안 씀)은 backend 업로드 판정 얘기로 남겨 둔다.
+ *
+ * backend의 calibrate_baseline_tension과 동일 — 캘리브레이션 구간
  * blendshape의 긴장(browDown) 평균값들의 중앙값. 얼굴이 한 번도 검출되지
  * 않으면 0으로 폴백. 단, backend app.py는 실제 서비스 호출에서 이 값을
  * expression_analyzer로 안 넘기고 절대 임계값처럼 쓰기 때문에(코드 주석

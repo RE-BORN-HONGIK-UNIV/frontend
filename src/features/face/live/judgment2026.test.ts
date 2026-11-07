@@ -83,3 +83,27 @@ describe('2026-11 판정: 미소는 대답 + 듣는 동안', () => {
     expect(combineSmileRatio({ smileRatio: 0, tensionRatio: 0, frameCount: 0 }, 0, 0)).toBe(0);
   });
 });
+
+describe('2026-11 찡그림 판정 구조', () => {
+  it('평소 값을 빼고 판정한다 — 원래 미간이 좁은 사람의 무표정은 긴장이 아님', async () => {
+    const { computeExpressionForFrame } = await import('./expression');
+    const bs = { browDownLeft: 0.42, browDownRight: 0.42, mouthSmileLeft: 0, mouthSmileRight: 0, jawOpen: 0 };
+    expect(computeExpressionForFrame(bs)?.tension).toBeCloseTo(0.42);
+    expect(computeExpressionForFrame(bs, 0.4)?.tension).toBeCloseTo(0.02);
+  });
+
+  it('정한 시간 넘게 이어진 것만 센다(말하며 잠깐 움직인 눈썹은 뺌)', async () => {
+    const { countSustained, summarizeExpression } = await import('./expression');
+    const at = (n: number, on: boolean, from: number) =>
+      Array.from({ length: n }, (_, i) => [from + i * 0.1, on] as [number, boolean]);
+    const series = [...at(3, true, 0), ...at(2, false, 0.3), ...at(8, true, 0.5)];
+    expect(countSustained(series, 0)).toBe(11);
+    // 0.2초짜리(3장면)는 빠지고 0.7초짜리(8장면)만
+    expect(countSustained(series, 0.5)).toBe(8);
+    // 대답 사이처럼 시간이 비면 끊긴 것으로 본다
+    expect(countSustained([[0, true], [0.1, true], [5, true], [5.1, true]], 0.5)).toBe(0);
+    const s: [number, number | null, number | null][] = series.map(([t, on]) => [t, 0, on ? 0.5 : 0]);
+    expect(summarizeExpression(s, 0.5).tensionRatio).toBeCloseTo(8 / 13, 4);
+    expect(summarizeExpression(s).tensionRatio).toBeCloseTo(11 / 13, 4);
+  });
+});

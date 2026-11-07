@@ -16,6 +16,7 @@ import {
   calibrateBaselineGaze,
   calibrateBaselineIris,
   calibrateBodyPose,
+  calibrateBaselineTension,
   calibStepAt,
   DEFAULT_BASELINE_GAZE,
   type BodyPose,
@@ -39,6 +40,7 @@ import {
   summarizeExpression,
   combineSmileRatio,
   SMILE_THRESHOLD,
+  TENSION_MIN_SEC,
 } from './expression';
 import { scoreBlinkRate, scoreExpression, scoreGazeSegments } from './scoring';
 import { LEFT_EYE_EAR_IDX, LEFT_IRIS_IDX, RIGHT_EYE_EAR_IDX, RIGHT_IRIS_IDX } from './landmarkIndices';
@@ -165,6 +167,8 @@ export interface DebugFrame {
   browDown: number | null;
   /** 눈썹 안쪽을 올림(걱정하는 표정) */
   browInnerUp: number | null;
+  /** 찡그림 판정의 평소 값(캘리브레이션 중 미간 중앙값, 끝나기 전엔 0). tensionApp = browDown − 이 값 */
+  baseTension: number;
 }
 
 const avgKeys = (bs: Record<string, number> | null, keys: string[]) => (bs ? avgBlendshape(bs, keys) : null);
@@ -253,6 +257,9 @@ export function useLiveFaceSession({
   const longClosuresRef = useRef<Blink[]>([]);
   // 지금 감겨 있는 동안 원래 미소 값의 최댓값 — 웃어서 눈이 가늘어진 건지 보려고
   const closureSmileMaxRef = useRef(0);
+  // 찡그림 판정의 평소 값 — 캘리브레이션 "하루의 눈 보기" 동안 미간(browDown) 중앙값(expression.ts 찡그림 판정 구조)
+  const tensionCalibRef = useRef<(number | null)[]>([]);
+  const baselineTensionRef = useRef(0);
   // 하루 말을 들을 때 미소(대답 중이 아닐 때) — 프레임 수와 미소 프레임 수
   const listenSmileRef = useRef({ hits: 0, frames: 0 });
 
@@ -286,8 +293,8 @@ export function useLiveFaceSession({
     }
     if (!blinkFsmRef.current.inBlink) closureSmileMaxRef.current = 0;
 
-    stepExpression(exprFsmRef.current, t, blendshapes);
-    const exprFrame = computeExpressionForFrame(blendshapes);
+    stepExpression(exprFsmRef.current, t, blendshapes, baselineTensionRef.current);
+    const exprFrame = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
     exprSeriesRef.current.push([t, exprFrame ? exprFrame.smile : null, exprFrame ? exprFrame.tension : null]);
 
     // 측정 중인 시점엔 캘리브레이션이 이미 끝난 뒤라(beginRecording은 phase==='ready'에서만 호출 가능)
@@ -395,7 +402,7 @@ export function useLiveFaceSession({
           const calibStep = calibT === null ? null : calibStepAt(calibT, bodyCalibration, CALIBRATION_SEC);
 
           if (debugRef.current) {
-            const ef = computeExpressionForFrame(blendshapes);
+            const ef = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
             const body = bodyPoseRef.current;
             debugRef.current({
               t,
@@ -431,12 +438,14 @@ export function useLiveFaceSession({
               eyeSquint: avgKeys(blendshapes, ['eyeSquintLeft', 'eyeSquintRight']),
               browDown: avgKeys(blendshapes, [...TENSION_KEYS]),
               browInnerUp: avgKeys(blendshapes, ['browInnerUp']),
+              baseTension: baselineTensionRef.current,
             });
           }
 
           const pose = gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch, ox: gazeRaw.ox, oy: gazeRaw.oy } : null;
           if (calibStep === 'face') {
             calibBufferRef.current.push([t, pose]);
+            tensionCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, TENSION_KEYS) : null);
           } else if (calibStep === 'body') {
             bodyBufferRef.current.push(pose);
           } else if (calibStep === null && calibT !== null && !calibratedRef.current) {
@@ -448,6 +457,7 @@ export function useLiveFaceSession({
             baselineGazeRef.current = baseline;
             const irisBaseline = calibrateBaselineIris(buffer.map(([, p]) => (p ? { ox: p.ox, oy: p.oy } : null)));
             baselineIrisRef.current = irisBaseline;
+            baselineTensionRef.current = calibrateBaselineTension(tensionCalibRef.current);
             verticalRef.current = bodyCalibration
               ? makeVerticalBoundary(
                   buffer.map(([, p]) => (p ? { pitch: p.pitch, oy: p.oy } : null)),
@@ -530,6 +540,8 @@ export function useLiveFaceSession({
     bodyBufferRef.current = [];
     bodyPoseRef.current = null;
     verticalRef.current = null;
+    tensionCalibRef.current = [];
+    baselineTensionRef.current = 0;
     calibStartTRef.current = elapsedSecRef.current;
     setPhase('calibrating');
   }
@@ -594,7 +606,7 @@ export function useLiveFaceSession({
     // 0.4초 넘게 감긴 구간(아래를 봄)은 시선 이탈로 — gaze.ts markClosuresAsAversion
     const gazeSegments = markClosuresAsAversion(gazeFsmRef.current.segmentBuffer.committed, longClosuresRef.current);
     const gazeResult = scoreGazeSegments(gazeSegments);
-    const answerSummary = summarizeExpression(exprSeriesRef.current);
+    const answerSummary = summarizeExpression(exprSeriesRef.current, TENSION_MIN_SEC);
     // 미소는 대답 + 하루 말을 들을 때(measureOnlyWhenAnswering일 때만 듣기 프레임이 있음), 긴장은 대답 중만
     const expressionSummary = {
       ...answerSummary,

@@ -42,6 +42,7 @@ const COLUMNS: (keyof DebugFrame)[] = [
   'eyeSquint',
   'browDown',
   'browInnerUp',
+  'baseTension',
 ];
 // CSV 머리줄은 backend 스크립트가 읽기 쉽게 snake_case로
 const HEADER = [
@@ -76,6 +77,7 @@ const HEADER = [
   'eye_squint',
   'brow_down',
   'brow_inner_up',
+  'base_tension',
 ];
 
 const cell = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'boolean' ? (v ? '1' : '0') : typeof v === 'number' ? String(Math.round(v * 10000) / 10000) : String(v));
