@@ -16,6 +16,7 @@ const K = {
   s2history: 'rb.stage2.history',
   lastVisit: 'rb.lastVisit',
   streak: 'rb.streak',
+  visits: 'rb.visits',
 };
 
 const STAGE2_HISTORY_LIMIT = 10;
@@ -162,6 +163,7 @@ export const localProgress = {
     const today = new Date().toDateString();
     const last = get(K.lastVisit);
     const prev = Number(get(K.streak) ?? '0');
+    recordVisit();
     if (last === today) return prev || 1;
 
     const yesterday = new Date();
@@ -173,6 +175,27 @@ export const localProgress = {
     return next;
   },
 };
+
+/** 'YYYY-MM-DD'(이 기기 시간대) */
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 마이페이지 '연습 발자국'(최근 방문한 날 표시)용 — 최근 60일만 남긴다 */
+function recordVisit() {
+  const today = dayKey(new Date());
+  const days = visitDays();
+  if (!days.includes(today)) set(K.visits, JSON.stringify([...days, today].slice(-60)));
+}
+
+export function visitDays(): string[] {
+  try {
+    const v = JSON.parse(get(K.visits) ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 export function daysSince(iso: string | null): number | null {
   if (!iso) return null;

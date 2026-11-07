@@ -5,7 +5,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { RebornWordmark } from '@/components/RebornWordmark';
 import { Reveal } from '@/components/Reveal';
 import { SectionBadge } from '@/components/SectionBadge';
-import { SiteNavLinks } from '@/components/SiteNavLinks';
+import { SiteHeader } from '@/components/SiteHeader';
 import { HaruAvatar, TileTag } from '@/features/haru/HaruAvatar';
 import { Pentagon } from '@/features/report/Pentagon';
 import { JourneySteps} from '@/features/landing/JourneySteps';
@@ -33,28 +33,8 @@ const panel: React.CSSProperties = {
 /* ── sections ─────────────────────────────────────────────── */
 
 function Nav() {
-  return (
-    <Box
-      component="header"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto',
-        alignItems: 'center',
-        padding: '20px 30px',
-        borderBottom: '1px solid var(--rb-line)',
-        background: 'var(--rb-surface)',
-        position: 'relative',
-        zIndex: 5,
-      }}
-    >
-      {/* 좌우를 1fr 1fr로 맞춰서, 우측에 로그인 상태 표시 등 다른 요소가
-       * 생기거나 없어져도 가운데 링크 그룹이 항상 정중앙에 오게 함 —
-       * justify-content: space-between이었을 땐 우측 요소가 없어지자마자
-       * 링크 그룹이 오른쪽 끝으로 쏠려버렸음. */}
-      <RebornWordmark size={36} animate={false} />
-      <SiteNavLinks />
-    </Box>
-  );
+  // 머리줄은 모든 화면이 같은 SiteHeader를 쓴다(높이·여백·로고 위치 고정)
+  return <SiteHeader />;
 }
 
 /**

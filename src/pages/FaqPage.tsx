@@ -1,7 +1,5 @@
-import { Link } from 'react-router-dom';
 import { Box, Button } from '@/components/ui';
-import { RebornWordmark } from '@/components/RebornWordmark';
-import { SiteNavLinks } from '@/components/SiteNavLinks';
+import { SiteHeader } from '@/components/SiteHeader';
 
 /**
  * 자주 묻는 질문 (/faq) — 로그인 없이 볼 수 있다. 메뉴의 "자주 묻는 질문"이 여기로 온다.
@@ -45,23 +43,7 @@ const FAQ: { q: string[]; a: string[] }[] = [
  * "뒤로" 줄이 붙는 PageHeader 대신 메인과 똑같은 한 줄만 둔다. 메인의 Nav에서 여백·로고 크기를 바꾸면 여기도 같은 숫자로 맞출 것.
  */
 function FaqNav() {
-  return (
-    <header
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto',
-        alignItems: 'center',
-        padding: '20px 40px',
-        borderBottom: '1px solid var(--rb-line)',
-        background: 'var(--rb-surface)',
-      }}
-    >
-      <Link to="/" aria-label="메인 화면으로">
-        <RebornWordmark size={36} animate={false} />
-      </Link>
-      <SiteNavLinks />
-    </header>
-  );
+  return <SiteHeader />;
 }
 
 /** 말풍선 하나. who: Q(왼쪽, 흰색) / A(오른쪽, 초록) */

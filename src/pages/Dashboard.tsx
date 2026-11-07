@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
-import { localProgress } from '@/features/progress/localProgress';
+import { localProgress, visitDays } from '@/features/progress/localProgress';
+import { lastSevenDays, plantFor } from '@/features/progress/streak';
 import { buildHistory, formatHistoryDate, nextStep } from '@/features/progress/history';
 import { useStageProgress } from '@/features/progress/useStageProgress';
 
@@ -92,7 +93,13 @@ export default function Dashboard() {
   const { stage1: s1, stage2: s2, stage3: s3, sessions } = useStageProgress();
 
   const [streak, setStreak] = useState(1);
-  useEffect(() => setStreak(localProgress.bumpStreak()), []);
+  const [visits, setVisits] = useState<string[]>([]);
+  useEffect(() => {
+    setStreak(localProgress.bumpStreak());
+    setVisits(visitDays());
+  }, []);
+  const plant = plantFor(visits.length);
+  const week = lastSevenDays(visits);
 
   const STAGES: {
     id: number;
@@ -167,13 +174,6 @@ export default function Dashboard() {
         eyebrow={<Badge variant="light" color="brand">마이페이지</Badge>}
         title={`안녕하세요, ${name} 님 🌱`}
         subtitle="오늘도 당신의 속도로, 천천히 나아가요"
-        rightExtra={
-          <Box style={{ background: 'var(--rb-primary-tint)', borderRadius: 999, padding: '6px 14px' }}>
-            <Text fz={12} fw={600} c="var(--rb-primary-strong)">
-              🔥 {streak}일 연속 방문 중
-            </Text>
-          </Box>
-        }
       />
 
       <Box style={{ padding: '20px 40px 0' }}>
@@ -253,10 +253,13 @@ export default function Dashboard() {
                       ? '모든 단계를 완료했어요! 정말 잘하셨어요 🎉'
                       : '꾸준히 잘 나아가고 있어요 💪'}
                 </Text>
-                {/* 이어서 하기 — 아직 안 한 가장 앞 단계로(다 했으면 최종 리포트) */}
-                <Button fullWidth radius="md" size="md" mt={10} onClick={() => navigate(next.to)}>
-                  {next.label} →
-                </Button>
+                {/* 이어서 하기 — 아직 안 한 가장 앞 단계로. 다 했으면 아래 '최종 리포트 다시 보기' 카드와 겹쳐서 버튼을 빼고
+                    진행 현황만 보여 준다 */}
+                {next.to !== '/report' && (
+                  <Button fullWidth radius="md" size="md" mt={10} onClick={() => navigate(next.to)}>
+                    {next.label} →
+                  </Button>
+                )}
               </Paper>
 
               <Text fz={17} fw={700} c="var(--rb-primary-strong)" mt={10}>
@@ -422,6 +425,36 @@ export default function Dashboard() {
                     ))}
                   </ul>
                 )}
+              </Paper>
+
+              {/* 연습 발자국 — 예전 머리글의 '🔥 N일 연속 방문 중' 대신. 올 때마다 자라는 식물 + 최근 7일 점(streak.ts) */}
+              <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
+                <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mb={12}>
+                  연습 발자국
+                </Text>
+                <Group gap={14} wrap="nowrap" align="center">
+                  <Box className="rb-plant" aria-hidden>
+                    {plant.icon}
+                  </Box>
+                  <Box style={{ minWidth: 0 }}>
+                    <Text fz={15} fw={700}>
+                      {visits.length || 1}일째 키우는 {plant.name}
+                    </Text>
+                    <Text fz={12} c="var(--rb-ink-soft)" style={{ lineHeight: 1.5 }}>
+                      {streak > 1 ? `${streak}일 연속으로 왔어요. ` : ''}
+                      {plant.next ? `${plant.next.left}일 더 오면 ${plant.next.name}이 돼요` : '다 자랐어요. 꾸준히 와 줘서 고마워요'}
+                    </Text>
+                  </Box>
+                </Group>
+                <ol className="rb-week" aria-label="최근 7일 방문">
+                  {week.map((d, k) => (
+                    <li key={k} data-visited={d.visited || undefined} data-today={d.today || undefined}>
+                      <i aria-hidden>{d.visited ? '🌱' : ''}</i>
+                      <span>{d.today ? '오늘' : d.label}</span>
+                      <em className="rb-sr-only">{d.visited ? '왔어요' : '안 왔어요'}</em>
+                    </li>
+                  ))}
+                </ol>
               </Paper>
 
               <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-primary-tint)', borderColor: 'var(--rb-line)' }}>
