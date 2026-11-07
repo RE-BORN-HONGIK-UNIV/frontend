@@ -30,6 +30,18 @@ const COLUMNS: (keyof DebugFrame)[] = [
   'smileApp',
   'tensionApp',
   'blinkScore',
+  'calibStep',
+  'bodyYaw',
+  'bodyPitch',
+  'bodyIrisX',
+  'bodyIrisY',
+  'lookDown',
+  'lookUp',
+  'lookH',
+  'cheekSquint',
+  'eyeSquint',
+  'browDown',
+  'browInnerUp',
 ];
 // CSV 머리줄은 backend 스크립트가 읽기 쉽게 snake_case로
 const HEADER = [
@@ -51,6 +63,19 @@ const HEADER = [
   'smile_app',
   'tension_app',
   'blink_score',
+  // 2026-11 두 단계 캘리브레이션·판정 방식 변경용으로 추가 — 앞 칸 순서는 그대로(예전 CSV와 같은 스크립트로 읽힘)
+  'calib_step',
+  'body_yaw',
+  'body_pitch',
+  'body_iris_x',
+  'body_iris_y',
+  'look_down',
+  'look_up',
+  'look_h',
+  'cheek_squint',
+  'eye_squint',
+  'brow_down',
+  'brow_inner_up',
 ];
 
 const cell = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'boolean' ? (v ? '1' : '0') : typeof v === 'number' ? String(Math.round(v * 10000) / 10000) : String(v));

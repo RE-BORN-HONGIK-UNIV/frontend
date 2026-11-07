@@ -58,6 +58,8 @@ export function HaruCallView({
     onComplete: setResult,
     getQuestionStarts: () => questionStartsRef.current,
     calibrateOnDemand: true,
+    // 하루의 눈 3초 → 하루의 어깨 2초(몸을 보는 것도 시선 이탈 — 경계를 사람마다 잡으려고, calibration.ts calibStepAt)
+    bodyCalibration: true,
     // 대답하는 동안(앞뒤 1초 제외)만 잰다 — 하루가 말할 때·버튼 누를 때 아래를 본 건 시선 회피로 세지 않는다
     measureOnlyWhenAnswering: true,
     onEmpty: () => setEmpty(true),
@@ -241,8 +243,17 @@ export function HaruCallView({
               <div className="rb-call__calib" aria-live="polite">
                 {s.phase === 'calibrating' && (
                   <>
-                    <b>연결 중… 하루를 봐 주세요</b>
-                    <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                    {s.calibrationStep === 'body' ? (
+                      <>
+                        <b>이번엔 하루의 어깨를 봐 주세요</b>
+                        <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                      </>
+                    ) : (
+                      <>
+                        <b>연결 중… 하루의 눈을 봐 주세요</b>
+                        <span>{Math.ceil(calibLeft)}초 뒤에 하루가 말을 걸어요</span>
+                      </>
+                    )}
                     <i style={{ width: `${Math.min(100, (s.calibrationElapsedSec / s.calibrationSec) * 100)}%` }} />
                   </>
                 )}

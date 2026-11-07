@@ -86,3 +86,42 @@ export function calibrateBaselineTension(tensionValues: (number | null)[]): numb
   if (values.length === 0) return DEFAULT_BASELINE_TENSION;
   return median(values);
 }
+
+/**
+ * 2단계 캘리브레이션(2026-11, 하루 통화) — "하루의 눈"을 3초 본 뒤 "하루의 어깨"를 2초 본다.
+ *
+ * 왜: 2단계는 카메라가 아니라 화면 속 하루를 보며 대답한다. 팀 결정으로 하루의 얼굴(눈 근처)을 보면 "본다",
+ * 하루의 몸을 보면 실제 면접에서 눈을 피하는 것과 같으니 "시선 이탈"로 본다. 얼굴과 몸은 노트북 거리에서 약 10°
+ * 차이라 웹캠으로 구분할 수 있지만(눈·코·입은 3~4° 차이라 구분 못 함), 화면 크기·앉은 거리·안경이 사람마다 달라
+ * 고정 숫자 하나로는 경계가 맞지 않는다. 그래서 사람마다 "얼굴을 볼 때"와 "몸을 볼 때"를 직접 재 두고,
+ * 판정(다음 작업)은 둘 사이를 경계로 쓴다.
+ *
+ * 얼굴 단계 값은 지금까지처럼 시선·눈동자 기준(calibrateBaselineGaze·calibrateBaselineIris)이 되고,
+ * 몸 단계 값(calibrateBodyPose)은 아직 판정에 쓰지 않고 기록만 한다(정확도 기록 도구로 다시 녹화해 경계 방식을 정한 뒤 반영).
+ * 단계가 바뀐 직후(BODY_SETTLE_SEC)는 눈을 옮기는 중이라 몸 값에서 뺀다.
+ */
+export const CALIB_FACE_SEC = 3;
+export const CALIB_BODY_SEC = 2;
+export const BODY_SETTLE_SEC = 0.5;
+
+/** 캘리브레이션을 시작한 지 ct초일 때의 단계 — face: 하루의 눈 보기, body: 어깨 보기(옮기는 중 settle), null: 끝남.
+ * twoStep=false면 예전처럼 total초 내내 face */
+export function calibStepAt(ct: number, twoStep: boolean, total = CALIB_FACE_SEC + CALIB_BODY_SEC): 'face' | 'settle' | 'body' | null {
+  if (ct < 0 || ct > total) return null;
+  if (!twoStep || ct <= CALIB_FACE_SEC) return 'face';
+  return ct <= CALIB_FACE_SEC + BODY_SETTLE_SEC ? 'settle' : 'body';
+}
+
+export interface BodyPose extends GazeBaseline, IrisBaseline {}
+
+/** 몸(어깨)을 볼 때의 고개 각도·눈동자 위치 중앙값. 얼굴이 한 번도 안 잡혔으면 null(판정에서 쓰지 않음) */
+export function calibrateBodyPose(poses: (BodyPose | null)[]): BodyPose | null {
+  const detected = poses.filter((p): p is BodyPose => p !== null);
+  if (detected.length === 0) return null;
+  return {
+    yaw: median(detected.map((p) => p.yaw)),
+    pitch: median(detected.map((p) => p.pitch)),
+    ox: median(detected.map((p) => p.ox)),
+    oy: median(detected.map((p) => p.oy)),
+  };
+}

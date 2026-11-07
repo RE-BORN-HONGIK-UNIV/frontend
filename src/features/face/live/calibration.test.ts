@@ -4,6 +4,8 @@ import {
   calibrateBaselineGaze,
   calibrateBaselineIris,
   calibrateBaselineTension,
+  calibrateBodyPose,
+  calibStepAt,
   DEFAULT_BASELINE_EAR,
   DEFAULT_BASELINE_TENSION,
 } from './calibration';
@@ -76,5 +78,33 @@ describe('calibrateBaselineIris (2026-11 — 하루를 볼 때의 눈동자 위�
 
   it('얼굴이 한 번도 안 잡히면 (0, 0) — 예전과 같은 판정', () => {
     expect(calibrateBaselineIris([null, null])).toEqual({ ox: 0, oy: 0 });
+  });
+});
+
+describe('2단계 캘리브레이션(하루의 눈 3초 → 어깨 2초)', () => {
+  it('처음 3초는 얼굴, 옮기는 0.5초는 빼고, 나머지는 몸, 5초가 지나면 끝', () => {
+    expect(calibStepAt(0, true)).toBe('face');
+    expect(calibStepAt(3, true)).toBe('face');
+    expect(calibStepAt(3.2, true)).toBe('settle');
+    expect(calibStepAt(3.6, true)).toBe('body');
+    expect(calibStepAt(5, true)).toBe('body');
+    expect(calibStepAt(5.1, true)).toBeNull();
+  });
+
+  it('한 단계(예전 방식)면 5초 내내 얼굴', () => {
+    expect(calibStepAt(4.5, false)).toBe('face');
+    expect(calibStepAt(5.1, false)).toBeNull();
+  });
+
+  it('몸을 볼 때 값은 중앙값, 얼굴이 안 잡혔으면 null', () => {
+    expect(
+      calibrateBodyPose([
+        { yaw: 1, pitch: 8, ox: 0, oy: 0.1 },
+        null,
+        { yaw: 3, pitch: 12, ox: 0.02, oy: 0.2 },
+        { yaw: 2, pitch: 10, ox: 0.01, oy: 0.15 },
+      ]),
+    ).toEqual({ yaw: 2, pitch: 10, ox: 0.01, oy: 0.15 });
+    expect(calibrateBodyPose([null, null])).toBeNull();
   });
 });

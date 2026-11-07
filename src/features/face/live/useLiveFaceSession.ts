@@ -14,7 +14,10 @@ import {
 import {
   calibrateBaselineGaze,
   calibrateBaselineIris,
+  calibrateBodyPose,
+  calibStepAt,
   DEFAULT_BASELINE_GAZE,
+  type BodyPose,
   DEFAULT_BASELINE_IRIS,
   type GazeBaseline,
   type IrisBaseline,
@@ -27,6 +30,7 @@ import {
   computeExpressionForFrame,
   JAW_OPEN_KEY,
   SMILE_KEYS,
+  TENSION_KEYS,
   createExpressionFsmState,
   flushExpression,
   stepExpression,
@@ -76,6 +80,7 @@ import type { Point2D } from './types';
  * 로컬) 이력으로 폴백.
  */
 
+// 두 단계(bodyCalibration)면 하루의 눈 3초 + 어깨 2초(CALIB_FACE_SEC + CALIB_BODY_SEC) — 전체 길이는 예전과 같은 5초
 const CALIBRATION_SEC = 5;
 
 /**
@@ -136,7 +141,30 @@ export interface DebugFrame {
   smileApp: number | null;
   tensionApp: number | null;
   blinkScore: number | null;
+  /** 캘리브레이션 단계 — 0 아님, 1 하루의 눈 보기, 2 어깨로 옮기는 중(값에서 뺌), 3 하루의 어깨 보기 */
+  calibStep: 0 | 1 | 2 | 3;
+  /** 몸(어깨)을 볼 때의 고개 각도·눈동자 위치(캘리브레이션이 끝나기 전·한 단계 방식이면 null) — 판정 경계를 정하려고 기록 */
+  bodyYaw: number | null;
+  bodyPitch: number | null;
+  bodyIrisX: number | null;
+  bodyIrisY: number | null;
+  /** 판정 방식을 바꾸려고 함께 모으는 표정 값(MediaPipe blendshape, 왼·오른쪽 평균) — 아직 판정에는 안 씀.
+   * lookH는 (오른쪽을 봄) − (왼쪽을 봄): eyeLookOutLeft·eyeLookInRight 평균 − eyeLookInLeft·eyeLookOutRight 평균 */
+  lookDown: number | null;
+  lookUp: number | null;
+  lookH: number | null;
+  /** 웃을 때 함께 올라가는 볼 */
+  cheekSquint: number | null;
+  /** 눈을 가늘게 뜸(웃거나 찡그릴 때) — 깜빡임과 구분하려고 */
+  eyeSquint: number | null;
+  /** 미간을 내림(긴장 판정의 원래 값, 개인 기준 빼기 전) */
+  browDown: number | null;
+  /** 눈썹 안쪽을 올림(걱정하는 표정) */
+  browInnerUp: number | null;
 }
+
+const avgKeys = (bs: Record<string, number> | null, keys: string[]) => (bs ? avgBlendshape(bs, keys) : null);
+const CALIB_STEP_CODE = { face: 1, settle: 2, body: 3 } as const;
 
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -160,6 +188,9 @@ export interface UseLiveFaceSessionOptions {
   maxCaptureSec?: number;
   /** 정확도 검증용 — 주면 매 장면 값을 넘긴다(DebugFrame). 평소엔 안 줌 */
   onDebugFrame?: (frame: DebugFrame) => void;
+  /** true면 캘리브레이션을 두 단계로 — 하루의 눈 3초 → 하루의 어깨 2초(calibration.ts calibStepAt 참고).
+   * 화면이 calibrationStep에 맞춰 안내를 바꿔야 한다. 기본 false(5초 내내 화면 가운데를 봄) */
+  bodyCalibration?: boolean;
 }
 
 export function useLiveFaceSession({
@@ -172,6 +203,7 @@ export function useLiveFaceSession({
   persist = true,
   maxCaptureSec = MAX_CAPTURE_SEC,
   onDebugFrame,
+  bodyCalibration = false,
 }: UseLiveFaceSessionOptions) {
   // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
   const debugRef = useRef(onDebugFrame);
@@ -198,6 +230,9 @@ export function useLiveFaceSession({
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
   // 하루(통화 중 하루가 나올 자리)를 볼 때의 눈동자 위치 — calibration.ts calibrateBaselineIris 참고
   const baselineIrisRef = useRef<IrisBaseline>(DEFAULT_BASELINE_IRIS);
+  // 두 단계 캘리브레이션: 하루의 어깨를 볼 때 값(모으는 중·결과). 결과는 아직 판정에 안 쓰고 기록만
+  const bodyBufferRef = useRef<(BodyPose | null)[]>([]);
+  const bodyPoseRef = useRef<BodyPose | null>(null);
   const calibratedRef = useRef(false);
   // 캘리브레이션을 시작한 시각(세션 시작부터 초). calibrateOnDemand면 startCalibration() 전까지 null
   const calibStartTRef = useRef<number | null>(calibrateOnDemand ? null : 0);
@@ -331,12 +366,15 @@ export function useLiveFaceSession({
             gazeRaw = { yaw, pitch, ox, oy };
           }
 
+          const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
+          const calibStep = calibT === null ? null : calibStepAt(calibT, bodyCalibration, CALIBRATION_SEC);
+
           if (debugRef.current) {
             const ef = computeExpressionForFrame(blendshapes);
-            const ct = calibStartTRef.current === null ? null : t - calibStartTRef.current;
+            const body = bodyPoseRef.current;
             debugRef.current({
               t,
-              calibrating: ct !== null && ct <= CALIBRATION_SEC,
+              calibrating: calibStep !== null,
               answering: answeringRef.current,
               face: landmarks !== null,
               yaw: gazeRaw?.yaw ?? null,
@@ -352,15 +390,35 @@ export function useLiveFaceSession({
               smileApp: ef ? ef.smile : null,
               tensionApp: ef ? ef.tension : null,
               blinkScore: computeBlinkBlendshapeScore(blendshapes),
+              calibStep: calibStep === null ? 0 : CALIB_STEP_CODE[calibStep],
+              bodyYaw: body?.yaw ?? null,
+              bodyPitch: body?.pitch ?? null,
+              bodyIrisX: body?.ox ?? null,
+              bodyIrisY: body?.oy ?? null,
+              lookDown: avgKeys(blendshapes, ['eyeLookDownLeft', 'eyeLookDownRight']),
+              lookUp: avgKeys(blendshapes, ['eyeLookUpLeft', 'eyeLookUpRight']),
+              lookH:
+                blendshapes === null
+                  ? null
+                  : avgBlendshape(blendshapes, ['eyeLookOutLeft', 'eyeLookInRight']) -
+                    avgBlendshape(blendshapes, ['eyeLookInLeft', 'eyeLookOutRight']),
+              cheekSquint: avgKeys(blendshapes, ['cheekSquintLeft', 'cheekSquintRight']),
+              eyeSquint: avgKeys(blendshapes, ['eyeSquintLeft', 'eyeSquintRight']),
+              browDown: avgKeys(blendshapes, [...TENSION_KEYS]),
+              browInnerUp: avgKeys(blendshapes, ['browInnerUp']),
             });
           }
 
-          const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
-          if (calibT !== null && calibT <= CALIBRATION_SEC) {
-            calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch, ox: gazeRaw.ox, oy: gazeRaw.oy } : null]);
-          } else if (calibT !== null && !calibratedRef.current) {
+          const pose = gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch, ox: gazeRaw.ox, oy: gazeRaw.oy } : null;
+          if (calibStep === 'face') {
+            calibBufferRef.current.push([t, pose]);
+          } else if (calibStep === 'body') {
+            bodyBufferRef.current.push(pose);
+          } else if (calibStep === null && calibT !== null && !calibratedRef.current) {
             calibratedRef.current = true;
+            // 시선·눈동자 기준은 "하루의 눈"을 본 구간에서만 잡는다(두 단계면 처음 3초, 아니면 5초 전체)
             const buffer = calibBufferRef.current;
+            bodyPoseRef.current = bodyCalibration ? calibrateBodyPose(bodyBufferRef.current) : null;
             const baseline = calibrateBaselineGaze(buffer.map(([, p]) => (p ? { yaw: p.yaw, pitch: p.pitch } : null)));
             baselineGazeRef.current = baseline;
             const irisBaseline = calibrateBaselineIris(buffer.map(([, p]) => (p ? { ox: p.ox, oy: p.oy } : null)));
@@ -432,6 +490,8 @@ export function useLiveFaceSession({
     if (phase !== 'camera' && phase !== 'ready') return;
     calibratedRef.current = false;
     calibBufferRef.current = [];
+    bodyBufferRef.current = [];
+    bodyPoseRef.current = null;
     calibStartTRef.current = elapsedSecRef.current;
     setPhase('calibrating');
   }
@@ -576,6 +636,13 @@ export function useLiveFaceSession({
     calibrationSec: CALIBRATION_SEC,
     /** 캘리브레이션을 시작한 뒤 지난 초(시작 전이면 0) */
     calibrationElapsedSec: calibStartTRef.current === null ? 0 : Math.max(0, elapsedSec - calibStartTRef.current),
+    /** 캘리브레이션 중 지금 볼 곳 — face: 하루의 눈, body: 하루의 어깨(settle 포함). 캘리브레이션 중이 아니면 null */
+    calibrationStep:
+      phase !== 'calibrating' || calibStartTRef.current === null
+        ? null
+        : calibStepAt(Math.max(0, elapsedSec - calibStartTRef.current), bodyCalibration, CALIBRATION_SEC) === 'face'
+          ? ('face' as const)
+          : ('body' as const),
     startCalibration,
     maxCaptureSec,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
