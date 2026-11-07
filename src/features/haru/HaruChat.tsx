@@ -192,7 +192,6 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
           <span aria-live="polite" style={{ fontSize: 15, color: 'var(--rb-ink-soft)' }}>
             {STATUS[t.phase]}
           </span>
-          <span className="rb-haru-talk__hint">대답은 글이 아니라 목소리로 해요</span>
         </div>
       </aside>
 

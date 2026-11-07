@@ -828,7 +828,6 @@ a {
 }
 .rb-haru-talk__haru > [role='img'] { max-width: 190px; }
 .rb-haru-talk__who { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.rb-haru-talk__hint { margin-top: 14px; font-size: 14px; line-height: 1.6; color: var(--rb-ink-soft); max-width: 9em; }
 .rb-haru-talk__chat { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .rb-haru-talk__log {
   flex: 1;
@@ -910,7 +909,6 @@ a {
   .rb-haru-talk__haru > [role='img'] { max-width: 64px; flex: 0 0 64px; }
   .rb-haru-talk__who { align-items: flex-start; }
   .rb-haru-talk__who strong { font-size: 17px !important; }
-  .rb-haru-talk__hint { margin-top: 2px; max-width: none; font-size: 12px; }
   .rb-haru-talk__chat { border-radius: 18px; }
   .rb-haru-talk__log { padding: 18px 16px; }
   .rb-haru-talk__bar { padding: 14px 16px; gap: 12px; }
