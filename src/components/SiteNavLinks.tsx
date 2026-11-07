@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Anchor, Group } from '@/components/ui';
 import { auth } from '@/lib/auth';
 
@@ -11,6 +11,7 @@ export type SiteNavActive = 'training' | 'community';
  * active로 지금 있는 화면을 굵은 브랜드 그린으로 표시.
  */
 export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
+  const onMyPage = useLocation().pathname === '/dashboard';
   return (
     <Group gap={32} visibleFrom="sm">
       <Anchor
@@ -27,6 +28,17 @@ export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
        * 기존엔 "#contact"만 있어서 랜딩이 아닌 페이지에선 아무 데도 안 움직였음 */}
       <Anchor component={Link} to ="/faq" c="var(--rb-ink-soft)" fz={14} underline="never">
         자주 묻는 질문
+      </Anchor>
+      {/* 마이페이지(대시보드) — 진행 단계·지난 기록·이어서 하기. 로그인 안 했으면 PrivateRoute가 게스트로 들여보낸다 */}
+      <Anchor
+        component={Link}
+        to="/dashboard"
+        fz={14}
+        underline="never"
+        c={onMyPage ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}
+        fw={onMyPage ? 700 : 400}
+      >
+        마이페이지
       </Anchor>
       {/* 메인 화면(active 없음)에서만: 로그인 — 회원으로 이미 로그인했으면 이름(누르면 대시보드).
           대시보드·커뮤니티 상단에는 대신 "이름님 · 로그아웃"이 따로 있다(PageHeader, CommunityShell) */}

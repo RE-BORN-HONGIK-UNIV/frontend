@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Badge, Box, Button, Grid, Group, Paper, Stack, Text } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { auth } from '@/lib/auth';
-import { daysSince, localProgress } from '@/features/progress/localProgress';
+import { localProgress } from '@/features/progress/localProgress';
+import { buildHistory, formatHistoryDate, nextStep } from '@/features/progress/history';
 import { useStageProgress } from '@/features/progress/useStageProgress';
-import { getInterviewer } from '@/features/interview/interviewers';
-import type { DifficultyTier } from '@/features/interview/difficulty';
 
 type Status = 'done' | 'available' | 'locked';
 
@@ -90,7 +89,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const name = auth.name || '회원';
   // 1·2·3단계 모두 서버에 저장된 기록 기준 (서버 조회가 안 될 때만 브라우저 메모로 대신 보여줌)
-  const { stage1: s1, stage2: s2, stage3: s3 } = useStageProgress();
+  const { stage1: s1, stage2: s2, stage3: s3, sessions } = useStageProgress();
 
   const [streak, setStreak] = useState(1);
   useEffect(() => setStreak(localProgress.bumpStreak()), []);
@@ -105,42 +104,51 @@ export default function Dashboard() {
   }[] = [
     {
       id: 1,
-      title: '음성 정밀 진단',
-      subtitle: '보이스 터치',
+      // 이름은 훈련 화면 위 단계 표시(StageHeader)와 같게. 점수는 보이지 않는다(결과 화면에 평가 표현을 넣지 않는 팀 원칙)
+      title: '목소리 대화',
+      subtitle: '하루와 이야기하기',
       desc: s1.done
-        ? `음성 분석 완료 · 종합 점수 ${s1.score}점`
-        : '음성 파형을 분석해 발화 안정성·유창성·침묵 조절력 등을 진단합니다.',
+        ? '목소리 대화를 마쳤어요. 언제든 다시 할 수 있어요.'
+        : '하루와 목소리로 이야기하며 말의 멈춤·채움말·떨림을 살펴봐요.',
       path: '/voice',
       status: s1.done ? 'done' : 'available',
     },
     {
       id: 2,
-      title: '표정 분석',
-      subtitle: '페이스 터치',
+      title: '영상 통화',
+      subtitle: '하루와 영상 통화하기',
       desc: s2.done
-        ? `표정·시선 분석 완료 · 종합 점수 ${s2.score}점`
-        : '시선 처리와 표정을 분석해 비언어적 소통 능력을 교정합니다.',
+        ? '영상 통화를 마쳤어요. 언제든 다시 할 수 있어요.'
+        : !s1.done
+          ? '1단계를 마치면 열려요.'
+          : '하루와 영상 통화하며 시선과 표정을 살펴봐요.',
       path: '/face',
-      status: s2.done ? 'done' : 'available',
+      // 2026-11: 훈련은 메인 "무료로 시작하기" → 1단계부터 순서대로 진행하고, 이 화면은 내 기록을 보는 곳으로 쓴다.
+      // 앞 단계를 마쳐야 다음 단계 카드가 열린다(이미 마친 단계는 다시 할 수 있게 열어 둠)
+      status: s2.done ? 'done' : s1.done ? 'available' : 'locked',
     },
     {
       id: 3,
-      title: '실전 모의 면접',
-      subtitle: 'Adaptive Interview',
+      title: '실전 면접',
+      subtitle: '하루와 나눈 이야기로 면접 연습',
+      // 면접관 이름은 난이도를 드러내서 뺐다(난이도는 화면에 보이지 않게 — 2026-11 팀 결정)
       desc: s3.done
-        ? `모의 면접 완료 · ${getInterviewer((s3.tier ?? 'standard') as DifficultyTier).name} 면접관`
-        : '앞 단계 결과를 바탕으로 맞춤형 난이도의 모의 면접을 진행합니다.',
+        ? '실전 면접을 마쳤어요. 언제든 다시 할 수 있어요.'
+        : !(s1.done && s2.done)
+          ? `${s1.done ? '2단계' : '1·2단계'}를 마치면 열려요.`
+          : '하루와 나눈 이야기로 만든 질문으로 실전처럼 연습해요.',
       path: '/interview',
-      // 1·2단계 기록이 없으면 InterviewStage가 해당 단계로 안내하므로 카드는 항상 열어둔다
-      // (완료한 뒤에도 다시 면접할 수 있게 'done'이어도 클릭은 열려 있음)
-      status: s3.done ? 'done' : 'available',
+      // 1·2단계를 마쳐야 열린다(완료한 뒤에도 다시 면접할 수 있게 'done'이어도 클릭은 열려 있음)
+      status: s3.done ? 'done' : s1.done && s2.done ? 'available' : 'locked',
     },
   ];
 
   const completed = STAGES.filter((s) => s.status === 'done').length;
   const pct = Math.round((completed / STAGES.length) * 100);
   const firstVisit = completed === 0;
-  const gap = daysSince(s1.at);
+  // 마이페이지: 다음에 할 단계로 바로 가는 버튼 + 지난 기록(점수 없이 언제 무엇을 했는지)
+  const next = nextStep(s1.done, s2.done, s3.done);
+  const history = buildHistory(s1.at, s2.at, sessions);
 
   const handleReset = () => {
     // 서버에 저장된 1·2단계 분석 기록은 지우지 못한다(완료 표시도 서버 기준이라 그대로 남음).
@@ -156,7 +164,7 @@ export default function Dashboard() {
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <PageHeader
-        eyebrow={<Badge variant="light" color="brand">내 속도로 하는 AI 면접 연습</Badge>}
+        eyebrow={<Badge variant="light" color="brand">마이페이지</Badge>}
         title={`안녕하세요, ${name} 님 🌱`}
         subtitle="오늘도 당신의 속도로, 천천히 나아가요"
         rightExtra={
@@ -238,15 +246,17 @@ export default function Dashboard() {
                   ))}
                 </Group>
 
-                <Box mt={14} style={{ background: 'var(--rb-bg)', borderRadius: 10, padding: 10 }}>
-                  <Text fz={13} fw={500} c="var(--rb-primary-strong)" ta="center">
-                    {completed === 0
-                      ? '천천히, 당신의 속도로 시작해보세요 🌱'
-                      : completed === STAGES.length
-                        ? '모든 단계를 완료했어요! 정말 잘하셨어요 🎉'
-                        : '꾸준히 잘 나아가고 있어요 💪'}
-                  </Text>
-                </Box>
+                <Text fz={13} fw={500} c="var(--rb-primary-strong)" ta="center" mt={14}>
+                  {completed === 0
+                    ? '천천히, 당신의 속도로 시작해보세요 🌱'
+                    : completed === STAGES.length
+                      ? '모든 단계를 완료했어요! 정말 잘하셨어요 🎉'
+                      : '꾸준히 잘 나아가고 있어요 💪'}
+                </Text>
+                {/* 이어서 하기 — 아직 안 한 가장 앞 단계로(다 했으면 최종 리포트) */}
+                <Button fullWidth radius="md" size="md" mt={10} onClick={() => navigate(next.to)}>
+                  {next.label} →
+                </Button>
               </Paper>
 
               <Text fz={17} fw={700} c="var(--rb-primary-strong)" mt={10}>
@@ -263,8 +273,8 @@ export default function Dashboard() {
               >
                 <Text fz={13} c="var(--rb-primary-strong)" style={{ lineHeight: 1.6 }}>
                   {s1.done
-                    ? '💡 지난번 결과를 바탕으로, 낮게 나온 지표부터 이어서 연습해볼까요?'
-                    : '💡 첫 훈련으로 음성 정밀 진단부터 시작해보세요. 짧게 말해도 충분해요.'}
+                    ? '💡 다음 단계를 이어서 해 볼까요? 마친 단계는 언제든 다시 할 수 있어요.'
+                    : '💡 첫 훈련은 목소리 대화부터 시작해요. 짧게 말해도 충분해요.'}
                 </Text>
               </Box>
 
@@ -306,7 +316,7 @@ export default function Dashboard() {
                           </Text>
                           {locked && (
                             <Badge size="xs" variant="light" color="gray">
-                              준비 중
+                              잠김
                             </Badge>
                           )}
                           {stage.status === 'done' && (
@@ -372,13 +382,46 @@ export default function Dashboard() {
             <Stack gap={16}>
               <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
                 <Text fz={11} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '1px' }} mb={8}>
-                  최근 활동
+                  지난 기록
                 </Text>
-                <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
-                  {s1.done
-                    ? `${gap && gap > 0 ? `${gap}일 전 · ` : ''}1단계 종합 ${s1.score}점`
-                    : '아직 완료한 훈련이 없어요. 첫 훈련을 시작하면 여기에 기록이 쌓여요.'}
-                </Text>
+                {history.length === 0 ? (
+                  <Text fz={13} c="var(--rb-ink-soft)" style={{ lineHeight: 1.6 }}>
+                    아직 완료한 훈련이 없어요. 첫 훈련을 시작하면 여기에 기록이 쌓여요.
+                  </Text>
+                ) : (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {history.map((h) => (
+                      <li key={h.key}>
+                        <div
+                          role={h.to ? 'link' : undefined}
+                          tabIndex={h.to ? 0 : undefined}
+                          onClick={() => h.to && navigate(h.to)}
+                          onKeyDown={(e) => h.to && e.key === 'Enter' && navigate(h.to)}
+                          style={{
+                            display: 'flex',
+                            gap: 12,
+                            alignItems: 'baseline',
+                            padding: '8px 6px',
+                            borderRadius: 8,
+                            cursor: h.to ? 'pointer' : 'default',
+                          }}
+                        >
+                          <Text fz={12} c="var(--rb-ink-faint)" style={{ width: 52, flexShrink: 0 }}>
+                            {formatHistoryDate(h.at)}
+                          </Text>
+                          <Box style={{ minWidth: 0 }}>
+                            <Text fz={14} fw={600}>
+                              {h.title}
+                            </Text>
+                            <Text fz={12} c={h.to ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}>
+                              {h.detail}
+                            </Text>
+                          </Box>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Paper>
 
               <Paper p={20} radius="lg" withBorder style={{ background: 'var(--rb-primary-tint)', borderColor: 'var(--rb-line)' }}>

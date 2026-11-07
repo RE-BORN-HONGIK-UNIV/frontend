@@ -46,19 +46,29 @@ describe('Dashboard 단계 진행 표시', () => {
     vi.mocked(api.listInterviewSessions).mockResolvedValue({ sessions: [] });
   });
 
-  it('서버에 기록이 없으면 완료 배지가 없고 3단계 카드는 열려 있다', async () => {
+  it('서버에 기록이 없으면 완료 배지가 없고 2·3단계 카드는 잠겨 있다', async () => {
     server(null, null);
     renderDashboard();
     await waitFor(() => expect(api.latestGazeBlink).toHaveBeenCalled());
     expect(screen.queryByText('완료 ✓')).toBeNull();
-    expect(screen.queryByText('준비 중')).toBeNull();
-    expect(screen.getByText(/맞춤형 난이도의 모의 면접을 진행합니다/)).toBeTruthy();
+    expect(screen.getAllByText('잠김').length).toBe(2);
+    expect(screen.getByText('1단계를 마치면 열려요.')).toBeTruthy();
+    expect(screen.getByText('1·2단계를 마치면 열려요.')).toBeTruthy();
   });
 
-  it('서버에 2단계 기록이 있으면 2단계 카드가 점수와 함께 완료로 표시된다', async () => {
+  it('1단계만 마치면 2단계는 열리고 3단계는 잠겨 있다', async () => {
+    server(S1, null);
+    renderDashboard();
+    expect(await screen.findByText('목소리 대화를 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
+    expect(screen.getAllByText('잠김').length).toBe(1);
+    expect(screen.getByText('2단계를 마치면 열려요.')).toBeTruthy();
+    expect(screen.getByText(/하루와 영상 통화하며 시선과 표정을/)).toBeTruthy();
+  });
+
+  it('서버에 2단계 기록이 있으면 2단계 카드가 완료로 표시된다(점수 없이)', async () => {
     server(null, S2);
     renderDashboard();
-    expect(await screen.findByText('표정·시선 분석 완료 · 종합 점수 70점')).toBeTruthy();
+    expect(await screen.findByText('영상 통화를 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
     expect(screen.getAllByText('완료 ✓').length).toBe(1);
   });
 
@@ -66,8 +76,8 @@ describe('Dashboard 단계 진행 표시', () => {
     server(S1, S2);
     localProgress.markStage3Done('practice');
     renderDashboard();
-    expect(await screen.findByText('음성 분석 완료 · 종합 점수 80점')).toBeTruthy();
-    expect(await screen.findByText('모의 면접 완료 · 서진 면접관')).toBeTruthy();
+    expect(await screen.findByText('목소리 대화를 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
+    expect(await screen.findByText('실전 면접을 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
     expect(screen.getAllByText('완료 ✓').length).toBe(3);
     expect(screen.getByText('모든 단계를 완료했어요! 정말 잘하셨어요 🎉')).toBeTruthy();
   });
@@ -80,13 +90,13 @@ describe('Dashboard 단계 진행 표시', () => {
     await waitFor(() => expect(screen.queryByText('완료 ✓')).toBeNull());
   });
 
-  it('서버에 끝까지 마친 면접이 있으면 3단계가 그 면접관과 함께 완료로 표시된다 (브라우저 기록 없이도)', async () => {
+  it('서버에 끝까지 마친 면접이 있으면 3단계가 완료로 표시된다(면접관 이름 없이) (브라우저 기록 없이도)', async () => {
     server(S1, S2, [
       { id: 2, tier: 'warmup', startedAt: '2026-10-03T01:00:00', completedAt: null, turnCount: 1 },       // 중간에 나간 최신 면접
       { id: 1, tier: 'practice', startedAt: '2026-10-02T01:00:00', completedAt: '2026-10-02T01:10:00', turnCount: 5 },
     ]);
     renderDashboard();
-    expect(await screen.findByText('모의 면접 완료 · 서진 면접관')).toBeTruthy(); // 최신이지만 미완료인 건 건너뛰고 완료 건 사용
+    expect(await screen.findByText('실전 면접을 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy(); // 최신이지만 미완료인 건 건너뛰고 완료 건 사용
   });
 
   it('서버에 면접 기록이 있어도 모두 중간에 나간 것이면 3단계는 완료가 아니다', async () => {
@@ -101,7 +111,7 @@ describe('Dashboard 단계 진행 표시', () => {
     server(S1, S2, []);
     localProgress.markStage3Done('standard');
     renderDashboard();
-    expect(await screen.findByText('모의 면접 완료 · 도윤 면접관')).toBeTruthy();
+    expect(await screen.findByText('실전 면접을 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
   });
 
   it('서버 조회가 실패하면 브라우저의 1단계 완료 기록으로 대신 보여준다', async () => {
@@ -109,7 +119,7 @@ describe('Dashboard 단계 진행 표시', () => {
     vi.mocked(api.latestGazeBlink).mockRejectedValue(new Error('network'));
     localProgress.markStage1Done(88);
     renderDashboard();
-    expect(await screen.findByText('음성 분석 완료 · 종합 점수 88점')).toBeTruthy();
+    expect(await screen.findByText('목소리 대화를 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
   });
 
   it('서버 조회가 실패하면 2단계도 브라우저의 완료 메모로 대신 보여준다', async () => {
@@ -117,7 +127,7 @@ describe('Dashboard 단계 진행 표시', () => {
     vi.mocked(api.latestGazeBlink).mockRejectedValue(new Error('network'));
     localProgress.markStage2Done(66);
     renderDashboard();
-    expect(await screen.findByText('표정·시선 분석 완료 · 종합 점수 66점')).toBeTruthy();
+    expect(await screen.findByText('영상 통화를 마쳤어요. 언제든 다시 할 수 있어요.')).toBeTruthy();
   });
 
   it('서버 조회가 실패했고 브라우저 메모도 없으면 2단계는 미완료다', async () => {

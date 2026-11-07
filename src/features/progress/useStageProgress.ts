@@ -18,5 +18,7 @@ export function useStageProgress() {
     stage1: resolveStage1Progress(s1.status, s1.data?.result, localProgress.stage1()),
     stage2: resolveStage2Progress(s2.status, s2.data?.result, localProgress.stage2()),
     stage3: resolveStage3Progress(s3.status, s3.data?.sessions, localProgress.stage3()),
+    /** 서버 면접 목록(마이페이지 지난 기록용). 조회 전·실패면 빈 목록 */
+    sessions: s3.data?.sessions ?? [],
   };
 }
