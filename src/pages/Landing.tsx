@@ -22,7 +22,7 @@ const card: React.CSSProperties = {
 const panel: React.CSSProperties = {
   maxWidth: MAXW,
   margin: '0 auto',
-  background: 'rgba(255,255,255,0.62)',
+  background: 'var(--rb-glass)',
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
   border: '1px solid var(--rb-line)',
@@ -140,7 +140,7 @@ function HeroPreview({ compact }: { compact: boolean }) {
             </span>
             <div style={{ lineHeight: 1.5 }}>
               <b style={{ display: 'block', color: 'var(--rb-ink)' }}>내 대답</b>
-              <span style={{ color: '#767b74' }}>말로 대답해요</span>
+              <span style={{ color: 'var(--rb-ink-soft)' }}>말로 대답해요</span>
             </div>
           </div>
           <div aria-hidden style={{ ...float, right: -40, top: 28, width: 220 }}>
@@ -221,7 +221,7 @@ function Hero() {
         <Box style={{ width: 100, height: 3, borderRadius: 2, background: 'var(--rb-primary)' }} />
         <Box
           style={{
-            background: 'rgba(255,255,255,0.72)',
+            background: 'var(--rb-glass-strong)',
             backdropFilter: 'blur(6px)',
             WebkitBackdropFilter: 'blur(100px)',
             border: '1px solid var(--rb-line)',
@@ -255,7 +255,7 @@ function Steps() {
       id="steps"
       style={{
         padding: '96px 24px',
-        background: '#f5f5f4',
+        background: 'var(--rb-section-alt)',
         borderTop: '1px solid var(--rb-line)',
         borderBottom: '1px solid var(--rb-line)',
       }}

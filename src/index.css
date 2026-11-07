@@ -176,6 +176,10 @@
   --rb-bg: #edf2ea;
   --rb-surface: #ffffff;
   --rb-surface-tint: #f1f5ef;
+  /* 메인 화면 반투명 판(panel)과 회색 섹션 배경 — 예전엔 Landing.tsx에 흰색·#f5f5f4로 고정돼 다크 모드에서 글자가 안 보였다 */
+  --rb-glass: rgba(255, 255, 255, 0.62);
+  --rb-glass-strong: rgba(255, 255, 255, 0.72);
+  --rb-section-alt: #f5f5f4;
 
   --rb-ink: #232826;
   --rb-ink-soft: #68706b;
@@ -221,6 +225,9 @@
   --rb-bg: #12160f;
   --rb-surface: #1b2118;
   --rb-surface-tint: #212821;
+  --rb-glass: rgba(27, 33, 24, 0.72);
+  --rb-glass-strong: rgba(27, 33, 24, 0.82);
+  --rb-section-alt: #161b13;
 
   --rb-ink: #e8ede5;
   --rb-ink-soft: #a9b6a5;
