@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { PrivateRoute } from '@/components/PrivateRoute';
 import { RootLayout } from './RootLayout';
+import { enableViewTransitions } from './navTransition';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -107,3 +108,6 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+// 모든 화면 이동에 전환 효과(크로스페이드, 훈련 단계 사이는 슬라이드) — navTransition.ts
+enableViewTransitions(router);

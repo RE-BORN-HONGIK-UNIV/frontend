@@ -14,6 +14,8 @@ export function ThemeToggle() {
       aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
       style={{
         position: 'fixed',
+        // 화면 전환(View Transitions) 때 같이 미끄러지지 않게 따로 뗀다(index.css 화면 전환)
+        viewTransitionName: 'rb-theme-toggle',
         right: 20,
         bottom: 20,
         zIndex: 40,

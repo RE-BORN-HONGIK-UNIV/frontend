@@ -347,6 +347,50 @@ a {
   }
 }
 
+/* ── 화면 전환(navTransition.ts) — View Transitions를 지원하면 그쪽이 맡고, 위 페이드인은 끈다(효과가 겹치지 않게) ── */
+@supports (view-transition-name: none) {
+  .rb-page-enter {
+    animation: none;
+  }
+}
+/* 기본: 크로스페이드 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: ease;
+}
+/* 훈련 단계 사이: 앞으로 가면 새 화면이 오른쪽에서, 뒤로 가면 왼쪽에서(살짝만 — 40px) */
+:root[data-nav='forward']::view-transition-old(root) { animation: rbSlideOutLeft 300ms ease both; }
+:root[data-nav='forward']::view-transition-new(root) { animation: rbSlideInRight 300ms ease both; }
+:root[data-nav='back']::view-transition-old(root) { animation: rbSlideOutRight 300ms ease both; }
+:root[data-nav='back']::view-transition-new(root) { animation: rbSlideInLeft 300ms ease both; }
+@keyframes rbSlideOutLeft { to { opacity: 0; transform: translateX(-40px); } }
+@keyframes rbSlideInRight { from { opacity: 0; transform: translateX(40px); } }
+@keyframes rbSlideOutRight { to { opacity: 0; transform: translateX(40px); } }
+@keyframes rbSlideInLeft { from { opacity: 0; transform: translateX(-40px); } }
+/* 화면이 바뀌어도 그대로 있는 것들은 따로 떼어 둔다 — 단계 머리줄·다크 모드 버튼·진행 막대가 같이 미끄러지지 않게 */
+.rb-stagebar { view-transition-name: rb-stagebar; }
+.rb-topbar { view-transition-name: rb-topbar; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* ── 맨 위 진행 막대(TopProgress.tsx) ── */
+.rb-topbar {
+  position: fixed; top: 0; left: 0; z-index: 1000; height: 3px; width: 0;
+  background: var(--rb-primary); box-shadow: 0 0 8px var(--rb-primary); border-radius: 0 2px 2px 0;
+  pointer-events: none; opacity: 1;
+}
+.rb-topbar[data-state='run'] { width: 85%; transition: width 1.4s cubic-bezier(0.1, 0.6, 0.3, 1); }
+.rb-topbar[data-state='done'] { width: 100%; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease 0.15s; }
+@media (prefers-reduced-motion: reduce) {
+  .rb-topbar[data-state='run'], .rb-topbar[data-state='done'] { transition: none; }
+}
+
 /* ── 로고 워드마크(RebornWordmark) 라이트/다크 이미지 전환 — data-theme
    속성 기준(React state를 안 거쳐서 테마 전환 시 리렌더 없이 즉시 바뀜).
    기본은 라이트 버전만 보이고, 다크 테마일 때만 서로 바뀐다. */
