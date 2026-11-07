@@ -40,6 +40,7 @@ import {
   summarizeExpression,
   combineSmileRatio,
   SMILE_THRESHOLD,
+  TENSION_DELTA_THRESHOLD,
   TENSION_MIN_SEC,
 } from './expression';
 import { scoreBlinkRate, scoreExpression, scoreGazeSegments } from './scoring';
@@ -293,7 +294,7 @@ export function useLiveFaceSession({
     }
     if (!blinkFsmRef.current.inBlink) closureSmileMaxRef.current = 0;
 
-    stepExpression(exprFsmRef.current, t, blendshapes, baselineTensionRef.current);
+    stepExpression(exprFsmRef.current, t, blendshapes, baselineTensionRef.current, undefined, TENSION_DELTA_THRESHOLD);
     const exprFrame = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
     exprSeriesRef.current.push([t, exprFrame ? exprFrame.smile : null, exprFrame ? exprFrame.tension : null]);
 
@@ -606,7 +607,7 @@ export function useLiveFaceSession({
     // 0.4초 넘게 감긴 구간(아래를 봄)은 시선 이탈로 — gaze.ts markClosuresAsAversion
     const gazeSegments = markClosuresAsAversion(gazeFsmRef.current.segmentBuffer.committed, longClosuresRef.current);
     const gazeResult = scoreGazeSegments(gazeSegments);
-    const answerSummary = summarizeExpression(exprSeriesRef.current, TENSION_MIN_SEC);
+    const answerSummary = summarizeExpression(exprSeriesRef.current, TENSION_MIN_SEC, TENSION_DELTA_THRESHOLD);
     // 미소는 대답 + 하루 말을 들을 때(measureOnlyWhenAnswering일 때만 듣기 프레임이 있음), 긴장은 대답 중만
     const expressionSummary = {
       ...answerSummary,

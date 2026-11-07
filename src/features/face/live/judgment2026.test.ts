@@ -107,3 +107,17 @@ describe('2026-11 찡그림 판정 구조', () => {
     expect(summarizeExpression(s).tensionRatio).toBeCloseTo(11 / 13, 4);
   });
 });
+
+describe('2026-11 찡그림 임시값', () => {
+  it('평소 대비 +0.08부터 찡그림 — 세연 찡그림(평소 0.037 → 0.16)은 잡고, 무표정(+0.03~0.07)은 안 잡음', async () => {
+    const { TENSION_DELTA_THRESHOLD, summarizeExpression } = await import('./expression');
+    expect(TENSION_DELTA_THRESHOLD).toBe(0.08);
+    const series: [number, number | null, number | null][] = [
+      [0, 0, 0.16 - 0.037],
+      [0.1, 0, 0.07],
+      [0.2, 0, 0.03],
+      [0.3, 0, 0.1],
+    ];
+    expect(summarizeExpression(series, 0, TENSION_DELTA_THRESHOLD).tensionRatio).toBe(0.5);
+  });
+});
