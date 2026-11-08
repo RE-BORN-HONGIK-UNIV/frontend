@@ -113,7 +113,10 @@
 .rb-report .chip.n { background: var(--rp-bg); color: var(--rp-ink-3); border: 1px solid var(--rp-line); }
 .rb-report .pending { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding: 16px; border: 1px dashed var(--rp-line-2); border-radius: 12px; background: var(--rp-bg); font-size: 14px; color: var(--rp-ink-3); line-height: 1.5; }
 .rb-report .note { font-size: 13px; color: var(--rp-ink-3); margin-top: 8px; }
-.rb-report .rows li { grid-template-columns: 140px 1fr 96px auto; }
+/* 다섯 줄이 같은 칸 나눔을 쓰게(subgrid) — 줄마다 칩 글자 길이가 달라도 막대가 같은 세로선에 선다 */
+.rb-report .rows { display: grid; grid-template-columns: 140px 1fr 96px auto; column-gap: 14px; }
+.rb-report .rows li { grid-column: 1 / -1; grid-template-columns: subgrid; }
+.rb-report .rows li > .chip { justify-self: end; }
 .rb-report .spark { display: flex; align-items: flex-end; gap: 5px; height: 30px; }
 .rb-report .spark i { flex: 1; border-radius: 3px 3px 0 0; background: var(--rp-accent); }
 .rb-report .spark i.none { height: 100%; background: none; border: 1px dashed var(--rp-line-2); border-radius: 3px; }
@@ -151,6 +154,7 @@
 .rb-report .keys .k3::before { background: var(--rp-bg); border-radius: 999px; border: 1px solid var(--rp-line-2); }
 .rb-report .keys .k4::before { background: var(--rp-accent-soft); }
 @media (max-width: 560px) {
+  .rb-report .rows { display: block; }
   .rb-report .rows li { grid-template-columns: 1fr auto; }
   .rb-report .rows li > div { grid-column: 1 / -1; grid-row: 3; }
 }
