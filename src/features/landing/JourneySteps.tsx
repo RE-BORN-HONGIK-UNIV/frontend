@@ -178,7 +178,7 @@ function InterviewMock() {
           position: 'relative',
           aspectRatio: '16 / 10',
           borderRadius: 12,
-          background: '#d9dfe5 url(/interviewer/idle.jpg) center / cover no-repeat',
+          background: '#d9dfe5 url(/interviewer/interviewer.jpg) center 22% / cover no-repeat',
         }}
       >
         <div
