@@ -1313,9 +1313,12 @@ a {
 .rb-s3__quit { border: none; background: none; padding: 0; cursor: pointer; font: inherit; color: #cfd5db; }
 .rb-s3__win {
   width: min(62vw, 1000px); aspect-ratio: 16 / 9; border-radius: 18px;
-  background: #d9dfe5 url('/interviewer/interviewer.jpg') center / cover no-repeat;
+  background: #d9dfe5 url('/interviewer/talking-poster.jpg') center / cover no-repeat;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  position: relative; overflow: hidden;
 }
+.rb-s3__talk { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.25s ease; }
+@media (prefers-reduced-motion: reduce) { .rb-s3__talk { display: none; } }
 .rb-s3__bar {
   display: flex; align-items: center; gap: 20px; background: #fff; color: var(--rb-ink, #15181c);
   border-radius: 999px; padding: 10px 12px 10px 24px; white-space: nowrap;

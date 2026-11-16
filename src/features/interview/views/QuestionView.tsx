@@ -133,6 +133,22 @@ export function QuestionView({
   const phaseRef = useRef<Phase>(phase);
   phaseRef.current = phase;
 
+  // 면접관이 질문할 때만 말하는 영상을 튼다. 멈출 땐 서서히 투명하게 한 뒤 첫 장면으로 되돌린다 —
+  // 뒤 배경이 영상 첫 장면(talking-poster.jpg)이라 말하던 입 모양에서 툭 끊겨 보이지 않는다
+  const talkRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = talkRef.current;
+    if (!v) return;
+    if (phase === 'asking') {
+      v.style.opacity = '1';
+      void v.play().catch(() => {});
+      return;
+    }
+    v.style.opacity = '0';
+    const t = setTimeout(() => { v.pause(); v.currentTime = 0; v.style.opacity = '1'; }, 250);
+    return () => clearTimeout(t);
+  }, [phase]);
+
   // 이전 음성 URL은 정리해서 메모리 누수 방지
   const setAudio = (url: string | null) => {
     setAudioUrl((prev) => {
@@ -349,8 +365,10 @@ export function QuestionView({
         </span>
       </div>
 
-      {/* 면접관 사진은 움직이지 않고, 말하는 중인지는 아래 소리 막대로만 보여 준다 */}
-      <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`} />
+      {/* 면접관 영상: 질문할 때만 재생, 들을 때는 첫 장면에 멈춤(소리는 audio가 낸다). 영상이 안 뜨면 뒤의 사진이 보인다 */}
+      <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`}>
+        <video ref={talkRef} className="rb-s3__talk" src="/interviewer/talking.mp4" muted loop playsInline preload="auto" aria-hidden />
+      </div>
       <audio ref={audioRef} src={audioUrl ?? undefined} onEnded={handleAudioEnded} hidden />
       {/* 얼굴 분석용 카메라 — 화면에는 내 얼굴을 띄우지 않는다(경량 웹처럼). display:none이면 프레임이 안 들어와서 1px로 숨김 */}
       <video ref={faceVideoRef} muted playsInline aria-hidden className="rb-s3__facecam" />
@@ -415,11 +433,10 @@ export function QuestionView({
               </button>
             )}
           </div>
-          {listening && (
-            <button type="button" className="rb-s3__skip" onClick={handleSkip}>
-              이 질문은 대답하지 않고 넘어갈게요
-            </button>
-          )}
+          {/* 자리는 늘 차지하고 대답할 때만 보인다 — 나타날 때 가운데 정렬된 화면 전체가 위로 밀리지 않게 */}
+          <button type="button" className="rb-s3__skip" onClick={handleSkip} disabled={!listening} aria-hidden={!listening} style={{ visibility: listening ? 'visible' : 'hidden' }}>
+            이 질문은 대답하지 않고 넘어갈게요
+          </button>
         </>
       )}
     </div>
