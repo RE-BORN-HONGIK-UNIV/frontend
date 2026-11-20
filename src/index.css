@@ -1300,6 +1300,9 @@ a {
   .rb-prep3__start { width: 100%; }
 }
 /* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
+/* 3단계 면접실: 스크롤바 자리(html 배경)도 어둡게, 다크모드 버튼은 숨김 */
+html:has(.rb-s3) { background: #1d2126; }
+html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인라인 display:flex를 이기려고 !important */
 .rb-s3 {
   position: relative; min-height: 100dvh; background: #1d2126; color: #cfd5db;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;

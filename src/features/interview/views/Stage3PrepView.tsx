@@ -65,7 +65,7 @@ export function Stage3PrepView({
   }
 
   const interviewer = tier ? getInterviewer(tier) : null;
-  const followGuide = interviewer && interviewer.followUps > 0 ? '대답에 따라 한두 번 더 물어볼 수 있어요' : '하나씩 천천히 물어볼게요';
+  const followGuide = interviewer && interviewer.followUps > 0 ? `질문마다 ${interviewer.followUps === 1 ? '한' : '두'} 번 더 이어서 물어봐요` : '하나씩 천천히 물어볼게요';
 
   // 마이크·카메라: 권한을 받아 스트림이 연결됐는지만 본다
   const asking = media.status === 'idle' || media.status === 'requesting';

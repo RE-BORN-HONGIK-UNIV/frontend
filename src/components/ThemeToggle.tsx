@@ -10,6 +10,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
+      className="rb-theme-toggle"
       onClick={toggleTheme}
       aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
       style={{
