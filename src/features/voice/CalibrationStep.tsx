@@ -3,31 +3,34 @@ import { Box, Button, Text } from '@/components/ui';
 import { useCalibrate } from './queries';
 import { useMicLevel } from './useMicLevel';
 import type { CalibrationResult } from '@/lib/api/types';
+import { listen } from '@/features/haru/speech';
 
 // TODO(추후): 지금은 1단계 화면 켤 때마다 매번 새로 녹음하게 되어 있음.
 // 나중엔 유저별로 최근 캘리브레이션 결과를 DB에 저장해두고
 // "지난번 값 사용하기" 옵션을 주는 방식으로 바꿀 예정.
 
-// 시간 배분은 그대로 — 백엔드 analyze_calibration이 처음 5초(CALIBRATION_SILENCE_SEC)를 주변 소음으로,
-// 그 뒤를 목소리로 보고 개인 기준값을 만든다. 화면 모양만 경량 웹 "마이크만 확인할게요" 카드로 바꿨다.
+// 백엔드 analyze_calibration이 처음 5초(CALIBRATION_SILENCE_SEC)를 주변 소음으로, 그 뒤를 목소리로 본다 — SILENCE_SEC는 그 값과 같아야 한다.
+// 목소리 쪽 기준값(너무 큰지)은 짧은 문장 하나로 충분해서, 예전 두 문장(15초)을 한 문장으로 줄였다.
 const SILENCE_SEC = 5;
-const READ_SEC_1 = 5;
-const READ_SEC_2 = 10;
-const TOTAL_SEC = SILENCE_SEC + READ_SEC_1 + READ_SEC_2;
+const READ_MAX_SEC = 8;
+const TOTAL_SEC = SILENCE_SEC + READ_MAX_SEC;
 
-const READ_SCRIPT_1 = '안녕하세요, 편하게 목소리를 들려주세요.';
-const READ_SCRIPT_2 = '오늘 하루는 어땠나요, 저는 그럭저럭 괜찮았어요. 이제 준비를 시작해볼게요.';
+const READ_SCRIPT = '안녕하세요, 잘 부탁해요.';
+// 받아쓴 말에 문장 끝 낱말이 들리면 끝까지 읽은 것으로 본다
+const SCRIPT_WORDS = /부탁/;
+// 받아쓰기가 안 되는 브라우저에선 소리 막대 둘째 칸(0.3)을 넘으면 목소리가 들린 것으로 본다
+const VOICE_LEVEL = 0.3;
 
-// error: 마이크를 못 켬(권한·장치), failed: 녹음은 됐는데 서버가 정리하지 못함(무료 서버가 느리거나 바쁨)
-/** 목소리 확인을 기다리는 최대 시간 — 서버를 처음 깨우면 모델을 불러오느라 1분쯤 걸려서 넉넉히 2분 */
-const CALIBRATE_TIMEOUT_MS = 120_000;
+type Phase = 'idle' | 'permit' | 'silence' | 'read' | 'done' | 'quiet' | 'error';
 
-type Phase = 'idle' | 'silence' | 'read1' | 'read2' | 'uploading' | 'done' | 'error' | 'failed';
+// 문장 낱말별로 '들렸는지' 볼 때 쓰는 핵심 글자(문장부호 뺀 것)
+const SCRIPT_PARTS = READ_SCRIPT.split(' ').map((w) => ({ text: w, core: w.replace(/[,.]/g, '') }));
 
 interface CalibrationStepProps {
+  /** 문장을 읽어 마이크가 잘 들리는 게 확인되면 — 이때부터 1단계를 시작할 수 있다 */
+  onReady: () => void;
+  /** 서버가 개인 기준값을 다 만들면(뒤에서, 늦게 올 수 있다). 실패하면 부르지 않고 기준 보정만 빠진다 */
   onComplete: (result: CalibrationResult) => void;
-  /** 서버가 마이크 확인을 정리하지 못했을 때 "확인 없이 시작할게요" — 확인 없이도 1단계 분석은 된다(개인 기준 보정만 빠짐) */
-  onSkip?: () => void;
 }
 
 export function MicIcon() {
@@ -110,14 +113,17 @@ function LevelBars({ level }: { level: number }) {
   );
 }
 
-export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
+export function CalibrationStep({ onReady, onComplete }: CalibrationStepProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SEC);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [heard, setHeard] = useState('');
   const [result, setResult] = useState<CalibrationResult | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const earRef = useRef<{ stop(): void } | null>(null);
+  const voiceHeardRef = useRef(false);
   const calibrate = useCalibrate();
   const level = useMicLevel(stream);
 
@@ -128,10 +134,36 @@ export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
     });
   };
 
+  /** 녹음·타이머·받아쓰기를 멈춘다. upload면 녹음을 서버로 보내 기준값을 뒤에서 만든다(기다리지 않음) */
+  const stopAll = (upload: boolean) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    earRef.current?.stop();
+    earRef.current = null;
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === 'recording') {
+      recorder.onstop = upload
+        ? () => {
+            const file = new File([new Blob(chunksRef.current, { type: 'audio/webm' })], 'calibration.webm', { type: 'audio/webm' });
+            // 화면이 1단계 대화로 넘어간 뒤에 답이 와도 받게 mutateAsync로(실패하면 개인 기준 보정만 빠진다)
+            calibrate
+              .mutateAsync(file)
+              .then((r) => {
+                setResult(r);
+                onComplete(r);
+              })
+              .catch(() => {});
+          }
+        : null;
+      recorder.stop();
+    }
+    cleanupStream();
+  };
+
   // 화면을 떠나면 녹음·타이머·마이크를 정리
   useEffect(
     () => () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      earRef.current?.stop();
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.onstop = null;
         mediaRecorderRef.current.stop();
@@ -141,45 +173,40 @@ export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
     [],
   );
 
+  const finishRead = () => {
+    stopAll(true);
+    setPhase('done');
+    onReady();
+  };
+
+  // 문장을 읽는 동안 목소리가 들어왔는지(받아쓰기가 안 되는 브라우저용)
+  useEffect(() => {
+    if (phase === 'read' && level >= VOICE_LEVEL) voiceHeardRef.current = true;
+  }, [level, phase]);
+
+  // 받아쓴 말에 문장 속 낱말이 들리면 바로 통과
+  useEffect(() => {
+    if (phase === 'read' && SCRIPT_WORDS.test(heard.replace(/\s/g, ''))) finishRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 받아쓴 말이 바뀔 때만
+  }, [heard]);
+
   const start = async () => {
+    setPhase('permit');
     try {
       // 답변 녹음과 같은 조건으로 기준을 잰다(useAnswerRecorder와 같은 설정)
       const s = await navigator.mediaDevices.getUserMedia({
         audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false },
       });
       setStream(s);
+      setHeard('');
+      setResult(null);
+      voiceHeardRef.current = false;
 
       const recorder = new MediaRecorder(s);
       chunksRef.current = [];
-
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], 'calibration.webm', { type: 'audio/webm' });
-        setPhase('uploading');
-        cleanupStream();
-
-        // 서버가 끝내 답하지 않으면(배포 중·다른 분석이 Whisper를 오래 쓰는 중 등) '확인하고 있어요'에서 영영 멈춰
-        // 있었다 — 2분이 지나면 실패로 보고 "확인 없이 시작할게요"를 보여 준다. 그 뒤에 답이 오면 그 결과를 쓴다.
-        const giveUp = setTimeout(() => setPhase((p) => (p === 'uploading' ? 'failed' : p)), CALIBRATE_TIMEOUT_MS);
-        calibrate.mutate(file, {
-          onSuccess: (r) => {
-            clearTimeout(giveUp);
-            setResult(r);
-            setPhase('done');
-            onComplete(r);
-          },
-          // 마이크는 잘 됐는데 서버 쪽 실패 — 예전엔 'error'로 같이 처리해서 "마이크를 쓸 수 없어요"가 떠 헷갈렸다
-          onError: () => {
-            clearTimeout(giveUp);
-            setPhase('failed');
-          },
-        });
-      };
-
       mediaRecorderRef.current = recorder;
       recorder.start();
       setPhase('silence');
@@ -189,12 +216,17 @@ export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
       timerRef.current = setInterval(() => {
         elapsed += 1;
         setSecondsLeft(TOTAL_SEC - elapsed);
-
-        if (elapsed === SILENCE_SEC) setPhase('read1');
-        if (elapsed === SILENCE_SEC + READ_SEC_1) setPhase('read2');
+        if (elapsed === SILENCE_SEC) {
+          setPhase('read');
+          earRef.current = listen(setHeard);
+        }
         if (elapsed >= TOTAL_SEC) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          recorder.stop();
+          // 받아쓰기로 확인되지 않았어도 목소리가 들렸으면 통과, 아무 소리도 없었으면 다시
+          if (voiceHeardRef.current) finishRead();
+          else {
+            stopAll(false);
+            setPhase('quiet');
+          }
         }
       }, 1000);
     } catch {
@@ -202,99 +234,65 @@ export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
     }
   };
 
-  const recording = phase === 'silence' || phase === 'read1' || phase === 'read2';
+  const recording = phase === 'silence' || phase === 'read';
   const progress = (TOTAL_SEC - secondsLeft) / TOTAL_SEC;
+  const linkStyle = { border: 'none', background: 'none', padding: 0, color: 'var(--rb-primary-strong)', fontWeight: 600, cursor: 'pointer', fontSize: 13 };
 
-  const quote = (text: string) => (
-    <Box
-      mt={8}
-      style={{
-        display: 'inline-block',
-        background: 'var(--rb-bg)',
-        borderRadius: 8,
-        padding: '6px 12px',
-        fontSize: 15,
-        fontWeight: 600,
-        color: 'var(--rb-ink)',
-      }}
-    >
-      &quot;{text}&quot;
+  const heardCore = heard.replace(/\s/g, '');
+  // 문장 낱말을 들린 만큼 초록색으로 — 따로 "들린 말" 줄을 두지 않아서 상자 크기가 변하지 않는다
+  const sentence = (
+    <Box mt={10} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--rb-ink)' }}>
+      &quot;
+      {SCRIPT_PARTS.map((w, i) => {
+        const lit = phase === 'done' || (phase === 'read' && heardCore.includes(w.core));
+        return (
+          <span key={i} style={{ color: lit ? 'var(--rb-primary)' : undefined, transition: 'color 200ms ease' }}>
+            {i > 0 && ' '}
+            {w.text}
+          </span>
+        );
+      })}
+      &quot;
     </Box>
   );
 
   let title: ReactNode;
-  let body: ReactNode;
-  let right: ReactNode = null;
+  let right: ReactNode;
   if (phase === 'idle') {
-    title = '마이크로 목소리를 들려주세요';
-    body = (
-      <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-        5초 조용히 기다린 뒤 나오는 문장을 소리 내어 읽어요. 모두 {TOTAL_SEC}초쯤 걸리고, 평가에는 들어가지 않아요.
-      </Text>
-    );
+    title = '5초 조용히 있다가, 아래 문장을 따라 읽어 주세요';
     right = (
       <Button size="sm" radius="md" variant="light" onClick={start}>
         확인 시작
       </Button>
     );
+  } else if (phase === 'permit') {
+    title = '마이크를 쓸지 물어보면 "허용"을 눌러 주세요';
   } else if (phase === 'silence') {
-    title = '주변 소리를 듣고 있어요';
-    body = (
-      <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-        조용히 {Math.max(0, secondsLeft - READ_SEC_1 - READ_SEC_2)}초만 기다려 주세요.
-      </Text>
-    );
+    title = `잠깐 조용히 해 주세요 · ${Math.max(0, secondsLeft - READ_MAX_SEC)}초`;
     right = <LevelBars level={level} />;
-  } else if (phase === 'read1' || phase === 'read2') {
-    title = '이 문장을 소리 내어 읽어 주세요';
-    body = quote(phase === 'read1' ? READ_SCRIPT_1 : READ_SCRIPT_2);
+  } else if (phase === 'read') {
+    title = '지금 따라 읽어 주세요';
     right = <LevelBars level={level} />;
-  } else if (phase === 'uploading') {
-    title = '목소리를 확인하고 있어요';
-    body = (
-      <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-        잠시만 기다려 주세요. 처음 한 번은 서버를 준비하느라 1분쯤 걸릴 수 있어요.
-      </Text>
-    );
   } else if (phase === 'done') {
     const loud = result?.is_clipping;
-    title = loud ? '목소리가 조금 크게 들려요' : '마이크 확인이 끝났어요';
-    body = (
-      <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-        {loud ? '마이크에서 조금 떨어져 앉으면 더 정확해요. 그대로 시작해도 괜찮아요.' : '이제 1단계를 시작할 수 있어요.'}{' '}
-        <button type="button" onClick={start} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--rb-primary-strong)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+    title = loud ? '목소리가 조금 커요. 마이크에서 살짝 떨어져 주세요' : '마이크가 잘 들려요';
+    right = (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+        <Status tone={loud ? 'warn' : 'ok'}>{loud ? '조금 커요' : '잘 들려요'}</Status>
+        <button type="button" onClick={start} style={linkStyle}>
           다시 확인
         </button>
-      </Text>
+      </span>
     );
-    right = <Status tone={loud ? 'warn' : 'ok'}>{loud ? '조금 커요' : '잘 들려요'}</Status>;
-  } else if (phase === 'failed') {
-    title = '목소리를 확인하지 못했어요';
-    body = (
-      <Text fz={13} c="var(--rb-ink-soft)" mt={4}>
-        마이크는 잘 들렸어요. 서버가 바빠서 정리하지 못했어요(처음엔 서버를 깨우느라 1분쯤 걸릴 수 있어요).
-        {onSkip && (
-          <>
-            {' '}
-            <button type="button" onClick={onSkip} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--rb-primary-strong)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
-              확인 없이 시작할게요
-            </button>
-          </>
-        )}
-      </Text>
-    );
+  } else if (phase === 'quiet') {
+    title = '목소리가 잘 안 들렸어요. 마이크를 확인하고 다시 해 볼까요?';
     right = (
       <Button size="sm" radius="md" variant="default" onClick={start}>
         다시 시도
       </Button>
     );
   } else {
-    title = '마이크를 쓸 수 없어요';
-    body = (
-      <Text fz={13} c="red" mt={4}>
-        브라우저 주소창 왼쪽의 자물쇠 아이콘에서 마이크를 허용한 뒤 다시 시도해 주세요.
-      </Text>
-    );
+    title = '마이크가 막혀 있어요. 주소창 왼쪽 자물쇠를 눌러 허용해 주세요';
     right = (
       <Button size="sm" radius="md" variant="default" onClick={start}>
         다시 시도
@@ -305,7 +303,7 @@ export function CalibrationStep({ onComplete, onSkip }: CalibrationStepProps) {
   return (
     <Box style={{ position: 'relative' }}>
       <CheckRow icon={<MicIcon />} title={title} right={right}>
-        {body}
+        {sentence}
       </CheckRow>
       {recording && (
         <Box

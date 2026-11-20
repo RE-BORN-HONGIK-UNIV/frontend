@@ -117,7 +117,7 @@ export const api = {
     return request<AnalyzeResult>('/analyze', { method: 'POST', body: fd });
   },
 
-  /** POST /api/stage1/calibrate — 5초 무음 + 10초 낭독 + 자유발화 녹음 분석.
+  /** POST /api/stage1/calibrate — 5초 무음 + 짧은 문장 낭독 녹음 분석.
    * 결과는 오각형 차트/점수에 안 들어가고, analyze()에 넘겨서 filler 임계값 보정에만 쓰임. */
   calibrate: (file: File) => {
     if (USE_MOCK) {
