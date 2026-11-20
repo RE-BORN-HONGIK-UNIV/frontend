@@ -200,6 +200,10 @@
   --rb-amber-strong: #9a7423;
   --rb-amber-tint: #f7edd8;
 
+  /* 오류·위험(입력 오류, 오류 알림, 삭제) — 통화 끊기 버튼(#e5484d)과는 따로 */
+  --rb-danger: #a32d2d;
+  --rb-danger-tint: #fbeceb;
+
   /* 2단계 결과의 점수 막대(ScoreTrack) 전용 — 브랜드 그린·경고 앰버와 겹치지
      않는 파란 계열로, "정상/주의" 같은 상태 판정이 아니라 그냥 "점수 크기"를
      나타내는 중립적인 색이라 별도로 둠 */
@@ -247,6 +251,9 @@
 
   --rb-amber-strong: #e4c583;
   --rb-amber-tint: #3a3220;
+
+  --rb-danger: #f0a29b;
+  --rb-danger-tint: #3a2220;
 
   --rb-meter: #6f9ce0;
 }

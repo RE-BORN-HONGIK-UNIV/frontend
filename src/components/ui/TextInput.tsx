@@ -32,7 +32,7 @@ export function FieldWrap({ label, description, error, htmlFor, children }: Fiel
         <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--rb-ink-soft)' }}>{description}</p>
       )}
       {children}
-      {error && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#c0392b' }}>{error}</p>}
+      {error && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--rb-danger)' }}>{error}</p>}
     </div>
   );
 }
@@ -74,7 +74,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             style={{
               ...inputBaseStyle,
               ...(icon ? { paddingLeft: 38 } : {}),
-              ...(error ? { borderColor: '#c0392b' } : {}),
+              ...(error ? { borderColor: 'var(--rb-danger)' } : {}),
               ...style,
             }}
             {...rest}

@@ -41,7 +41,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
               ...inputBaseStyle,
               paddingRight: 40,
               ...(icon ? { paddingLeft: 38 } : {}),
-              ...(error ? { borderColor: '#c0392b' } : {}),
+              ...(error ? { borderColor: 'var(--rb-danger)' } : {}),
               ...style,
             }}
             {...rest}
