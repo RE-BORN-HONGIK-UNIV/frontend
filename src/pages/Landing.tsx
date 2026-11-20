@@ -299,7 +299,11 @@ function Audience() {
                   boxSizing: 'border-box',
                   padding: '28px 30px',
                   fontSize: 17,
-                  lineHeight: 1.0,
+                  lineHeight: 1.6,
+                  // 글이 짧은 카드도 세로 가운데에 오게(글은 span으로 감싸 한 덩어리로 둔다)
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   color: 'var(--rb-ink)',
                   wordBreak: 'keep-all',
                   whiteSpace: 'pre-line',
@@ -307,9 +311,11 @@ function Audience() {
                   border: '1px solid var(--rb-line)',
                 }}
               >
-                {before}
-                <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 800 }}>{em}</strong>
-                {after}
+                <span>
+                  {before}
+                  <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 800, whiteSpace: 'nowrap' }}>{em}</strong>
+                  {after}
+                </span>
               </Box>
             </Reveal>
           ))}
