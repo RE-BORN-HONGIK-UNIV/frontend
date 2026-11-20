@@ -12,7 +12,7 @@ import { ApiError } from '@/lib/api/client';
 import type { CalibrationResult } from '@/lib/api/types';
 import { GUIDE_ITEMS } from '@/features/voice/constants';
 import { useAnalyze } from '@/features/voice/queries';
-import { CalibrationStep, CheckRow } from '@/features/voice/CalibrationStep';
+import { CalibrationStep } from '@/features/voice/CalibrationStep';
 import { GuideChecklist } from '@/features/voice/GuideChecklist';
 import { HaruChat, type DoneBar } from '@/features/haru/HaruChat';
 import { linkStyle } from '@/features/haru/styles';
@@ -27,7 +27,7 @@ const TALK_MAXW = 1180;
 
 function ShieldIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3z" />
     </svg>
   );
@@ -62,12 +62,10 @@ function HaruVoiceTalk({ onFinished, doneBar }: { onFinished: (rec: TalkRecordin
 /* ── page ────────────────────────────────────────────────── */
 
 export default function VoiceStage() {
-  // checked: 마이크 확인(캘리브레이션)이 끝난 값, calibration: "1단계 시작하기"를 눌러 대화에 넘긴 값
-  const [checked, setChecked] = useState<CalibrationResult | null>(null);
+  // micReady: 문장을 읽어 마이크가 확인됨, calibration: 서버가 뒤에서 만든 개인 기준값(대화 중에 도착할 수 있다.
+  // 실패하면 null — 분석은 그대로 되고 개인 기준 보정만 빠진다)
+  const [micReady, setMicReady] = useState(false);
   const [calibration, setCalibration] = useState<CalibrationResult | null>(null);
-  // 마이크 확인을 서버가 정리하지 못해 "확인 없이 시작할게요"를 골랐는지, "1단계 시작하기"를 눌렀는지
-  // (확인 없이 시작하면 calibration은 null — 분석은 그대로 되고 개인 기준 보정만 빠진다)
-  const [skipCheck, setSkipCheck] = useState(false);
   const [started, setStarted] = useState(false);
   // 녹음이 비었는지(마이크를 못 썼거나 대답을 다 넘김)
   const [noAudio, setNoAudio] = useState(false);
@@ -81,9 +79,8 @@ export default function VoiceStage() {
   // 1단계 결과는 여기서 따로 보여 주지 않고 3단계 뒤 통합 리포트에서 한 번에 보여 준다(경량 웹 흐름).
 
   const reset = () => {
-    setChecked(null);
+    setMicReady(false);
     setCalibration(null);
-    setSkipCheck(false);
     setStarted(false);
     setNoAudio(false);
     setTalkKey((k) => k + 1);
@@ -148,7 +145,7 @@ export default function VoiceStage() {
             </div>
             <GuideChecklist items={GUIDE_ITEMS} />
 
-            {/* 아래: 경량 웹 1단계 시작 화면 — 마이크 확인(캘리브레이션) + 개인정보 안내 + 시작 버튼 */}
+            {/* 아래: 마이크 확인 하나만 크게 — 개인정보 자세한 내용은 접어 둔다 */}
             <Box
               style={{
                 background: 'var(--rb-surface)',
@@ -168,44 +165,38 @@ export default function VoiceStage() {
                   color: 'var(--rb-ink)',
                 }}
               >
-                시작하기 전에 <span style={{ color: 'var(--rb-primary)' }}>마이크</span>만 확인할게요
+                목소리가 잘 <span style={{ color: 'var(--rb-primary)' }}>들리는지</span> 볼게요
               </h2>
               <Text fz={15} c="var(--rb-ink-soft)" mt={10}>
-                브라우저가 마이크를 써도 되는지 물어보면 &quot;허용&quot;을 눌러 주세요. 
+                질문 {STAGE1_QUESTIONS.length}개 · 5분 정도 걸려요
               </Text>
 
-              <Stack gap={12} mt={24}>
-                <CalibrationStep onComplete={setChecked} onSkip={() => setSkipCheck(true)} />
-                <CheckRow icon={<ShieldIcon />} title="녹음은 분석이 끝나면 바로 지워요">
-                  <Text fz={13} c="var(--rb-ink-soft)" mt={4} style={{ lineHeight: 1.6 }}>
-                    대답은 글로 작성되어 (크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈
-                    이야기는 3단계 면접 질문을 만들 때 쓰도록 이 기기에만 남고, 2단계를 마친 뒤 지울 수 있어요. 
-                  </Text>
-                </CheckRow>
-              </Stack>
-
-              <Box mt={24} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <Text fz={13} c="var(--rb-ink-soft)">
-                  질문 수 : {STAGE1_QUESTIONS.length}개 <br />
-                  소요 시간 : 약 5분
-                </Text>
-                <Button
-                  radius="md"
-                  size="lg"
-                  disabled={!checked && !skipCheck}
-                  onClick={() => {
-                    setCalibration(checked);
-                    setStarted(true);
-                  }}
-                >
-                  1단계 시작하기
-                </Button>
+              <Box mt={24}>
+                <CalibrationStep onReady={() => setMicReady(true)} onComplete={setCalibration} />
               </Box>
-              {!checked && !skipCheck && (
-                <Text fz={12} c="var(--rb-ink-faint)" mt={8} ta="right">
-                  마이크 확인을 마치면 시작할 수 있어요.
+
+              <details style={{ marginTop: 16, fontSize: 13, color: 'var(--rb-ink-soft)' }}>
+                <summary style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, listStyle: 'none' }}>
+                  <ShieldIcon />
+                  녹음은 분석이 끝나면 바로 지워요
+                  <span style={{ color: 'var(--rb-primary-strong)', fontWeight: 600 }}>자세히</span>
+                </summary>
+                <Text fz={13} c="var(--rb-ink-soft)" mt={6} style={{ lineHeight: 1.6, paddingLeft: 22, wordBreak: 'keep-all' }}>
+                  대답은 글로 바뀌어(크롬은 Google 음성 인식) AI로 보내요. 하루와 나눈 이야기는 3단계 면접 질문을 만들 때
+                  쓰도록 이 기기에만 남고, 2단계를 마친 뒤 지울 수 있어요.
                 </Text>
-              )}
+              </details>
+
+              <Box mt={28} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                <Button radius="md" size="lg" disabled={!micReady} onClick={() => setStarted(true)}>
+                  하루와 이야기 시작하기
+                </Button>
+                {!micReady && (
+                  <Text fz={12} c="var(--rb-ink-faint)">
+                    마이크를 확인하면 시작할 수 있어요
+                  </Text>
+                )}
+              </Box>
             </Box>
           </Stack>
         ) : (

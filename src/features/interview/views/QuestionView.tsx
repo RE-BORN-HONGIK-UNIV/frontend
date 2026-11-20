@@ -335,11 +335,6 @@ export function QuestionView({
     });
   };
 
-  // 질문 번호: 꼬리질문까지 모두 센 "질문 n / 전체" (경량 웹처럼)
-  const perMain = 1 + interviewer.followUps;
-  const total = MAIN_QUESTION_COUNT * perMain;
-  const current = Math.min(total, turn.main * perMain + turn.sub + 1);
-
   const status: Record<Phase, string> = {
     loading: '질문을 준비하고 있어요',
     asking: '질문하는 중',
@@ -355,7 +350,8 @@ export function QuestionView({
     <div className="rb-s3">
       <div className="rb-s3__top">
         <span>
-          <b>실전 면접</b> · 질문 {current} / {total}
+          <b>실전 면접</b> · 질문 {turn.main + 1} / {MAIN_QUESTION_COUNT}
+          {turn.sub > 0 && ' · 이어서 묻는 질문'}
         </span>
         <span>
           {camOn && <span style={{ marginRight: 20 }}>● 카메라 켜짐</span>}
@@ -383,7 +379,7 @@ export function QuestionView({
             </span>
             <div>
               <b>면접을 마쳤어요. 수고하셨어요</b>
-              <span>질문 {total}개를 끝까지 마쳤어요.</span>
+              <span>질문 {MAIN_QUESTION_COUNT}개를 끝까지 마쳤어요.</span>
             </div>
           </div>
           <button type="button" className="rb-s3__btn" data-dark disabled={finishing} onClick={handleFinish}>

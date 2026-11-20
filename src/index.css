@@ -200,6 +200,10 @@
   --rb-amber-strong: #9a7423;
   --rb-amber-tint: #f7edd8;
 
+  /* 오류·위험(입력 오류, 오류 알림, 삭제) — 통화 끊기 버튼(#e5484d)과는 따로 */
+  --rb-danger: #a32d2d;
+  --rb-danger-tint: #fbeceb;
+
   /* 2단계 결과의 점수 막대(ScoreTrack) 전용 — 브랜드 그린·경고 앰버와 겹치지
      않는 파란 계열로, "정상/주의" 같은 상태 판정이 아니라 그냥 "점수 크기"를
      나타내는 중립적인 색이라 별도로 둠 */
@@ -247,6 +251,9 @@
 
   --rb-amber-strong: #e4c583;
   --rb-amber-tint: #3a3220;
+
+  --rb-danger: #f0a29b;
+  --rb-danger-tint: #3a2220;
 
   --rb-meter: #6f9ce0;
 }
@@ -1300,6 +1307,9 @@ a {
   .rb-prep3__start { width: 100%; }
 }
 /* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
+/* 3단계 면접실: 스크롤바 자리(html 배경)도 어둡게, 다크모드 버튼은 숨김 */
+html:has(.rb-s3) { background: #1d2126; }
+html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인라인 display:flex를 이기려고 !important */
 .rb-s3 {
   position: relative; min-height: 100dvh; background: #1d2126; color: #cfd5db;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;

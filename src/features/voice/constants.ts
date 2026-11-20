@@ -35,7 +35,7 @@ export const TRAINING_TIPS: Record<AxisKey, string> = {
  */
 export const GUIDE_ITEMS = [
   { title: '조용한 곳에서', desc: '주변 소리가 적을수록 목소리를 정확하게 살펴봐요.' },
-  { title: '마이크와 10~20cm', desc: '너무 가까우면 소리가 깨지고, 멀면 작게 들려요.' },
+  { title: '마이크와 한 뼘 거리', desc: '너무 가까우면 소리가 깨지고, 멀면 작게 들려요.' },
   { title: '넘어가도 괜찮아요', desc: '어려운 질문은 대답하지 않고 넘어갈 수 있어요.' },
 ];
 

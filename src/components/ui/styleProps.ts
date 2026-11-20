@@ -88,6 +88,6 @@ export const RADIUS: Record<string, string> = {
 
 export const COLOR: Record<string, string> = {
   brand: 'var(--rb-primary)',
-  red: '#c0392b',
+  red: 'var(--rb-danger)',
   gray: 'var(--rb-ink-faint)',
 };

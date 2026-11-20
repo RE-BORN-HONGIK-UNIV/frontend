@@ -24,7 +24,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             ...inputBaseStyle,
             resize: 'vertical',
             fontFamily: 'inherit',
-            ...(error ? { borderColor: '#c0392b' } : {}),
+            ...(error ? { borderColor: 'var(--rb-danger)' } : {}),
             ...style,
           }}
           {...rest}

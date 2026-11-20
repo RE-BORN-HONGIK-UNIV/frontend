@@ -32,7 +32,7 @@ export function showToast(message: string, color: ToastItem['color'], title?: st
 
 const TINT: Record<ToastItem['color'], { bg: string; fg: string }> = {
   brand: { bg: 'var(--rb-primary-deep)', fg: '#fff' },
-  red: { bg: '#a32d2d', fg: '#fff' },
+  red: { bg: 'var(--rb-danger)', fg: 'var(--rb-surface)' },
   gray: { bg: 'var(--rb-ink)', fg: 'var(--rb-surface)' },
 };
 

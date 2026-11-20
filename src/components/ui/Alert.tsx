@@ -3,7 +3,7 @@ import { splitShorthand, type ShorthandProps } from './styleProps';
 
 const TINT: Record<string, { bg: string; fg: string }> = {
   brand: { bg: 'var(--rb-primary-tint)', fg: 'var(--rb-primary-strong)' },
-  red: { bg: '#fdecea', fg: '#a32d2d' },
+  red: { bg: 'var(--rb-danger-tint)', fg: 'var(--rb-danger)' },
   gray: { bg: 'var(--rb-surface-tint)', fg: 'var(--rb-ink-soft)' },
 };
 
