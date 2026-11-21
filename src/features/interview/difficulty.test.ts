@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combineAnxietyScore, getTier, pickServerTier, resolveAnxietyScore } from './difficulty';
+import { combineAnxietyScore, getTier, pickServerTier, pickUnused, resolveAnxietyScore } from './difficulty';
 
 describe('combineAnxietyScore', () => {
   it('가중치(6:4)대로 두 점수를 합산한다', () => {
@@ -73,5 +73,12 @@ describe('pickServerTier — 3단계 난이도는 서버(GET /interview/anxiety)
   it('서버 응답이 없거나 모르는 값이면 예전 계산을 쓴다', () => {
     expect(pickServerTier(local, null)).toBe(local);
     expect(pickServerTier(local, { score: null, tier: 'hard' })).toBe(local);
+  });
+});
+
+describe('pickUnused', () => {
+  it('이번 면접에 안 나온 예비 질문부터 고르고, 다 나왔으면 돌려 쓴다', () => {
+    expect(pickUnused(['가', '나', '다'], ['가'])).toBe('나');
+    expect(pickUnused(['가', '나'], ['가', '나', '첫 질문'])).toBe('나');
   });
 });

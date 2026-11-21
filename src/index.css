@@ -1320,6 +1320,10 @@ html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인
   padding: 20px 28px; font-size: 14px; color: #cfd5db;
 }
 .rb-s3__top b { color: #fff; font-weight: 700; }
+.rb-s3__progress, .rb-s3__progress > span { display: inline-flex; align-items: center; gap: 12px; }
+.rb-s3__progress > span { gap: 6px; }
+.rb-s3__progress i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+.rb-s3__progress i[data-on] { background: #fff; }
 .rb-s3__quit { border: none; background: none; padding: 0; cursor: pointer; font: inherit; color: #cfd5db; }
 .rb-s3__win {
   width: min(62vw, 1000px); aspect-ratio: 16 / 9; border-radius: 18px;

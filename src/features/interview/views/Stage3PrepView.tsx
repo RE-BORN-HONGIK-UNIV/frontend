@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Text } from '@/components/ui';
 import { getAnxietyScore, type DifficultyTier, type StageKey } from '../difficulty';
-import { getInterviewer, MAIN_QUESTION_COUNT } from '../interviewers';
 import type { useMediaPreview } from '../useMediaPreview';
 import { NeedStagesView } from './NeedStagesView';
 import { getSpeechAudioUrl } from '../api';
@@ -64,9 +63,6 @@ export function Stage3PrepView({
     return <NeedStagesView missing={needStages.missing} failed={needStages.failed} onRetry={loadScore} />;
   }
 
-  const interviewer = tier ? getInterviewer(tier) : null;
-  const followGuide = interviewer && interviewer.followUps > 0 ? `질문마다 ${interviewer.followUps === 1 ? '한' : '두'} 번 더 이어서 물어봐요` : '하나씩 천천히 물어볼게요';
-
   // 마이크·카메라: 권한을 받아 스트림이 연결됐는지만 본다
   const asking = media.status === 'idle' || media.status === 'requesting';
   const mic = asking ? null : !!media.stream?.getAudioTracks().length;
@@ -88,9 +84,8 @@ export function Stage3PrepView({
         <dl>
           <div>
             <dt>질문</dt>
-            <dd>
-              기본 질문 {MAIN_QUESTION_COUNT}개 · {followGuide}
-            </dd>
+            {/* 질문 수는 난이도마다 달라서(interviewers.ts) 난이도가 드러나지 않게 같은 문장으로 */}
+            <dd>질문은 5~6번, 대답을 듣고 이어서 묻기도 해요</dd>
           </div>
           <div>
             <dt>대답</dt>

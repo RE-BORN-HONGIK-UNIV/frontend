@@ -12,12 +12,15 @@ export type Interviewer = {
   intro: string; // 면접관 소개 화면 인사말
   readyGreeting: string; // 면접 시작 직전 인사말 (TTS로 읽어줌)
   firstQuestion: string; // 첫 질문(자기소개). 면접관 말투에 맞춰 고정, API 호출 없이 바로 시작
-  closing: string; // 면접 종료 인사말
+  mainQuestions: number; // 기본 질문 개수
   followUps: number; // 기본 질문 1개당 꼬리질문 개수
 };
 
-// 기본 질문 개수. 모든 난이도 공통
-export const MAIN_QUESTION_COUNT = 3;
+// 면접 끝인사 — 면접관 영상이 하나라 난이도와 상관없이 같은 문장(미리 녹음한 mp3와 같아야 함)
+export const CLOSING_LINE = '오늘 면접은 여기까지입니다. 끝까지 답해 주셔서 감사합니다. 수고하셨습니다.';
+
+/** 이번 면접의 전체 질문 수(기본 + 꼬리). 난이도마다 5·6·6번으로 길이는 비슷하게, 깊이만 다르게 */
+export const totalQuestions = (i: Interviewer) => i.mainQuestions * (1 + i.followUps);
 
 export const INTERVIEWERS: Interviewer[] = [
   {
@@ -29,8 +32,8 @@ export const INTERVIEWERS: Interviewer[] = [
       '반가워요, 하린이에요. 여기까지 온 것만으로도 충분히 잘하고 있어요. 오늘은 기본적인 질문부터 하나씩 같이 해봐요.',
     readyGreeting:
       '준비 잘 됐네요! 그럼 시작해볼게요. 천천히, 떠오르는 대로 말해도 괜찮아요.',
-    firstQuestion: '먼저 간단하게 자기소개 부탁드려요. 편하게 말해주시면 돼요.',
-    closing: '오늘 면접은 여기까지예요. 끝까지 답해줘서 정말 고마워요. 수고 많았어요!',
+    firstQuestion: '먼저 간단하게 자기소개 부탁드려요. 편하게 말해 주시면 돼요.',
+    mainQuestions: 5,
     followUps: 0,
   },
   {
@@ -43,7 +46,7 @@ export const INTERVIEWERS: Interviewer[] = [
     readyGreeting:
       '환경 점검이 끝났네요. 그럼 면접 시작하겠습니다. 편하게 답해주세요.',
     firstQuestion: '간단하게 자기소개 부탁드립니다.',
-    closing: '오늘 면접은 여기까지입니다. 끝까지 성실하게 답해주셔서 감사합니다. 수고하셨습니다.',
+    mainQuestions: 3,
     followUps: 1,
   },
   {
@@ -55,8 +58,8 @@ export const INTERVIEWERS: Interviewer[] = [
       '서진입니다. 여기까지 꾸준히 훈련해 오셨네요. 오늘은 답변을 한 번 더 파고드는 질문도 드릴게요. 실제 면접이라고 생각하고 답해보세요.',
     readyGreeting:
       '준비되셨으면 시작하겠습니다. 답변을 바탕으로 조금 더 깊이 여쭤보는 질문도 있을 거예요.',
-    firstQuestion: '본인 소개와 함께, 지원하신 직무와 어떤 점이 잘 맞는지 말씀해주세요.',
-    closing: '면접은 여기까지입니다. 어려운 질문에도 끝까지 답해주셨네요. 수고하셨습니다.',
+    firstQuestion: '본인 소개와 함께, 하고 싶은 일과 본인이 어떤 점에서 잘 맞는지 말씀해 주세요.',
+    mainQuestions: 2,
     followUps: 2,
   },
 ];

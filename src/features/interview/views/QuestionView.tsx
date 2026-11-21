@@ -3,8 +3,8 @@ import { Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { useLiveTranscript } from '@/features/interview/useLiveTranscript';
 import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } from '@/features/interview/api';
-import { QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
-import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
+import { FOLLOW_UP_BANK, pickUnused, QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
+import { CLOSING_LINE, getInterviewer, totalQuestions } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
@@ -14,9 +14,6 @@ import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { buildStage3Marks } from '@/features/report/stage3Marks';
 import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, startStage3Details } from '@/features/report/stageDetails';
-
-// 꼬리질문 생성 실패 시 쓰는 기본 꼬리질문
-const FALLBACK_FOLLOW_UP = '방금 말씀하신 내용을 조금 더 자세히 설명해주실 수 있을까요?';
 
 /**
  * loading: 질문 준비 중 (첫 질문 전)
@@ -36,7 +33,7 @@ type Turn = { main: number; sub: number };
 
 /**
  * 3단계 면접 질문 화면.
- * 기본 질문 MAIN_QUESTION_COUNT개 + 면접관(tier)별 꼬리질문 개수만큼 진행.
+ * 기본 질문 + 꼬리질문을 난이도(tier)별 개수만큼 진행(interviewers.ts — 모두 5~6번).
  * 첫 질문(자기소개)부터 분석 점수에 포함됨.
  * 답변 텍스트는 브라우저 음성 인식 결과를 유저가 확인·수정한 값을 꼬리질문 생성에 사용.
  * 음성 인식 미지원 브라우저는 서버 STT(transcribeAnswer)로 대체.
@@ -193,8 +190,8 @@ export function QuestionView({
       );
       await ask(q, isFollowUp ? 'follow_up' : 'main');
     } catch {
-      const bank = QUESTION_BANK[tier];
-      await ask(isFollowUp ? FALLBACK_FOLLOW_UP : bank[next.main % bank.length], isFollowUp ? 'follow_up' : 'main');
+      const bank = isFollowUp ? FOLLOW_UP_BANK[tier] : QUESTION_BANK[tier];
+      await ask(pickUnused(bank, askedRef.current), isFollowUp ? 'follow_up' : 'main');
     }
   };
 
@@ -264,7 +261,7 @@ export function QuestionView({
   /** 다음 차례 계산. 꼬리질문이 남았으면 꼬리질문, 아니면 다음 기본 질문, 다 끝났으면 null */
   const getNextTurn = (current: Turn): Turn | null => {
     if (current.sub < interviewer.followUps) return { main: current.main, sub: current.sub + 1 };
-    if (current.main < MAIN_QUESTION_COUNT - 1) return { main: current.main + 1, sub: 0 };
+    if (current.main < interviewer.mainQuestions - 1) return { main: current.main + 1, sub: 0 };
     return null;
   };
 
@@ -287,9 +284,9 @@ export function QuestionView({
       recorder.complete(); // 끝까지 마친 면접만 완료로 기록
       endedAtRef.current = Date.now();
       setQuestion('');
-      const url = await getSpeechAudioUrl(interviewer.closing, tier);
+      const url = await getSpeechAudioUrl(CLOSING_LINE, tier);
       setAudio(url);
-      if (!url) void browserSpeak(interviewer.closing);
+      if (!url) void browserSpeak(CLOSING_LINE);
       setPhase('finished');
       void finishAnalysis();
       return;
@@ -344,14 +341,21 @@ export function QuestionView({
     finished: '면접을 마쳤어요',
   };
   const listening = phase === 'answering';
+  const doneCount = turn.main * (1 + interviewer.followUps) + turn.sub;
   const camOn = !!stream?.getVideoTracks().some((t) => t.readyState === 'live');
 
   return (
     <div className="rb-s3">
       <div className="rb-s3__top">
-        <span>
-          <b>실전 면접</b> · 질문 {turn.main + 1} / {MAIN_QUESTION_COUNT}
-          {turn.sub > 0 && ' · 이어서 묻는 질문'}
+        {/* 질문 수는 난이도마다 달라서 숫자 대신 점으로 — 남은 양만 보이게 */}
+        <span className="rb-s3__progress">
+          <b>실전 면접</b>
+          <span aria-label={`${doneCount + 1}번째 질문`}>
+            {Array.from({ length: totalQuestions(interviewer) }, (_, i) => (
+              <i key={i} data-on={i <= doneCount || undefined} />
+            ))}
+          </span>
+          {turn.sub > 0 && '이어서 묻는 질문'}
         </span>
         <span>
           {camOn && <span style={{ marginRight: 20 }}>● 카메라 켜짐</span>}
@@ -379,7 +383,7 @@ export function QuestionView({
             </span>
             <div>
               <b>면접을 마쳤어요. 수고하셨어요</b>
-              <span>질문 {MAIN_QUESTION_COUNT}개를 끝까지 마쳤어요.</span>
+              <span>질문을 끝까지 마쳤어요.</span>
             </div>
           </div>
           <button type="button" className="rb-s3__btn" data-dark disabled={finishing} onClick={handleFinish}>
