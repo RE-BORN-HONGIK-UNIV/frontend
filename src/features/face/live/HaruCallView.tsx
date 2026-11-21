@@ -10,7 +10,7 @@ import { useHaruTalk } from '@/features/haru/useHaruTalk';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { api } from '@/lib/api/client';
 import { saveStage2Voice } from '@/features/report/stageDetails';
-import { useLiveFaceSession } from './useLiveFaceSession';
+import { useLiveFaceSession, type ExpressionThresholds } from './useLiveFaceSession';
 import { useDebugRecorder } from './useDebugRecorder';
 import { useRingtone } from './useRingtone';
 
@@ -41,8 +41,9 @@ export function HaruCallView({
   onHungUp,
 }: {
   onComplete: (result: GazeBlinkResult) => void;
-  /** 대화를 다 마치고 빨간 버튼으로 통화를 끝냈을 때(결과 저장까지 끝난 뒤) — FaceStage가 "하루가 이렇게 이해했어요"로 넘긴다 */
-  onHungUp: () => void;
+  /** 대화를 다 마치고 빨간 버튼으로 통화를 끝냈을 때(결과 저장까지 끝난 뒤) — FaceStage가 "하루가 이렇게 이해했어요"로 넘긴다.
+   * 표정 맞추기 기준도 함께 넘긴다 — 바로 3단계로 가면 같은 자리라 다시 맞추지 않으려고 */
+  onHungUp: (thresholds: ExpressionThresholds | null) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
@@ -120,7 +121,8 @@ export function HaruCallView({
   const [hungUp, setHungUp] = useState(false);
   // 끊었고 결과 저장까지 끝났으면 다음 화면으로 — 결과가 나오기 전에 이 화면이 사라지면 2단계 기록이 저장되지 않아서 기다린다
   useEffect(() => {
-    if (hungUp && (result || empty)) onHungUp();
+    if (hungUp && (result || empty)) onHungUp(s.getExpressionThresholds());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- s는 매번 새 객체지만 기준값은 ref라 끊은 순간 값을 읽으면 된다
   }, [hungUp, result, empty, onHungUp]);
 
   // 질문 번호가 바뀔 때마다(같은 질문을 다시 묻는 건 제외) 그 시각을 적는다.

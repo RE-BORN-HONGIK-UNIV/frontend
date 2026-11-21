@@ -9,7 +9,7 @@ import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
 import { useAnswerLevel } from '@/features/interview/useAnswerLevel';
-import { useLiveFaceSession } from '@/features/face/live/useLiveFaceSession';
+import { useLiveFaceSession, type ExpressionThresholds } from '@/features/face/live/useLiveFaceSession';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { buildStage3Marks } from '@/features/report/stage3Marks';
@@ -50,6 +50,7 @@ export function QuestionView({
   stream,
   tier,
   aboutMe = [],
+  expression = null,
   onAllDone,
   onQuit,
 }: {
@@ -57,6 +58,8 @@ export function QuestionView({
   tier: DifficultyTier;
   /** 하루가 정리하고 사용자가 확인한 자기 이야기("항목: 내용") — 기본 질문의 소재로 참고 */
   aboutMe?: string[];
+  /** 대기실에서 맞췄거나 2단계에서 이어 온 표정 기준(없으면 기본값) */
+  expression?: ExpressionThresholds | null;
   /** 결과 화면으로 넘어갈 때, 이번 면접의 질문·답변과 서버 저장 id를 함께 넘긴다 */
   onAllDone: (result: InterviewResult) => void;
   /** 위쪽 "그만하기" */
@@ -83,6 +86,7 @@ export function QuestionView({
     persist: false,
     // 3단계는 질문이 많고 대답이 길어서 2단계(3분)보다 넉넉히 — 대답한 시간 기준
     maxCaptureSec: 10 * 60,
+    presetThresholds: expression,
   });
   // 카메라가 켜지면 바로 시선 기준 5초(첫 질문을 들으며 면접관을 보는 동안), 끝나면 재기 시작
   useEffect(() => {

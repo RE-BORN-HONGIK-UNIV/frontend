@@ -173,6 +173,12 @@ export interface DebugFrame {
 const avgKeys = (bs: Record<string, number> | null, keys: string[]) => (bs ? avgBlendshape(bs, keys) : null);
 const CALIB_STEP_CODE = { face: 1, settle: 2, frown: 3, smile: 4 } as const;
 
+/** 표정 맞추기로 정한 이 사람의 찡그림·미소 판정 기준 */
+export interface ExpressionThresholds {
+  tension: number;
+  smile: number;
+}
+
 export interface UseLiveFaceSessionOptions {
   videoRef: RefObject<HTMLVideoElement | null>;
   onComplete: (result: GazeBlinkResult) => void;
@@ -198,6 +204,9 @@ export interface UseLiveFaceSessionOptions {
   /** true면 캘리브레이션에 표정 맞추기를 더한다 — 하루의 눈 보기(무표정) 3초 → 찡그리기 2초 → 웃기 2초
    * (calibration.ts calibStepAt·personalThreshold). 화면이 calibrationStep에 맞춰 안내를 바꿔야 한다. 기본 false(5초 무표정) */
   expressionCalibration?: boolean;
+  /** 이미 맞춰 둔 표정 기준 — 표정 맞추기 없이(시선 5초만) 캘리브레이션할 때 기본값 대신 쓴다.
+   * 3단계 면접실: 대기실에서 맞췄거나 2단계에서 바로 이어 온 값 */
+  presetThresholds?: ExpressionThresholds | null;
 }
 
 export function useLiveFaceSession({
@@ -211,6 +220,7 @@ export function useLiveFaceSession({
   maxCaptureSec = MAX_CAPTURE_SEC,
   onDebugFrame,
   expressionCalibration = false,
+  presetThresholds = null,
 }: UseLiveFaceSessionOptions) {
   const calibrationSec = expressionCalibration ? EXPRESSION_CALIB_TOTAL_SEC : CALIBRATION_SEC;
   // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
@@ -473,6 +483,9 @@ export function useLiveFaceSession({
                 fallback: SMILE_THRESHOLD,
                 relative: false,
               });
+            } else if (presetThresholds) {
+              tensionThresholdRef.current = presetThresholds.tension;
+              smileThresholdRef.current = presetThresholds.smile;
             }
             for (const [bt, bPose] of buffer) {
               // 이 리플레이는 gaze FSM의 EMA 스무딩 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
@@ -713,6 +726,9 @@ export function useLiveFaceSession({
         ? null
         : calibStageAt(elapsedSec - calibStartTRef.current, expressionCalibration),
     startCalibration,
+    /** 표정 맞추기로 정한 기준. 아직 안 맞췄거나 표정 맞추기를 안 하는 세션이면 null */
+    getExpressionThresholds: (): ExpressionThresholds | null =>
+      expressionCalibration && calibratedRef.current ? { tension: tensionThresholdRef.current, smile: smileThresholdRef.current } : null,
     maxCaptureSec,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,

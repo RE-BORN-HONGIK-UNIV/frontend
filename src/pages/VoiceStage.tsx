@@ -20,18 +20,11 @@ import { STAGE1_QUESTIONS } from '@/features/haru/script';
 import { saveStageAnswers } from '@/features/haru/store';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { useHaruTalk } from '@/features/haru/useHaruTalk';
+import { ShieldIcon } from '@/components/ShieldIcon';
 
 const MAXW = 720;
 /** 하루와 대화하는 동안은 경량 웹처럼 하루 칸 + 대화 칸 두 칸이라 더 넓게 */
 const TALK_MAXW = 1180;
-
-function ShieldIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3z" />
-    </svg>
-  );
-}
 
 /* ── 하루와 목소리 대화 (경량 웹 1단계에서 가져옴) ─────────────────── */
 
