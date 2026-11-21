@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { prerecordedUrls } from './prerecorded';
 import { FOLLOW_UP_BANK, QUESTION_BANK } from './difficulty';
-import { CLOSING_LINE, INTERVIEWERS } from './interviewers';
+import { CLOSING_LINE, GREETING_LINE, INTERVIEWERS } from './interviewers';
+import { COME_IN, SENDOFF } from './views/CallView';
 import { fallbackLine, NODS, STAGE1_QUESTIONS, STAGE2_QUESTIONS } from '@/features/haru/script';
 
 describe('미리 녹음한 대사', () => {
   it('정해 둔 문장은 모두 mp3가 있다(문장을 고치면 여기서 걸린다)', () => {
     const fixed = [
+      GREETING_LINE,
+      COME_IN,
+      SENDOFF,
       CLOSING_LINE,
       ...INTERVIEWERS.map((i) => i.firstQuestion),
       ...Object.values(QUESTION_BANK).flat(),

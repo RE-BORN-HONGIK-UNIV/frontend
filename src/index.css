@@ -1354,13 +1354,46 @@ a {
 .rb-wait__privacy summary span { color: var(--rb-primary-strong); font-weight: 600; }
 .rb-wait__privacy p { margin: 6px 0 0; padding-left: 22px; line-height: 1.6; word-break: keep-all; }
 @media (max-width: 860px) { .rb-wait { grid-template-columns: 1fr; } .rb-wait__left { max-width: 400px; width: 100%; margin: 0 auto; aspect-ratio: 3 / 4; } }
+/* 3단계 호명(CallView) — 면접실과 같은 어두운 복도에 문 하나. 하루 배웅 → 노크 → "네, 들어오세요." → 문이 열린다 */
+html:has(.rb-call3) { background: #16191c; }
+html:has(.rb-call3) .rb-theme-toggle { display: none !important; }
+.rb-call3 {
+  position: relative; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  background: radial-gradient(50% 55% at 50% 42%, #3a3d38 0%, #23272a 55%, #16191c 100%); color: #fff; padding: 72px 16px 140px;
+}
+.rb-call3__quit { position: absolute; top: 20px; right: 28px; font-size: 14px; }
+.rb-call3__door { position: relative; width: 210px; height: 300px; perspective: 900px; border-radius: 8px 8px 0 0; box-shadow: 0 0 0 10px #34392f, 0 30px 80px rgba(0, 0, 0, 0.5); }
+/* 문 안쪽 — 열리면 따뜻한 빛 */
+.rb-call3__light { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, #fff3dc, #f2dcb4); opacity: 0.15; transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1); }
+.rb-call3__panel {
+  position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #6b5440, #876a4f); transform-origin: left center;
+  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.rb-call3__plate { position: absolute; left: 50%; top: 36px; transform: translateX(-50%); background: #f5f1ea; color: #333; font-size: 14px; font-weight: 700; padding: 6px 14px; border-radius: 4px; }
+.rb-call3__knob { position: absolute; right: 20px; top: 52%; width: 12px; height: 12px; border-radius: 50%; background: #e7c27a; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.rb-call3[data-beat='knock'] .rb-call3__panel { animation: rb-knock 0.45s ease-out; }
+@keyframes rb-knock { 15%, 55% { transform: translateX(1.5px); } 35%, 75% { transform: translateX(-1px); } }
+.rb-call3[data-beat='open'] .rb-call3__panel { transform: rotateY(-78deg); }
+.rb-call3[data-beat='open'] .rb-call3__light { opacity: 1; }
+.rb-call3__text { text-align: center; }
+.rb-call3__text h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+.rb-call3__text p { margin: 8px 0 0; min-height: 1.6em; font-size: 16px; color: #c9d0d6; }
+.rb-call3__haru { position: absolute; left: 40px; bottom: 40px; display: flex; align-items: center; gap: 14px; transition: opacity 0.6s ease; }
+.rb-call3[data-beat='open'] .rb-call3__haru { opacity: 0; }
+.rb-call3__haru i { flex: none; width: 68px; height: 68px; border-radius: 50%; background: #e3defc url('/haru/haru.jpg') center 22% / 150% no-repeat; box-shadow: 0 0 0 3px #3b6b4c; }
+.rb-call3__haru p { margin: 0; max-width: 300px; background: #fff; color: #232826; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
+.rb-call3__haru small { display: block; font-size: 12px; font-weight: 700; color: #3b6b4c; }
+@media (prefers-reduced-motion: reduce) {
+  .rb-call3__panel, .rb-call3[data-beat='knock'] .rb-call3__panel { animation: none; transition: opacity 0.6s ease; }
+  .rb-call3[data-beat='open'] .rb-call3__panel { transform: none; opacity: 0; }
+}
 /* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
 /* 3단계 면접실: 스크롤바 자리(html 배경)도 어둡게, 다크모드 버튼은 숨김 */
 html:has(.rb-s3) { background: #1d2126; }
 html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인라인 display:flex를 이기려고 !important */
 .rb-s3 {
-  position: relative; min-height: 100dvh; background: #1d2126; color: #cfd5db;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  position: relative; min-height: 100dvh; background: radial-gradient(60% 55% at 50% 45%, #4a4f52 0%, #2a2e31 55%, #16191c 100%); color: #cfd5db;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   padding: 72px 16px 40px;
 }
 .rb-s3__top {
@@ -1373,12 +1406,20 @@ html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인
 .rb-s3__progress i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
 .rb-s3__progress i[data-on] { background: #fff; }
 .rb-s3__quit { border: none; background: none; padding: 0; cursor: pointer; font: inherit; color: #cfd5db; }
+/* 면접실 R5n — 창 테두리 없이 가장자리가 어둠으로 번져, 화면 속 사람이 아니라 책상 건너편에 앉은 거리로 보이게.
+   큰 화면은 너비 74%, 낮은 화면은 아래 버튼 줄이 밀리지 않게 높이에 맞춘다 */
 .rb-s3__win {
-  width: min(62vw, 1000px); aspect-ratio: 16 / 9; border-radius: 18px;
-  background: #d9dfe5 url('/interviewer/talking-poster.jpg') center / cover no-repeat;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  width: min(74vw, calc((100dvh - 250px) * 16 / 9)); aspect-ratio: 16 / 9;
+  background: #2a2e31 url('/interviewer/talking-poster.jpg') center / cover no-repeat;
   position: relative; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14%, #000 86%, transparent 100%), linear-gradient(180deg, transparent 0, #000 10%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+  mask-image: linear-gradient(90deg, transparent 0, #000 14%, #000 86%, transparent 100%), linear-gradient(180deg, transparent 0, #000 10%, #000 84%, transparent 100%);
 }
+/* 첫인사 동안 시선 기준을 잴 때만 — 자리는 늘 차지해서 나타날 때 화면이 밀리지 않게 */
+.rb-s3__look { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; color: #e8edf0; transition: opacity 0.3s ease; }
+.rb-s3__look[hidden] { display: inline-flex; visibility: hidden; opacity: 0; }
+.rb-s3__look i { width: 8px; height: 8px; border-radius: 50%; background: #34d27b; box-shadow: 0 0 0 4px rgba(52, 210, 123, 0.25); }
 .rb-s3__talk { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.25s ease; }
 @media (prefers-reduced-motion: reduce) { .rb-s3__talk { display: none; } }
 .rb-s3__bar {

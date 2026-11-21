@@ -7,6 +7,7 @@ import { useMediaPreview } from '@/features/interview/useMediaPreview';
 import type { DifficultyTier } from '@/features/interview/difficulty';
 import { Stage3PrepView } from '@/features/interview/views/Stage3PrepView';
 import { QuestionView } from '@/features/interview/views/QuestionView';
+import { CallView } from '@/features/interview/views/CallView';
 import { ResultView } from '@/features/interview/views/ResultView';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import { HaruProfileView } from '@/features/haru/HaruProfileView';
@@ -17,12 +18,13 @@ import { aboutMeLines, loadHaruTalk, profileIsCurrent, profileSourceItems } from
 /**
  * about: "하루가 이렇게 이해했어요" 카드(1·2단계에서 하루와 나눈 대답이 이 기기에 있을 때만) →
  * prep: 면접 대기실 — 하루와 표정 맞추기 + 접수증 카드(난이도는 1·2단계 점수로 자동) →
- * question: 면접 질문 → result
+ * call: 호명(하루 배웅 → 노크 → "네, 들어오세요.", 자동으로 넘어감) →
+ * question: 면접관 첫인사 → 면접 질문 → result
  * 2026-11 경량 웹 흐름으로 바꾸며 예전 intro(면접관 고르기)·test(기기 점검)·ready(면접관 인사)는 뺐다.
  * 예열 질문은 따로 두지 않고, 첫 질문을 가벼운 질문으로 시작해 면접 안에서 자연스럽게 풀어감.
  * 3단계는 실전 단계라 첫 질문도 분석 점수에 포함함.
  */
-type Step = 'about' | 'prep' | 'question' | 'result';
+type Step = 'about' | 'prep' | 'call' | 'question' | 'result';
 
 export default function InterviewStage() {
   // 2단계 끝에서 "하루가 이렇게 이해했어요"를 이미 확인하고 왔으면(넘겨받은 값, 또는 기기에 남은 지금 대답 기준 카드)
@@ -61,8 +63,11 @@ export default function InterviewStage() {
   const handlePrepStart = (auto: DifficultyTier, thresholds: ExpressionThresholds | null) => {
     setTier(auto);
     setExpr(thresholds);
-    setStep('question');
+    setStep('call');
   };
+
+  // 호명은 면접실과 같은 어두운 화면으로 이어진다(헤더 없이)
+  if (step === 'call') return <CallView onDone={() => setStep('question')} onQuit={handleExit} />;
 
   // 면접 중(question)은 경량 웹처럼 헤더 없이 어두운 면접실 화면만 — 스크롤·메뉴 때문에 시선이 흩어지지 않게(QuestionView가 화면을 다 채움)
   if (focusMode) {

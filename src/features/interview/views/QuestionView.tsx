@@ -4,7 +4,7 @@ import { useRecorder } from '@/features/interview/useRecorder';
 import { useLiveTranscript } from '@/features/interview/useLiveTranscript';
 import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } from '@/features/interview/api';
 import { FOLLOW_UP_BANK, pickUnused, QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
-import { CLOSING_LINE, getInterviewer, totalQuestions } from '@/features/interview/interviewers';
+import { CLOSING_LINE, getInterviewer, GREETING_LINE, totalQuestions } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
@@ -16,6 +16,7 @@ import { buildStage3Marks } from '@/features/report/stage3Marks';
 import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, startStage3Details } from '@/features/report/stageDetails';
 
 /**
+ * greeting: 면접관 첫인사 중 — 이 동안 "면접관을 바라봐 주세요"를 띄우고 시선 기준을 잰다
  * loading: 질문 준비 중 (첫 질문 전)
  * asking: 면접관이 질문을 읽는 중 (TTS) — 다 읽으면 바로 듣기 시작(경량 웹 Talk3처럼 "답변 시작" 버튼 없음)
  * waiting: 면접관 목소리를 못 내서(TTS 실패·자동재생 막힘) 질문을 글로 보여 주고 대답 시작을 기다림
@@ -26,7 +27,7 @@ import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, star
  * 2026-11 경량 웹 3단계 화면으로 바꾸며 받아쓴 답변을 고치는 확인 단계(confirm)는 뺐다 — 경량 웹처럼
  * 화면에 글을 띄우지 않고(시선이 글로 내려가지 않게) 받아쓴 그대로 넘긴다. 받아쓰기가 비면 서버 STT로 대체.
  */
-type Phase = 'loading' | 'asking' | 'waiting' | 'answering' | 'reviewing' | 'finished';
+type Phase = 'greeting' | 'loading' | 'asking' | 'waiting' | 'answering' | 'reviewing' | 'finished';
 
 // main: 기본 질문 번호(0부터), sub: 그 질문 안에서 몇 번째인지 (0 = 기본 질문, 1~ = 꼬리질문)
 type Turn = { main: number; sub: number };
@@ -69,7 +70,7 @@ export function QuestionView({
   const { start, stop } = useRecorder(stream);
 
   const [turn, setTurn] = useState<Turn>({ main: 0, sub: 0 });
-  const [phase, setPhase] = useState<Phase>('loading');
+  const [phase, setPhase] = useState<Phase>('greeting');
   const [question, setQuestion] = useState('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -88,7 +89,7 @@ export function QuestionView({
     maxCaptureSec: 10 * 60,
     presetThresholds: expression,
   });
-  // 카메라가 켜지면 바로 시선 기준 5초(첫 질문을 들으며 면접관을 보는 동안), 끝나면 재기 시작
+  // 카메라가 켜지면 바로 시선 기준 5초(첫인사를 들으며 면접관을 보는 동안), 끝나면 재기 시작
   useEffect(() => {
     if (face.phase === 'camera') face.startCalibration();
     else if (face.phase === 'ready') face.beginRecording();
@@ -140,9 +141,9 @@ export function QuestionView({
   useEffect(() => {
     const v = talkRef.current;
     if (!v) return;
-    if (phase === 'asking') {
+    if (phase === 'asking' || phase === 'greeting') {
       v.style.opacity = '1';
-      void v.play().catch(() => {});
+      void v.play()?.catch(() => {}); // 테스트 환경(jsdom)은 play()가 Promise를 안 돌려준다
       return;
     }
     v.style.opacity = '0';
@@ -199,15 +200,29 @@ export function QuestionView({
     }
   };
 
-  // 화면 처음 열릴 때 첫 질문 시작
+  // 화면 처음 열릴 때 면접관 첫인사부터(실제 면접처럼). 인사가 끝나면 첫 질문
+  const faceRef = useRef(face);
+  faceRef.current = face;
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
     startStage3Details(); // 지난 면접의 3단계 분석값이 새 리포트에 섞이지 않게
     recorder.start();
-    loadQuestion({ main: 0, sub: 0 }, '');
+    void getSpeechAudioUrl(GREETING_LINE, tier).then((url) => {
+      if (url) setAudio(url);
+      else void browserSpeak(GREETING_LINE).then(afterGreeting);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** 첫인사가 끝나면 — 시선 기준(5초)이 아직 재는 중이면 조금 기다렸다가(최대 3초) 첫 질문 */
+  const afterGreeting = async () => {
+    if (phaseRef.current !== 'greeting') return;
+    setPhase('loading');
+    const until = Date.now() + 3000;
+    while (faceRef.current.phase === 'calibrating' && Date.now() < until) await new Promise((r) => setTimeout(r, 200));
+    await loadQuestion({ main: 0, sub: 0 }, '');
+  };
 
   const handleStartAnswer = () => {
     stopSpeak(); // 브라우저 목소리가 아직 읽는 중이면 녹음에 섞이지 않게 멈춤
@@ -223,12 +238,15 @@ export function QuestionView({
     a.currentTime = 0;
     a.play().catch(() => {
       if (phaseRef.current === 'asking') setPhase('waiting');
+      else if (phaseRef.current === 'greeting') void afterGreeting();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 새 음성이 올 때만(afterGreeting은 ref로 최신 상태를 본다)
   }, [audioUrl]);
 
   // 질문을 다 읽으면 바로 듣기 시작 — 면접관 목소리가 녹음에 섞이지 않게 다 읽은 뒤에 시작한다
   const handleAudioEnded = () => {
     if (phaseRef.current === 'asking') handleStartAnswer();
+    else if (phaseRef.current === 'greeting') void afterGreeting();
   };
 
   // 다시 들려주세요: 듣던 건 버리고 질문을 처음부터 다시 읽는다
@@ -337,6 +355,7 @@ export function QuestionView({
   };
 
   const status: Record<Phase, string> = {
+    greeting: '면접관 인사 중',
     loading: '질문을 준비하고 있어요',
     asking: '질문하는 중',
     waiting: '질문을 읽어 주세요',
@@ -369,6 +388,11 @@ export function QuestionView({
         </span>
       </div>
 
+      {/* 시선 기준을 재는 동안만 보인다 — 글을 읽은 눈이 바로 아래 면접관 얼굴로 가게 사진 위에 둔다(버튼 줄에 두면 아래를 보게 됨) */}
+      <p className="rb-s3__look" hidden={face.phase !== 'calibrating'} aria-live="polite">
+        <i aria-hidden />
+        면접관을 바라봐 주세요
+      </p>
       {/* 면접관 영상: 질문할 때만 재생, 들을 때는 첫 장면에 멈춤(소리는 audio가 낸다). 영상이 안 뜨면 뒤의 사진이 보인다 */}
       <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`}>
         <video ref={talkRef} className="rb-s3__talk" src="/interviewer/talking.mp4" muted loop playsInline preload="auto" aria-hidden />
