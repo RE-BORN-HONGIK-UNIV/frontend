@@ -7,6 +7,7 @@ import { NeedStagesView } from './NeedStagesView';
 import { auth } from '@/lib/auth';
 import { speak, stopSpeak } from '@/features/haru/speech';
 import { useLiveFaceSession, type ExpressionThresholds } from '@/features/face/live/useLiveFaceSession';
+import { calibBeatAt } from '@/features/face/live/calibration';
 
 /**
  * 개발할 때만(npm run dev) 주소에 ?test=1을 붙이면 1·2단계 기록이 없어도 3단계 화면을 볼 수 있다 —
@@ -85,6 +86,7 @@ function WaitingRoom({
     calibrateOnDemand: true,
     expressionCalibration: true,
     persist: false,
+    calibPacing: PACING,
   });
   const [expr, setExpr] = useState<ExpressionThresholds | null>(carried);
   // 시작 전 안내(3단계를 미리 보여 주고 "시작"을 기다림) / 얼굴이 잘 안 잡혀서 다시 할 차례
@@ -118,8 +120,13 @@ function WaitingRoom({
   const asking = media.status === 'idle' || media.status === 'requesting';
   const mic = asking ? null : !!media.stream?.getAudioTracks().length;
   const name = auth.name;
-  const stepIdx = calibrating ? CALIB_STEPS.findIndex((x) => x.key === (face.calibrationStep ?? 'face')) : -1;
-  const left = Math.max(1, Math.ceil(face.calibrationSec - face.calibrationElapsedSec));
+  // 표정 맞추기 단계마다: 보여 주기(하루 목소리) → 준비(회색 막대) → 재기(초록 테두리·막대) → 확인(✓). 초는 보여 주지 않는다
+  const beat = calibrating ? calibBeatAt(face.calibrationElapsedSec, PACING) : null;
+  const stepIdx = beat?.index ?? -1;
+  const fill = !beat ? 0 : beat.part === 'lead' ? Math.max(0, (beat.at - SHOW_SEC) / (PACING.lead - SHOW_SEC)) : beat.part === 'measure' ? beat.at / beat.len : 1;
+  useEffect(() => {
+    if (stepIdx >= 0) void speak(CALIB_STEPS[stepIdx].say);
+  }, [stepIdx]);
   const ready = !!mic && !!tier && (!!expr || noCamera);
   // 꺼진 "준비됐어요" 옆에 왜 꺼졌는지
   const hint = !mic ? '마이크를 허용하면 들어갈 수 있어요' : !expr && !noCamera ? '하루랑 표정을 먼저 풀어 주세요' : !tier ? '면접을 준비하고 있어요' : '';
@@ -127,32 +134,25 @@ function WaitingRoom({
   return (
     <div className="rb-wait">
       {/* 하루 말은 머리 위 빈 곳의 말풍선에 — 얼굴을 가리지 않게. 표정 맞추기 안내도 하루가 말해 주듯 여기서 보여 준다 */}
-      <div className="rb-wait__left">
+      <div className="rb-wait__left" data-measure={beat?.part === 'measure' || undefined}>
         <div className="rb-wait__say" aria-live="polite">
           <small>하루</small>
-          {guide || calibrating ? (
+          {guide || beat ? (
             <>
-              <p>{calibrating ? CALIB_STEPS[stepIdx].say : '7초만 같이 해 봐요. 이렇게 할 거예요'}</p>
+              <p>{!beat ? '같이 표정을 풀어 봐요. 이렇게 할 거예요' : beat.part === 'tail' ? '좋아요!' : CALIB_STEPS[stepIdx].say}</p>
               <div className="rb-wait__steps">
                 <ol>
                   {CALIB_STEPS.map((x, i) => (
-                    <li key={x.key} data-on={i === stepIdx || undefined} data-done={i < stepIdx || undefined}>
+                    <li key={x.key} data-on={(i === stepIdx && beat?.part !== 'tail') || undefined} data-done={i < stepIdx || (i === stepIdx && beat?.part === 'tail') || undefined}>
                       {x.label}
                     </li>
                   ))}
                 </ol>
-                {calibrating && <span>{left}초</span>}
               </div>
-              {calibrating && (
-                <i
-                  className="rb-wait__bar"
-                  role="progressbar"
-                  aria-label="표정 맞추기"
-                  aria-valuemin={0}
-                  aria-valuemax={face.calibrationSec}
-                  aria-valuenow={Math.round(face.calibrationElapsedSec)}
-                  style={{ width: `${Math.min(100, (face.calibrationElapsedSec / face.calibrationSec) * 100)}%` }}
-                />
+              {beat && (
+                <span className="rb-wait__bar" data-part={beat.part} role="progressbar" aria-label="이번 표정" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fill * 100)}>
+                  <i style={{ width: `${Math.min(100, fill * 100)}%` }} />
+                </span>
               )}
             </>
           ) : (
@@ -162,7 +162,7 @@ function WaitingRoom({
         <div className="rb-wait__haru" role="img" aria-label="하루">
           {/* 하루 그림은 칸 높이에 맞춘 상자에 — 초록 점을 그림 안 눈 자리(위에서 34.5%)에 붙여서 칸 크기가 달라도 어긋나지 않게 */}
           <div className="rb-wait__haru-img">
-            {calibrating && <span className="rb-calib-dot" data-step={face.calibrationStep ?? 'face'} style={{ top: '34.5%' }} aria-hidden />}
+            {beat?.stage === 'face' && <span className="rb-calib-dot" data-step="face" style={{ top: '34.5%' }} aria-hidden />}
           </div>
           {!expr && !calibrating && !noCamera && (
             <button type="button" className="rb-wait__go" disabled={!canCalibrate} onClick={guide || retry ? beginCalibration : () => setGuide(true)}>
@@ -255,12 +255,15 @@ function WaitingRoom({
   );
 }
 
-/** 표정 맞추기 3단계(calibration.ts calibStepAt의 face → frown → smile 순서) — 말풍선에 미리 보여 주고, 지금 단계를 굵게 */
+/** 표정 맞추기 3단계(calibration.ts의 face → frown → smile 순서) — 말풍선에 미리 보여 주고, 지금 단계를 칠한다. say는 미리 녹음한 하루 목소리와 같아야 함 */
 const CALIB_STEPS = [
-  { key: 'face', label: '제 눈 보기', say: '제 눈(초록 점)을 보면서 편하게 있어요' },
-  { key: 'frown', label: '살짝 찡그리기', say: '저처럼 살짝 찡그려 봐요. 미간을 모아요' },
-  { key: 'smile', label: '같이 웃기', say: '이제 같이 웃어 봐요' },
+  { key: 'face', label: '제 눈 보기', say: '제 눈을 편하게 봐 주세요.' },
+  { key: 'frown', label: '살짝 찡그리기', say: '미간을 살짝 찡그려 봐요.' },
+  { key: 'smile', label: '같이 웃기', say: '이번엔 입꼬리를 올려 웃어 봐요.' },
 ] as const;
+// 단계마다 앞 3초(하루 목소리 약 2초 + 준비 1초)와 뒤 0.6초(확인)는 값을 모으지 않는다 — 재는 시간(3·2·2초)은 2단계와 같다
+const PACING = { lead: 3, tail: 0.6 };
+const SHOW_SEC = 2;
 
 const HARU_WAIT = '여기까지 같이 왔네요! 들어가기 전에 저랑 표정 한번 풀어 볼까요?';
 const HARU_READY = '좋아요, 표정이 풀렸어요. 부르면 들어가면 돼요.';

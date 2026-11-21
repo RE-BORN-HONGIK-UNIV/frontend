@@ -1287,6 +1287,8 @@ a {
   padding: 14px 18px; font-size: 16px; line-height: 1.55; box-shadow: 0 6px 18px rgba(60, 40, 120, 0.1); word-break: keep-all;
 }
 .rb-wait__say p { margin: 0; }
+/* 표정 맞추기 중 하루의 지시 — 따라 할 말이라 굵게 */
+.rb-wait__say:has(.rb-wait__steps) p { font-size: 17px; font-weight: 700; }
 .rb-wait__say::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; transform: translateX(-50%) rotate(45deg); background: #fff; }
 .rb-wait__say small { display: block; font-size: 12px; font-weight: 700; color: #3b6b4c; margin-bottom: 2px; }
 /* 표정 맞추기 3단계 — 지금 단계는 진하게, 지난 단계는 체크 */
@@ -1295,10 +1297,15 @@ a {
 .rb-wait__steps li { counter-increment: step; padding: 3px 9px; border-radius: 999px; background: #f1f5ef; white-space: nowrap; }
 .rb-wait__steps li::before { content: counter(step) ' '; font-weight: 700; }
 .rb-wait__steps li[data-on] { background: #3b6b4c; color: #fff; font-weight: 700; }
+.rb-wait__steps li[data-done] { color: #3b6b4c; font-weight: 700; }
 .rb-wait__steps li[data-done]::before { content: '✓ '; }
-.rb-wait__steps > span { font-weight: 700; color: #3b6b4c; font-variant-numeric: tabular-nums; }
-/* 표정 맞추기 진행 막대 — 말풍선 아래쪽 안 */
-.rb-wait__bar { position: absolute; left: 18px; bottom: 6px; max-width: calc(100% - 36px); height: 3px; border-radius: 3px; background: #34d27b; transition: width 0.2s linear; }
+/* 이번 표정 막대 — 준비는 회색, 재는 동안과 확인은 초록 */
+.rb-wait__bar { display: block; height: 4px; margin-top: 10px; border-radius: 4px; background: #eef0f2; overflow: hidden; }
+.rb-wait__bar i { display: block; height: 100%; border-radius: 4px; background: #34d27b; transition: width 0.15s linear; }
+.rb-wait__bar[data-part='lead'] i { background: #c9d3c5; }
+/* 재는 동안 하루 칸 테두리가 초록으로 — "지금이에요" 신호 */
+.rb-wait__left::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 4px #34d27b; opacity: 0; transition: opacity 0.25s ease-out; pointer-events: none; z-index: 2; }
+.rb-wait__left[data-measure]::after { opacity: 1; }
 .rb-wait__haru { position: absolute; inset: 0; }
 /* 그림 높이 = 칸의 76%, 바닥에 붙임. 그림 맨 아래 연회색이 칸 색과 이어지게 끝만 살짝 흐리게 */
 .rb-wait__haru-img {
@@ -1354,38 +1361,42 @@ a {
 .rb-wait__privacy summary span { color: var(--rb-primary-strong); font-weight: 600; }
 .rb-wait__privacy p { margin: 6px 0 0; padding-left: 22px; line-height: 1.6; word-break: keep-all; }
 @media (max-width: 860px) { .rb-wait { grid-template-columns: 1fr; } .rb-wait__left { max-width: 400px; width: 100%; margin: 0 auto; aspect-ratio: 3 / 4; } }
-/* 3단계 호명(CallView) — 면접실과 같은 어두운 복도에 문 하나. 하루 배웅 → 노크 → "네, 들어오세요." → 문이 열린다 */
+/* 3단계 호명(CallView) — 그림 없이 소리와 빛으로. 하루 배웅 → 노크 → "네, 들어오세요." → 문 여는 소리와 함께
+   가운데 빛줄기가 열리고, 면접실이 서서히 밝아진다(실사 복도 영상이 생기면 빛줄기 자리를 바꾼다) */
 html:has(.rb-call3) { background: #16191c; }
 html:has(.rb-call3) .rb-theme-toggle { display: none !important; }
 .rb-call3 {
-  position: relative; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
-  background: radial-gradient(50% 55% at 50% 42%, #3a3d38 0%, #23272a 55%, #16191c 100%); color: #fff; padding: 72px 16px 140px;
+  position: relative; min-height: 100dvh; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(60% 60% at 50% 45%, #2a2e31, #16191c); color: #fff; padding: 72px 16px;
 }
-.rb-call3__quit { position: absolute; top: 20px; right: 28px; font-size: 14px; }
-.rb-call3__door { position: relative; width: 210px; height: 300px; perspective: 900px; border-radius: 8px 8px 0 0; box-shadow: 0 0 0 10px #34392f, 0 30px 80px rgba(0, 0, 0, 0.5); }
-/* 문 안쪽 — 열리면 따뜻한 빛 */
-.rb-call3__light { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, #fff3dc, #f2dcb4); opacity: 0.15; transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1); }
-.rb-call3__panel {
-  position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #6b5440, #876a4f); transform-origin: left center;
-  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+.rb-call3__quit { position: absolute; top: 20px; right: 28px; z-index: 3; font-size: 14px; }
+.rb-call3__text { position: relative; z-index: 2; text-align: center; transition: opacity 0.5s ease; }
+.rb-call3__text h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
+/* 문 너머 소리 자막 — 소리를 못 듣는 사람도 알게 */
+.rb-call3__cc { display: inline-block; margin-top: 14px; min-height: 1.6em; font-size: 16px; color: #c9d0d6; }
+.rb-call3__cc[data-voice] { padding: 6px 16px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: #e8edf0; }
+/* 문이 열리는 빛 — 가운데 세로 줄이 넓어진다 */
+.rb-call3__light {
+  position: absolute; top: 0; bottom: 0; left: 50%; width: 0; transform: translateX(-50%); z-index: 1;
+  background: linear-gradient(180deg, #fff3dc, #f2dcb4); box-shadow: 0 0 120px 40px rgba(255, 236, 200, 0.3); opacity: 0;
+  transition: width 1.1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out;
 }
-.rb-call3__plate { position: absolute; left: 50%; top: 36px; transform: translateX(-50%); background: #f5f1ea; color: #333; font-size: 14px; font-weight: 700; padding: 6px 14px; border-radius: 4px; }
-.rb-call3__knob { position: absolute; right: 20px; top: 52%; width: 12px; height: 12px; border-radius: 50%; background: #e7c27a; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
-.rb-call3[data-beat='knock'] .rb-call3__panel { animation: rb-knock 0.45s ease-out; }
-@keyframes rb-knock { 15%, 55% { transform: translateX(1.5px); } 35%, 75% { transform: translateX(-1px); } }
-.rb-call3[data-beat='open'] .rb-call3__panel { transform: rotateY(-78deg); }
-.rb-call3[data-beat='open'] .rb-call3__light { opacity: 1; }
-.rb-call3__text { text-align: center; }
-.rb-call3__text h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
-.rb-call3__text p { margin: 8px 0 0; min-height: 1.6em; font-size: 16px; color: #c9d0d6; }
-.rb-call3__haru { position: absolute; left: 40px; bottom: 40px; display: flex; align-items: center; gap: 14px; transition: opacity 0.6s ease; }
-.rb-call3[data-beat='open'] .rb-call3__haru { opacity: 0; }
-.rb-call3__haru i { flex: none; width: 68px; height: 68px; border-radius: 50%; background: #e3defc url('/haru/haru.jpg') center 22% / 150% no-repeat; box-shadow: 0 0 0 3px #3b6b4c; }
-.rb-call3__haru p { margin: 0; max-width: 300px; background: #fff; color: #232826; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
+.rb-call3[data-beat='open'] .rb-call3__light { width: 44vw; opacity: 1; }
+/* 들어서면 빛이 사그라들고, 어두운 데서 면접실이 서서히 나타난다 */
+.rb-call3[data-beat='enter'] .rb-call3__light { width: 44vw; opacity: 0; transition: opacity 0.45s ease-in; }
+.rb-call3[data-beat='open'] .rb-call3__text, .rb-call3[data-beat='open'] .rb-call3__haru,
+.rb-call3[data-beat='enter'] .rb-call3__text, .rb-call3[data-beat='enter'] .rb-call3__haru { opacity: 0; }
+.rb-call3__haru { position: absolute; left: 40px; bottom: 40px; z-index: 2; display: flex; align-items: center; gap: 14px; transition: opacity 0.5s ease; }
+.rb-call3__haru i { flex: none; width: 64px; height: 64px; border-radius: 50%; background: #e3defc url('/haru/haru.jpg') center 22% / 150% no-repeat; box-shadow: 0 0 0 3px #3b6b4c; }
+.rb-call3__haru p { margin: 0; max-width: 320px; background: #fff; color: #232826; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
 .rb-call3__haru small { display: block; font-size: 12px; font-weight: 700; color: #3b6b4c; }
+/* 면접실은 문 빛에서 이어지게 서서히 나타난다 */
+.rb-s3 { animation: rb-room-in 0.9s ease-out; }
+@keyframes rb-room-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .rb-call3__panel, .rb-call3[data-beat='knock'] .rb-call3__panel { animation: none; transition: opacity 0.6s ease; }
-  .rb-call3[data-beat='open'] .rb-call3__panel { transform: none; opacity: 0; }
+  .rb-call3__light { transition: opacity 0.6s ease; }
+  .rb-call3[data-beat='open'] .rb-call3__light { width: 100vw; opacity: 0.35; }
+  .rb-call3[data-beat='enter'] .rb-call3__light { width: 100vw; opacity: 0; }
 }
 /* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
 /* 3단계 면접실: 스크롤바 자리(html 배경)도 어둡게, 다크모드 버튼은 숨김 */

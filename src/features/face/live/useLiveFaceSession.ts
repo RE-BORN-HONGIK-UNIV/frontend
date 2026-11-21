@@ -17,8 +17,9 @@ import {
   calibrateBaselineIris,
   calibrateBaselineTension,
   calibStepAt,
+  expressionCalibTotal,
+  type CalibPacing,
   calibStageAt,
-  EXPRESSION_CALIB_TOTAL_SEC,
   personalThreshold,
   DEFAULT_BASELINE_GAZE,
   DEFAULT_BASELINE_IRIS,
@@ -207,6 +208,8 @@ export interface UseLiveFaceSessionOptions {
   /** 이미 맞춰 둔 표정 기준 — 표정 맞추기 없이(시선 5초만) 캘리브레이션할 때 기본값 대신 쓴다.
    * 3단계 면접실: 대기실에서 맞췄거나 2단계에서 바로 이어 온 값 */
   presetThresholds?: ExpressionThresholds | null;
+  /** 표정 맞추기 단계마다 앞(보여 주기·준비)·뒤(확인) 여유 — 이 동안은 값을 모으지 않는다. 기본 0(2단계 그대로) */
+  calibPacing?: CalibPacing;
 }
 
 export function useLiveFaceSession({
@@ -221,8 +224,9 @@ export function useLiveFaceSession({
   onDebugFrame,
   expressionCalibration = false,
   presetThresholds = null,
+  calibPacing,
 }: UseLiveFaceSessionOptions) {
-  const calibrationSec = expressionCalibration ? EXPRESSION_CALIB_TOTAL_SEC : CALIBRATION_SEC;
+  const calibrationSec = expressionCalibration ? expressionCalibTotal(calibPacing) : CALIBRATION_SEC;
   // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
   const debugRef = useRef(onDebugFrame);
   debugRef.current = onDebugFrame;
@@ -411,7 +415,7 @@ export function useLiveFaceSession({
           }
 
           const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
-          const calibStep = calibT === null ? null : calibStepAt(calibT, expressionCalibration, calibrationSec);
+          const calibStep = calibT === null ? null : calibStepAt(calibT, expressionCalibration, calibrationSec, calibPacing);
 
           if (debugRef.current) {
             const ef = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
@@ -724,7 +728,7 @@ export function useLiveFaceSession({
     calibrationStep:
       phase !== 'calibrating' || calibStartTRef.current === null
         ? null
-        : calibStageAt(elapsedSec - calibStartTRef.current, expressionCalibration),
+        : calibStageAt(elapsedSec - calibStartTRef.current, expressionCalibration, calibPacing),
     startCalibration,
     /** 표정 맞추기로 정한 기준. 아직 안 맞췄거나 표정 맞추기를 안 하는 세션이면 null */
     getExpressionThresholds: (): ExpressionThresholds | null =>

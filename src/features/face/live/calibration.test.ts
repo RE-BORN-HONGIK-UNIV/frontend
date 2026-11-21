@@ -4,7 +4,9 @@ import {
   calibrateBaselineGaze,
   calibrateBaselineIris,
   calibrateBaselineTension,
+  calibBeatAt,
   calibStepAt,
+  expressionCalibTotal,
   calibStageAt,
   personalThreshold,
   DEFAULT_BASELINE_EAR,
@@ -125,5 +127,18 @@ describe('표정 맞추기 캘리브레이션(하루의 눈 3초 → 찡그리�
     // 0.75까지 오르는 사람 → 0.25
     expect(personalThreshold([0, 0], Array(10).fill(0.75), smile)).toBeCloseTo(0.25, 5);
     expect(personalThreshold([0, 0], Array(10).fill(1), smile)).toBeCloseTo(0.3333, 3);
+  });
+});
+
+describe('표정 맞추기 앞뒤 여유(3단계 대기실)', () => {
+  const p = { lead: 3, tail: 0.5 };
+  it('보여 주기·준비와 확인 구간에서는 값을 모으지 않고, 재는 구간에서만 모은다', () => {
+    expect(expressionCalibTotal(p)).toBe(17.5);
+    expect(calibStepAt(1, true, 17.5, p)).toBe('settle'); // 무표정 보여 주기
+    expect(calibStepAt(4, true, 17.5, p)).toBe('face'); // 무표정 재는 중
+    expect(calibStepAt(6.2, true, 17.5, p)).toBe('settle'); // 무표정 확인
+    expect(calibStepAt(10, true, 17.5, p)).toBe('frown');
+    expect(calibStepAt(16, true, 17.5, p)).toBe('smile');
+    expect(calibBeatAt(7.5, p)).toMatchObject({ stage: 'frown', part: 'lead' });
   });
 });

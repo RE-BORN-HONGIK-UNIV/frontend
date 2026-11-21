@@ -5,14 +5,15 @@ import { getSpeechAudioUrl } from '../api';
 
 /**
  * 3단계 호명 — 대기실에서 면접실로 넘어가는 짧은 장면(버튼 없이 자동으로 넘어간다).
- * 하루 배웅 → 노크 → 방 안에서 면접관 "네, 들어오세요." → 문이 열리며 면접실.
+ * 하루 배웅 → 노크 → 방 안에서 면접관 "네, 들어오세요." → 문 여는 소리와 함께 가운데 빛이 열리며 면접실.
+ * 문 그림은 장난감처럼 보여서 빼고 소리와 빛으로만 보여 준다(실사 복도·문 영상이 생기면 빛 자리에 넣는다).
  * 실제 면접 대기실에서 가장 흔한 순간이라 실전 느낌을 주고, 면접관 목소리를 문 너머로 먼저 들어서
  * 갑자기 얼굴을 마주하는 부담을 줄인다. 이름은 미리 녹음할 수 없어서 글로만 부른다.
  */
 export const SENDOFF = '천천히 해도 괜찮아요. 끝나고 다시 만나요!';
 export const COME_IN = '네, 들어오세요.';
 
-type Beat = 'sendoff' | 'knock' | 'reply' | 'open';
+type Beat = 'sendoff' | 'knock' | 'reply' | 'open' | 'enter';
 
 export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () => void }) {
   const [beat, setBeat] = useState<Beat>('sendoff');
@@ -33,7 +34,11 @@ export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () =>
       else await wait(1200);
       if (!alive) return;
       setBeat('open');
-      await wait(1100);
+      void doorOpen();
+      await wait(1000);
+      if (!alive) return;
+      setBeat('enter');
+      await wait(450);
       if (alive) onDone();
     })();
     return () => {
@@ -49,18 +54,14 @@ export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () =>
         그만하기
       </button>
 
-      <div className="rb-call3__door" aria-hidden>
-        <span className="rb-call3__light" />
-        <span className="rb-call3__panel">
-          <span className="rb-call3__plate">면접실</span>
-          <i className="rb-call3__knob" />
-        </span>
-      </div>
+      <span className="rb-call3__light" aria-hidden />
 
       <div className="rb-call3__text" aria-live="polite">
         <h1>{name ? `${name} 님, ` : ''}들어가실 차례예요</h1>
-        {/* 문 너머 면접관 목소리 — 소리를 못 듣는 사람도 알게 글로 */}
-        <p>{beat === 'reply' || beat === 'open' ? `“${COME_IN}”` : beat === 'knock' ? '똑똑' : '면접관이 기다리고 있어요'}</p>
+        {/* 문 너머 소리를 글로도 — 소리를 못 듣는 사람도 알게 */}
+        <p className="rb-call3__cc" data-voice={beat === 'reply' || undefined}>
+          {beat === 'reply' ? `“${COME_IN}”` : beat === 'knock' ? '(똑똑)' : '면접관이 기다리고 있어요'}
+        </p>
       </div>
 
       <div className="rb-call3__haru">
@@ -107,5 +108,31 @@ async function knock() {
     void ctx.close();
   } catch {
     await wait(450);
+  }
+}
+
+/** 문 여는 소리 — 낮게 깔리는 짧은 바람 소리(파일 없이 만든다) */
+function doorOpen() {
+  try {
+    const ctx = new AudioContext();
+    const len = Math.floor(ctx.sampleRate * 0.9);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.5);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.9);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start();
+    src.onended = () => void ctx.close();
+  } catch {
+    // 소리를 못 내도 빛으로 넘어간다
   }
 }
