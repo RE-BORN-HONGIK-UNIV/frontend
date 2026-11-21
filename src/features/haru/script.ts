@@ -25,8 +25,8 @@ export const STAGE2_QUESTIONS: HaruQuestion[] = [
   { q: '면접을 생각하면 어떤 점이 가장 걱정돼요?', label: '면접에서 걱정되는 점' },
 ];
 
-/** 서버 반응을 못 받을 때 돌려 가며 쓰는 공감 한마디 (backend haru/talk.py NODS와 같은 문장) */
-export const NODS = ['그렇군요, 이야기해 줘서 고마워요.', '좋아요, 잘 들었어요.', '아, 그랬군요.', '천천히 말해 줘서 고마워요.'];
+/** 서버 반응을 못 받을 때 돌려 가며 쓰는 공감 한마디 (backend haru/talk.py NODS와 같은 문장, 미리 녹음한 mp3가 있음) */
+export const NODS = ['그렇군요, 이야기해 줘서 고마워요.', '좋아요, 잘 들었어요.', '천천히 말해 줘서 고마워요.'];
 
 /** 서버 반응을 못 받았을 때 다음 질문으로 넘어가는 말 */
 export function fallbackLine(questions: HaruQuestion[], nextIndex: number): string {
