@@ -1,8 +1,9 @@
 import { getSpeechAudioUrl } from '@/features/interview/api';
+import { prerecordedUrls } from '@/features/interview/prerecorded';
 
 /**
  * 하루 목소리 내기와 대답 받아쓰기 — 경량 웹 voice.ts에서 옮김.
- * - 목소리: 서버 Typecast(POST /interview/tts, tier='haru') → 안 되면 브라우저 기본 목소리.
+ * - 목소리: 미리 녹음한 mp3(prerecorded.ts) → 서버 Typecast(POST /interview/tts, tier='haru') → 안 되면 브라우저 기본 목소리.
  * - 받아쓰기: 브라우저 내장 음성 인식(Web Speech API). 하루가 반응할 거리를 만드는 용도라 가볍게 쓴다.
  *   크롬/엣지만 지원하고 크롬은 음성을 Google 서버로 보내 인식한다(면접 기기 점검의 useLiveTranscript와 같은 방식).
  *   지원하지 않는 브라우저면 글 없이 진행되고, 서버가 "말이 글로 잡히지 않았다"로 받아서 다음으로 넘어간다.
@@ -23,17 +24,30 @@ export function stopSpeak() {
 /** 글을 하루 목소리로 읽고, 다 읽으면(또는 멈추면) 끝나는 Promise */
 export async function speak(text: string): Promise<void> {
   stopSpeak();
+  // 미리 녹음한 문장이면 그 mp3로("공감 한마디 + 다음 질문"은 두 개를 이어서), 아니면 서버 Typecast
+  const pre = prerecordedUrls(text);
+  if (pre) {
+    for (const url of pre) if (!(await play(url))) return;
+    return;
+  }
   const url = await getSpeechAudioUrl(text, 'haru');
   if (url) {
     audioUrl = url;
-    const a = (audio = new Audio(url));
-    await new Promise<void>((resolve) => {
-      a.onended = a.onerror = a.onpause = () => resolve();
-      a.play().catch(() => resolve());
-    });
+    await play(url);
     return;
   }
   await browserSpeak(text);
+}
+
+/** 소리 하나를 끝까지 틀고, 끝까지 들렸으면 true(중간에 멈췄거나 못 틀었으면 false) */
+function play(url: string) {
+  const a = (audio = new Audio(url));
+  return new Promise<boolean>((resolve) => {
+    // 끝까지 가면 pause가 ended보다 먼저 와서 둘 다 같게 본다. stopSpeak로 멈췄으면 audio가 바뀌어 있다
+    a.onended = a.onpause = () => resolve(audio === a);
+    a.onerror = () => resolve(false);
+    a.play().catch(() => resolve(false));
+  });
 }
 
 /** 브라우저 기본 목소리로 읽기. 끝까지 읽으면 true, 못 읽으면 false (3단계 면접관도 Typecast가 안 될 때 쓴다) */

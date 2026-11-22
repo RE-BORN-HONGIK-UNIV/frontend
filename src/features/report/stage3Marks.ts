@@ -86,3 +86,8 @@ export function buildStage3Marks(questions: string[], turns: AnswerTurn[], times
     }))
     .filter((m) => m.script);
 }
+
+/** 표시 글 → 말버릇 수와 긴 멈춤(1.2초 이상) 수. 서버는 표시를 모르니 리포트 AI가 다듬을 대답을 고르라고 이 숫자를 보낸다 */
+export function markStats(script: string): { fillers: number; pauses: number } {
+  return { fillers: (script.match(/\[f:/g) ?? []).length, pauses: (script.match(/\[p:/g) ?? []).length };
+}

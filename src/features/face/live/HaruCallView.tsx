@@ -10,7 +10,7 @@ import { useHaruTalk } from '@/features/haru/useHaruTalk';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { api } from '@/lib/api/client';
 import { saveStage2Voice } from '@/features/report/stageDetails';
-import { useLiveFaceSession } from './useLiveFaceSession';
+import { useLiveFaceSession, type ExpressionThresholds } from './useLiveFaceSession';
 import { useDebugRecorder } from './useDebugRecorder';
 import { useRingtone } from './useRingtone';
 
@@ -41,8 +41,9 @@ export function HaruCallView({
   onHungUp,
 }: {
   onComplete: (result: GazeBlinkResult) => void;
-  /** 대화를 다 마치고 빨간 버튼으로 통화를 끝냈을 때(결과 저장까지 끝난 뒤) — FaceStage가 "하루가 이렇게 이해했어요"로 넘긴다 */
-  onHungUp: () => void;
+  /** 대화를 다 마치고 빨간 버튼으로 통화를 끝냈을 때(결과 저장까지 끝난 뒤) — FaceStage가 "하루가 이렇게 이해했어요"로 넘긴다.
+   * 표정 맞추기 기준도 함께 넘긴다 — 바로 3단계로 가면 같은 자리라 다시 맞추지 않으려고 */
+  onHungUp: (thresholds: ExpressionThresholds | null) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
@@ -120,7 +121,8 @@ export function HaruCallView({
   const [hungUp, setHungUp] = useState(false);
   // 끊었고 결과 저장까지 끝났으면 다음 화면으로 — 결과가 나오기 전에 이 화면이 사라지면 2단계 기록이 저장되지 않아서 기다린다
   useEffect(() => {
-    if (hungUp && (result || empty)) onHungUp();
+    if (hungUp && (result || empty)) onHungUp(s.getExpressionThresholds());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- s는 매번 새 객체지만 기준값은 ref라 끊은 순간 값을 읽으면 된다
   }, [hungUp, result, empty, onHungUp]);
 
   // 질문 번호가 바뀔 때마다(같은 질문을 다시 묻는 건 제외) 그 시각을 적는다.
@@ -239,7 +241,7 @@ export function HaruCallView({
             {mode === 'prep' && (
               <>
                 <TileTag top>
-                  <span className="rb-call__dot" /> 기다리는 중
+                  <span className="rb-call__dot" /> 기다리고 있어요
                 </TileTag>
                 <TileTag>하루</TileTag>
               </>
@@ -252,7 +254,7 @@ export function HaruCallView({
                     '통화 종료'
                   ) : (
                     <>
-                      <span className="rb-call__dot" /> 통화중 · {mmss(s.recordingElapsedSec)}
+                      <span className="rb-call__dot" /> 통화 중 · {mmss(s.recordingElapsedSec)}
                     </>
                   )}
                 </TileTag>
@@ -351,7 +353,7 @@ export function HaruCallView({
                 {s.phase === 'error'
                   ? '카메라를 켤 수 없어요'
                   : !cameraOn
-                    ? '카메라 켜는 중…'
+                    ? '카메라를 켜고 있어요'
                     : s.faceDetected
                       ? '얼굴이 잘 보여요'
                       : '얼굴이 안 보여요'}
@@ -372,7 +374,7 @@ export function HaruCallView({
           <div style={{ textAlign: 'center' }}>
             <Text fz={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               <EyeIcon />
-              <b>말하는 동안에는 하루를 응시해주세요</b>
+              <b>말하는 동안에는 하루를 바라봐 주세요</b>
             </Text>
             <Text fz={14} c="var(--rb-ink-soft)" mt={4}>
               그 밖에는 편하게 봐도 돼요
@@ -383,7 +385,7 @@ export function HaruCallView({
             <span className="rb-call__dial-btn" aria-hidden>
               <PhoneIcon />
             </span>
-            <span className="rb-call__dial-label">{s.phase === 'camera' ? '하루와 통화하기' : '카메라를 켜고 있어요…'}</span>
+            <span className="rb-call__dial-label">{s.phase === 'camera' ? '통화 시작하기' : '카메라를 켜고 있어요'}</span>
           </button>
           <button type="button" onClick={() => navigate('/dashboard')} style={linkStyle}>
             오늘은 여기까지 할게요
@@ -394,7 +396,7 @@ export function HaruCallView({
       {mode === 'calib' && s.phase === 'ready' && !calibrationLooksGood && (
         <Group justify="center" gap={12}>
           <Button radius="md" onClick={() => s.startCalibration()}>
-            다시 맞추기
+            다시 풀기
           </Button>
           <Button radius="md" variant="default" onClick={beginCall}>
             그대로 시작하기
@@ -423,12 +425,12 @@ export function HaruCallView({
           <div className="rb-call__controls">
             {t.phase === 'listen' ? (
               <button type="button" className="rb-call__action" data-kind="finish" onClick={() => void t.finish()}>
-                ✓ 답변 마치기
+                대답 마치기
               </button>
             ) : (
               !t.bye && (
                 <button type="button" className="rb-call__action" disabled={t.phase !== 'ready'} onClick={t.start}>
-                  🎙 하루를 보며 대답하기
+                  하루를 보며 대답하기
                 </button>
               )
             )}
@@ -447,7 +449,7 @@ export function HaruCallView({
                 다시 들려주세요
               </button>
               <button type="button" onClick={() => void t.finish(true)} disabled={t.phase !== 'ready'} style={linkStyle}>
-                이 질문 넘어가기
+                이 질문은 넘어갈게요
               </button>
             </Group>
           )}
@@ -485,7 +487,7 @@ export function HaruCallView({
 
       {mode === 'prep' && s.phase === 'error' && (
         <Alert color="red" variant="light" p="xs" fz={13}>
-          {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해주세요.'}
+          {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해 주세요.'}
         </Alert>
       )}
     </Stack>
@@ -496,7 +498,7 @@ export function HaruCallView({
  * 2단계 통화에서 하루가 말할(질문할) 때만 나오는 말하는 영상 — 그 밖에는 정지 그림(HaruAvatar).
  * haru-talk-call.mp4는 정지 그림(haru.jpg)을 시작 장면으로 AI가 만든 3:4 말하는 영상을, 정지 그림과 머리 위치·크기가
  * 같도록 맞춰 720×960으로 다시 만든 것(소리 제거, 3.5초 반복 — 끝 1/3초는 처음 장면으로 서서히 이어 반복 이음매를 없앰).
- * AI 영상은 장면마다 배경색이 조금씩 출렁여서 프레임마다 배경을 통화 칸 배경색(#e3defc 근처)으로 맞췄다.
+ * AI 영상은 배경이 얼룩지고 압축 덩어리가 프레임마다 반짝여서, 프레임마다 하루만 남기고 배경을 통화 칸 배경색(#e3defc) 한 색으로 칠했다(2026-11-22).
  * 그림 칸과 똑같이 높이 94%·아래 가운데에 놓으면(.rb-call__haru의 background-size/position과 같음) 그림과 영상이 바뀔 때
  * 하루 자리가 안 튄다. 브라우저마다 영상 색을 조금씩 다르게 그리므로 가장자리는 배경으로 서서히 녹여 네모 경계가 안 보이게 했다.
  * 늘 붙여 두고 보일 때만 재생한다 — 질문마다 새로 불러오면 처음 몇 프레임이 비어 깜빡인다.

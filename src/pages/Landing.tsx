@@ -125,7 +125,7 @@ function HeroPreview({ compact }: { compact: boolean }) {
           </div>
           <div aria-hidden style={{ ...float, right: -40, top: 28, width: 220 }}>
             <h5 style={{ fontSize: 12, color: 'var(--rb-ink-faint)', margin: '0 0 2px', fontWeight: 600 }}>결과 미리보기</h5>
-            <Pentagon v={[0.8, 0.62, 0.7, 0.78, 0.74]} size={190} labels={['안정성', '유창성', '침묵 조절', '지속성', '에너지']} />
+            <Pentagon v={[0.8, 0.62, 0.7, 0.78, 0.74]} size={190} labels={['목소리 떨림', '채움말', '긴 멈춤', '소리 늘이기', '말끝 흐림']} />
           </div>
         </>
       )}
@@ -211,8 +211,8 @@ function Hero() {
           }}
         >
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5, color: 'var(--rb-ink)' }}>
-            하고 싶은 말이 마음에 머무는 순간을, 판단 없는 공간에서 천천히 연습합니다. 하루와의 대화부터 실전 면접까지, 사람 앞에 선 나로{' '}
-            <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>다시 태어나도록</strong> 함께 나아갑니다.
+            하고 싶은 말이 마음에 머무는 순간을, 판단 없는 공간에서 천천히 연습해요. 하루와의 대화부터 실전 면접까지, 사람 앞에 선 나로{' '}
+            <strong style={{ color: 'var(--rb-primary-strong)', fontWeight: 700 }}>다시 태어나도록</strong> 함께 나아가요.
           </p>
         </Box>
         <Group gap={10} mt={2}>
@@ -347,10 +347,10 @@ function FinalCta() {
               letterSpacing: '-0.01em',
             }}
           >
-            지금, 첫 걸음을 시작해보세요.
+            지금, 첫걸음을 시작해 보세요.
             </h2>
             <p style={{margin:0, fontSize: 15, lineHeight:1.8, color:'var(--rb-ink-soft)'}}>
-              로그인 없이 바로 1단계 음성 진단을 시작할 수 있어요. 단계를 나눠서 훈련할 수 있어요.
+              로그인 없이 바로 1단계 목소리 대화를 시작할 수 있어요. 단계마다 나눠서 연습해도 돼요.
             </p>
         </Stack>
       </Reveal>

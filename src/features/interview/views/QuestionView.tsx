@@ -2,23 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { useLiveTranscript } from '@/features/interview/useLiveTranscript';
-import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } from '@/features/interview/api';
-import { QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
-import { getInterviewer, MAIN_QUESTION_COUNT } from '@/features/interview/interviewers';
+import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer } from '@/features/interview/api';
+import { FOLLOW_UP_BANK, pickUnused, QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
+import { CLOSING_LINE, getInterviewer, GREETING_LINE, totalQuestions } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import { api } from '@/lib/api/client';
 import { useAnswerLevel } from '@/features/interview/useAnswerLevel';
-import { useLiveFaceSession } from '@/features/face/live/useLiveFaceSession';
+import { useLiveFaceSession, type ExpressionThresholds } from '@/features/face/live/useLiveFaceSession';
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { buildStage3Marks } from '@/features/report/stage3Marks';
 import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, startStage3Details } from '@/features/report/stageDetails';
 
-// 꼬리질문 생성 실패 시 쓰는 기본 꼬리질문
-const FALLBACK_FOLLOW_UP = '방금 말씀하신 내용을 조금 더 자세히 설명해주실 수 있을까요?';
-
 /**
+ * greeting: 면접관 첫인사 중 — 이 동안 "면접관을 바라봐 주세요"를 띄우고 시선 기준을 잰다
  * loading: 질문 준비 중 (첫 질문 전)
  * asking: 면접관이 질문을 읽는 중 (TTS) — 다 읽으면 바로 듣기 시작(경량 웹 Talk3처럼 "답변 시작" 버튼 없음)
  * waiting: 면접관 목소리를 못 내서(TTS 실패·자동재생 막힘) 질문을 글로 보여 주고 대답 시작을 기다림
@@ -29,14 +27,14 @@ const FALLBACK_FOLLOW_UP = '방금 말씀하신 내용을 조금 더 자세히 �
  * 2026-11 경량 웹 3단계 화면으로 바꾸며 받아쓴 답변을 고치는 확인 단계(confirm)는 뺐다 — 경량 웹처럼
  * 화면에 글을 띄우지 않고(시선이 글로 내려가지 않게) 받아쓴 그대로 넘긴다. 받아쓰기가 비면 서버 STT로 대체.
  */
-type Phase = 'loading' | 'asking' | 'waiting' | 'answering' | 'reviewing' | 'finished';
+type Phase = 'greeting' | 'loading' | 'asking' | 'waiting' | 'answering' | 'reviewing' | 'finished';
 
 // main: 기본 질문 번호(0부터), sub: 그 질문 안에서 몇 번째인지 (0 = 기본 질문, 1~ = 꼬리질문)
 type Turn = { main: number; sub: number };
 
 /**
  * 3단계 면접 질문 화면.
- * 기본 질문 MAIN_QUESTION_COUNT개 + 면접관(tier)별 꼬리질문 개수만큼 진행.
+ * 기본 질문 + 꼬리질문을 난이도(tier)별 개수만큼 진행(interviewers.ts — 모두 5~6번).
  * 첫 질문(자기소개)부터 분석 점수에 포함됨.
  * 답변 텍스트는 브라우저 음성 인식 결과를 유저가 확인·수정한 값을 꼬리질문 생성에 사용.
  * 음성 인식 미지원 브라우저는 서버 STT(transcribeAnswer)로 대체.
@@ -47,12 +45,13 @@ type Turn = { main: number; sub: number };
  *  - 목소리: 대답하는 구간만 이어 녹음(useAnswerRecorder)해 면접이 끝나면 1단계 분석(/analyze, stage=3 — 1단계 점수는
  *    안 덮음)으로 보낸다. 결과와 질문별 말버릇·멈춤 표시는 뒤에서 저장돼 리포트가 열린 뒤에 채워진다(saveStage3Voice).
  * 화면은 경량 웹 Talk3: 어두운 면접실 가운데 면접관 사진(움직이지 않음) + 아래 흰 버튼 줄(소리 막대·상태·
- * 다시 들려주세요·답변 마치기), 질문은 글로 보여 주지 않는다(index.css .rb-s3).
+ * 다시 들려주세요·대답 마치기), 질문은 글로 보여 주지 않는다(index.css .rb-s3).
  */
 export function QuestionView({
   stream,
   tier,
   aboutMe = [],
+  expression = null,
   onAllDone,
   onQuit,
 }: {
@@ -60,6 +59,8 @@ export function QuestionView({
   tier: DifficultyTier;
   /** 하루가 정리하고 사용자가 확인한 자기 이야기("항목: 내용") — 기본 질문의 소재로 참고 */
   aboutMe?: string[];
+  /** 대기실에서 맞췄거나 2단계에서 이어 온 표정 기준(없으면 기본값) */
+  expression?: ExpressionThresholds | null;
   /** 결과 화면으로 넘어갈 때, 이번 면접의 질문·답변과 서버 저장 id를 함께 넘긴다 */
   onAllDone: (result: InterviewResult) => void;
   /** 위쪽 "그만하기" */
@@ -69,7 +70,7 @@ export function QuestionView({
   const { start, stop } = useRecorder(stream);
 
   const [turn, setTurn] = useState<Turn>({ main: 0, sub: 0 });
-  const [phase, setPhase] = useState<Phase>('loading');
+  const [phase, setPhase] = useState<Phase>('greeting');
   const [question, setQuestion] = useState('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -86,8 +87,9 @@ export function QuestionView({
     persist: false,
     // 3단계는 질문이 많고 대답이 길어서 2단계(3분)보다 넉넉히 — 대답한 시간 기준
     maxCaptureSec: 10 * 60,
+    presetThresholds: expression,
   });
-  // 카메라가 켜지면 바로 시선 기준 5초(첫 질문을 들으며 면접관을 보는 동안), 끝나면 재기 시작
+  // 카메라가 켜지면 바로 시선 기준 5초(첫인사를 들으며 면접관을 보는 동안), 끝나면 재기 시작
   useEffect(() => {
     if (face.phase === 'camera') face.startCalibration();
     else if (face.phase === 'ready') face.beginRecording();
@@ -139,9 +141,9 @@ export function QuestionView({
   useEffect(() => {
     const v = talkRef.current;
     if (!v) return;
-    if (phase === 'asking') {
+    if (phase === 'asking' || phase === 'greeting') {
       v.style.opacity = '1';
-      void v.play().catch(() => {});
+      void v.play()?.catch(() => {}); // 테스트 환경(jsdom)은 play()가 Promise를 안 돌려준다
       return;
     }
     v.style.opacity = '0';
@@ -157,6 +159,20 @@ export function QuestionView({
     });
   };
 
+  // 대답을 마치면 면접관이 짧게 받는다("네." 등 3개를 돌려 씀). 다음 질문 소리는 이게 끝난 뒤에 나온다
+  const ackCountRef = useRef(0);
+  const ackDoneRef = useRef<Promise<void>>(Promise.resolve());
+  const playAck = () => {
+    const a = new Audio(`/audio/lines/iv-ack-${(ackCountRef.current++ % 3) + 1}.mp3`);
+    ackDoneRef.current = new Promise<void>((done) => {
+      a.onended = a.onerror = () => done();
+      setTimeout(done, 3000); // 소리가 안 나도 흐름이 멈추지 않게
+      const p = a.play?.(); // 재생을 못 하는 환경(테스트)은 Promise가 없어 바로 넘어간다
+      if (p) p.catch(() => done());
+      else done();
+    });
+  };
+
   /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 브라우저 목소리로 읽고, 그것도 안 되면 답변 대기로 넘어감 */
   const ask = async (text: string, kind: 'main' | 'follow_up') => {
     recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
@@ -166,6 +182,7 @@ export function QuestionView({
     askedRef.current = [...askedRef.current, text];
     setQuestion(text);
     const url = await getSpeechAudioUrl(text, tier);
+    await ackDoneRef.current;
     setAudio(url);
     if (url) return setPhase('asking');
     // Typecast가 안 되면 브라우저 목소리로 읽고, 면접관 목소리처럼 다 읽은 뒤 듣기 시작
@@ -193,20 +210,34 @@ export function QuestionView({
       );
       await ask(q, isFollowUp ? 'follow_up' : 'main');
     } catch {
-      const bank = QUESTION_BANK[tier];
-      await ask(isFollowUp ? FALLBACK_FOLLOW_UP : bank[next.main % bank.length], isFollowUp ? 'follow_up' : 'main');
+      const bank = isFollowUp ? FOLLOW_UP_BANK[tier] : QUESTION_BANK[tier];
+      await ask(pickUnused(bank, askedRef.current), isFollowUp ? 'follow_up' : 'main');
     }
   };
 
-  // 화면 처음 열릴 때 첫 질문 시작
+  // 화면 처음 열릴 때 면접관 첫인사부터(실제 면접처럼). 인사가 끝나면 첫 질문
+  const faceRef = useRef(face);
+  faceRef.current = face;
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
     startStage3Details(); // 지난 면접의 3단계 분석값이 새 리포트에 섞이지 않게
     recorder.start();
-    loadQuestion({ main: 0, sub: 0 }, '');
+    void getSpeechAudioUrl(GREETING_LINE, tier).then((url) => {
+      if (url) setAudio(url);
+      else void browserSpeak(GREETING_LINE).then(afterGreeting);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** 첫인사가 끝나면 — 시선 기준(5초)이 아직 재는 중이면 조금 기다렸다가(최대 3초) 첫 질문 */
+  const afterGreeting = async () => {
+    if (phaseRef.current !== 'greeting') return;
+    setPhase('loading');
+    const until = Date.now() + 3000;
+    while (faceRef.current.phase === 'calibrating' && Date.now() < until) await new Promise((r) => setTimeout(r, 200));
+    await loadQuestion({ main: 0, sub: 0 }, '');
+  };
 
   const handleStartAnswer = () => {
     stopSpeak(); // 브라우저 목소리가 아직 읽는 중이면 녹음에 섞이지 않게 멈춤
@@ -222,12 +253,15 @@ export function QuestionView({
     a.currentTime = 0;
     a.play().catch(() => {
       if (phaseRef.current === 'asking') setPhase('waiting');
+      else if (phaseRef.current === 'greeting') void afterGreeting();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 새 음성이 올 때만(afterGreeting은 ref로 최신 상태를 본다)
   }, [audioUrl]);
 
   // 질문을 다 읽으면 바로 듣기 시작 — 면접관 목소리가 녹음에 섞이지 않게 다 읽은 뒤에 시작한다
   const handleAudioEnded = () => {
     if (phaseRef.current === 'asking') handleStartAnswer();
+    else if (phaseRef.current === 'greeting') void afterGreeting();
   };
 
   // 다시 들려주세요: 듣던 건 버리고 질문을 처음부터 다시 읽는다
@@ -250,6 +284,7 @@ export function QuestionView({
 
   const handleDoneSpeaking = async () => {
     blobRef.current = await stop();
+    playAck();
     // 받아쓴 그대로 넘긴다. 음성 인식이 안 되는 브라우저(빈 글)는 서버 STT로 대체(submitAnswer)
     submitAnswer(live.supported ? live.transcript : '');
   };
@@ -264,7 +299,7 @@ export function QuestionView({
   /** 다음 차례 계산. 꼬리질문이 남았으면 꼬리질문, 아니면 다음 기본 질문, 다 끝났으면 null */
   const getNextTurn = (current: Turn): Turn | null => {
     if (current.sub < interviewer.followUps) return { main: current.main, sub: current.sub + 1 };
-    if (current.main < MAIN_QUESTION_COUNT - 1) return { main: current.main + 1, sub: 0 };
+    if (current.main < interviewer.mainQuestions - 1) return { main: current.main + 1, sub: 0 };
     return null;
   };
 
@@ -273,9 +308,10 @@ export function QuestionView({
 
     const blob = blobRef.current;
     let answer = text.trim();
-    if (blob) {
-      await uploadAnswer(blob); // TODO: 실제 업로드·음성/표정 분석 API 연동 (지금은 mock)
-      if (!answer) answer = await transcribeAnswer(blob);
+    // 대답 녹음은 저장하지 않는다(목소리 분석은 면접이 끝난 뒤 이어 녹음한 파일로). 받아쓴 글이 없을 때만 서버 받아쓰기
+    if (blob && !answer) {
+      console.info('[받아쓰기] 실시간 받아쓰기 글이 없어 서버 받아쓰기로', { supported: live.supported });
+      answer = await transcribeAnswer(blob);
     }
 
     const current = transcriptRef.current[transcriptRef.current.length - 1];
@@ -287,9 +323,10 @@ export function QuestionView({
       recorder.complete(); // 끝까지 마친 면접만 완료로 기록
       endedAtRef.current = Date.now();
       setQuestion('');
-      const url = await getSpeechAudioUrl(interviewer.closing, tier);
+      const url = await getSpeechAudioUrl(CLOSING_LINE, tier);
+      await ackDoneRef.current;
       setAudio(url);
-      if (!url) void browserSpeak(interviewer.closing);
+      if (!url) void browserSpeak(CLOSING_LINE);
       setPhase('finished');
       void finishAnalysis();
       return;
@@ -336,22 +373,30 @@ export function QuestionView({
   };
 
   const status: Record<Phase, string> = {
+    greeting: '면접관이 인사하고 있어요',
     loading: '질문을 준비하고 있어요',
-    asking: '질문하는 중',
+    asking: '면접관이 묻고 있어요',
     waiting: '질문을 읽어 주세요',
     answering: '듣고 있어요',
     reviewing: '잘 들었어요',
     finished: '면접을 마쳤어요',
   };
   const listening = phase === 'answering';
+  const doneCount = turn.main * (1 + interviewer.followUps) + turn.sub;
   const camOn = !!stream?.getVideoTracks().some((t) => t.readyState === 'live');
 
   return (
     <div className="rb-s3">
       <div className="rb-s3__top">
-        <span>
-          <b>실전 면접</b> · 질문 {turn.main + 1} / {MAIN_QUESTION_COUNT}
-          {turn.sub > 0 && ' · 이어서 묻는 질문'}
+        {/* 질문 수는 난이도마다 달라서 숫자 대신 점으로 — 남은 양만 보이게 */}
+        <span className="rb-s3__progress">
+          <b>실전 면접</b>
+          <span aria-label={`${doneCount + 1}번째 질문`}>
+            {Array.from({ length: totalQuestions(interviewer) }, (_, i) => (
+              <i key={i} data-on={i <= doneCount || undefined} />
+            ))}
+          </span>
+          {turn.sub > 0 && '이어서 묻는 질문'}
         </span>
         <span>
           {camOn && <span style={{ marginRight: 20 }}>● 카메라 켜짐</span>}
@@ -361,9 +406,18 @@ export function QuestionView({
         </span>
       </div>
 
+      {/* 시선 기준을 재는 동안만 보인다 — 글을 읽은 눈이 바로 아래 면접관 얼굴로 가게 사진 위에 둔다(버튼 줄에 두면 아래를 보게 됨).
+          선은 재는 시간 동안 차오르고, 사진 가장자리는 어두워져 눈이 얼굴로 모인다 */}
+      <div className="rb-s3__look" data-on={face.phase === 'calibrating' || undefined} aria-live="polite">
+        {face.phase === 'calibrating' && <p>면접관의 눈을 편하게 바라봐 주세요</p>}
+        <b aria-hidden>
+          <i style={{ animationDuration: `${face.calibrationSec}s` }} />
+        </b>
+      </div>
       {/* 면접관 영상: 질문할 때만 재생, 들을 때는 첫 장면에 멈춤(소리는 audio가 낸다). 영상이 안 뜨면 뒤의 사진이 보인다 */}
       <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`}>
         <video ref={talkRef} className="rb-s3__talk" src="/interviewer/talking.mp4" muted loop playsInline preload="auto" aria-hidden />
+        <span className="rb-s3__dim" data-on={face.phase === 'calibrating' || undefined} aria-hidden />
       </div>
       <audio ref={audioRef} src={audioUrl ?? undefined} onEnded={handleAudioEnded} hidden />
       {/* 얼굴 분석용 카메라 — 화면에는 내 얼굴을 띄우지 않는다(경량 웹처럼). display:none이면 프레임이 안 들어와서 1px로 숨김 */}
@@ -378,12 +432,12 @@ export function QuestionView({
               </svg>
             </span>
             <div>
-              <b>면접을 마쳤어요. 수고하셨어요</b>
-              <span>질문 {MAIN_QUESTION_COUNT}개를 끝까지 마쳤어요.</span>
+              <b>면접을 마쳤어요. 수고했어요</b>
+              <span>질문을 끝까지 마쳤어요.</span>
             </div>
           </div>
           <button type="button" className="rb-s3__btn" data-dark disabled={finishing} onClick={handleFinish}>
-            {finishing ? '정리하고 있어요…' : '결과 보러 가기 →'}
+            {finishing ? '정리하고 있어요' : '리포트 보기 →'}
           </button>
         </div>
       ) : (
@@ -418,20 +472,20 @@ export function QuestionView({
             </button>
             {phase === 'waiting' ? (
               <button type="button" className="rb-s3__btn" data-dark onClick={handleStartAnswer}>
-                대답 시작하기
+                대답하기
               </button>
             ) : (
               <button type="button" className="rb-s3__btn" data-dark onClick={handleDoneSpeaking} disabled={!listening}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M5 12l5 5L20 7" />
                 </svg>
-                답변 마치기
+                대답 마치기
               </button>
             )}
           </div>
           {/* 자리는 늘 차지하고 대답할 때만 보인다 — 나타날 때 가운데 정렬된 화면 전체가 위로 밀리지 않게 */}
           <button type="button" className="rb-s3__skip" onClick={handleSkip} disabled={!listening} aria-hidden={!listening} style={{ visibility: listening ? 'visible' : 'hidden' }}>
-            이 질문은 대답하지 않고 넘어갈게요
+            이 질문은 넘어갈게요
           </button>
         </>
       )}

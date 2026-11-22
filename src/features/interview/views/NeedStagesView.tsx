@@ -3,8 +3,8 @@ import { Box, Button, Stack, Text } from '@/components/ui';
 import type { StageKey } from '../difficulty';
 
 const STAGE_INFO: Record<StageKey, { label: string; path: string; action: string }> = {
-  stage1: { label: '1단계 음성 분석', path: '/voice', action: '1단계 하러 가기' },
-  stage2: { label: '2단계 표정·시선 분석', path: '/face', action: '2단계 하러 가기' },
+  stage1: { label: '1단계 목소리 대화', path: '/voice', action: '1단계 하러 가기' },
+  stage2: { label: '2단계 영상 통화', path: '/face', action: '2단계 하러 가기' },
 };
 
 /**
@@ -26,10 +26,10 @@ export function NeedStagesView({
   const navigate = useNavigate();
   const both = missing.length === 2;
 
-  const title = both ? '먼저 1·2단계를 진행하고 와주세요' : `${STAGE_INFO[missing[0]].label}이 먼저 필요해요`;
+  const title = both ? '먼저 1·2단계를 진행하고 와 주세요' : `${STAGE_INFO[missing[0]].label}가 먼저 필요해요`;
   const body = both
-    ? '모의 면접의 난이도는 1단계(음성)와 2단계(표정·시선) 결과로 정해져요. 두 단계를 먼저 진행한 뒤 다시 와주세요.'
-    : '모의 면접의 난이도는 1단계(음성)와 2단계(표정·시선) 결과로 정해져요. 아직 기록이 없는 단계를 먼저 진행한 뒤 다시 와주세요.';
+    ? '실전 면접의 난이도는 1단계 목소리 대화와 2단계 영상 통화 결과로 정해져요. 두 단계를 먼저 진행한 뒤 다시 와 주세요.'
+    : '실전 면접의 난이도는 1단계 목소리 대화와 2단계 영상 통화 결과로 정해져요. 아직 기록이 없는 단계를 먼저 진행한 뒤 다시 와 주세요.';
 
   return (
     <Stack align="center" gap={20} style={{ paddingTop: 60, paddingInline: 16 }}>

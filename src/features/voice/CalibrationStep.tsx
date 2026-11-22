@@ -239,9 +239,15 @@ export function CalibrationStep({ onReady, onComplete }: CalibrationStepProps) {
   const linkStyle = { border: 'none', background: 'none', padding: 0, color: 'var(--rb-primary-strong)', fontWeight: 600, cursor: 'pointer', fontSize: 13 };
 
   const heardCore = heard.replace(/\s/g, '');
-  // 문장 낱말을 들린 만큼 초록색으로 — 따로 "들린 말" 줄을 두지 않아서 상자 크기가 변하지 않는다
+  // 문장 낱말을 들린 만큼 초록색으로 — 따로 "들린 말" 줄을 두지 않아서 상자 크기가 변하지 않는다.
+  // 따라 읽을 때(와 끝난 뒤)만 보인다 — 조용히 있는 구간에 보이면 저도 모르게 따라 읽게 돼서. 자리는 그대로 둬 상자가 들썩이지 않게
+  const showSentence = phase === 'read' || phase === 'done';
   const sentence = (
-    <Box mt={10} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--rb-ink)' }}>
+    <Box
+      mt={10}
+      aria-hidden={!showSentence}
+      style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--rb-ink)', visibility: showSentence ? 'visible' : 'hidden' }}
+    >
       &quot;
       {SCRIPT_PARTS.map((w, i) => {
         const lit = phase === 'done' || (phase === 'read' && heardCore.includes(w.core));
@@ -259,7 +265,7 @@ export function CalibrationStep({ onReady, onComplete }: CalibrationStepProps) {
   let title: ReactNode;
   let right: ReactNode;
   if (phase === 'idle') {
-    title = '5초 조용히 있다가, 아래 문장을 따라 읽어 주세요';
+    title = '5초 조용히 있다가, 나오는 문장을 따라 읽어 주세요';
     right = (
       <Button size="sm" radius="md" variant="light" onClick={start}>
         확인 시작

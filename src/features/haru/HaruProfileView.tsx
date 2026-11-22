@@ -127,7 +127,7 @@ export function HaruProfileView({
             <span />
           )}
           <Button radius="md" size="lg" disabled={!items} onClick={confirm}>
-            맞아요, 다음으로
+            맞아요, 3단계 실전 면접으로 →
           </Button>
         </div>
         <Text fz={12} c="var(--rb-ink-faint)">

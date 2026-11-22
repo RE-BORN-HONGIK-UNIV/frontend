@@ -197,9 +197,8 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
 
       {/* 오른쪽: 대화 칸 */}
       <section className="rb-haru-talk__chat" aria-label="하루와 나눈 대화">
-        {/* 카톡 채팅방처럼 위에 대화 상대 이름 줄 */}
+        {/* 카톡 채팅방처럼 위에 대화 상대 이름 줄 — 카톡처럼 이름만(사진은 말풍선 묶음마다 한 번) */}
         <header className="rb-chat__head">
-          <span className="rb-chat__head-avatar" aria-hidden />
           <strong>하루</strong>
         </header>
         <div ref={box} className="rb-haru-talk__log">
@@ -252,7 +251,7 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
               className="rb-haru-talk__mic"
               data-listening={listening || undefined}
               disabled={!canStart && !listening}
-              aria-label={listening ? '답변 마치기' : '말하기 시작'}
+              aria-label={listening ? '대답 마치기' : '대답하기'}
               onClick={() => (listening ? void t.finish() : t.start())}
             >
               {listening ? <Wave /> : <MicIcon />}
@@ -271,7 +270,7 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
                     다시 들려주세요
                   </button>
                   <button type="button" onClick={() => void t.finish(true)} style={linkStyle}>
-                    이 질문은 대답하지 않고 넘어갈게요
+                    이 질문은 넘어갈게요
                   </button>
                 </>
               )}

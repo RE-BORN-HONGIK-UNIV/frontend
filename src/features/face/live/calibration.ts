@@ -111,27 +111,51 @@ export const EXPRESSION_CALIB_TOTAL_SEC = CALIB_FACE_SEC + CALIB_FROWN_SEC + CAL
 
 export type CalibStep = 'face' | 'frown' | 'smile' | 'settle';
 
-/** 캘리브레이션을 시작한 지 ct초일 때의 단계(null: 끝남). withExpressions=false면 예전처럼 total초 내내 face(settle 없음) */
-export function calibStepAt(ct: number, withExpressions: boolean, total = EXPRESSION_CALIB_TOTAL_SEC): CalibStep | null {
-  if (ct < 0 || ct > total) return null;
-  if (!withExpressions) return 'face';
-  const steps: [CalibStep, number][] = [
-    ['face', CALIB_FACE_SEC],
-    ['frown', CALIB_FROWN_SEC],
-    ['smile', CALIB_SMILE_SEC],
-  ];
+/** 단계마다 앞(보여 주기·준비)과 뒤(확인)에 두는 값을 모으지 않는 시간. 2단계는 0(예전 그대로), 3단계 대기실은 하루가 먼저
+ * 말하고 보여 준 뒤 따라 하게 앞뒤에 여유를 둔다 — 7초를 쉬지 않고 흘려보내니 글을 읽다가 표정을 놓쳤다(11-22 직접 해 봄). */
+export interface CalibPacing {
+  lead: number;
+  tail: number;
+}
+const NO_PACING: CalibPacing = { lead: 0, tail: 0 };
+
+const STAGES: ['face' | 'frown' | 'smile', number][] = [
+  ['face', CALIB_FACE_SEC],
+  ['frown', CALIB_FROWN_SEC],
+  ['smile', CALIB_SMILE_SEC],
+];
+
+/** 앞뒤 여유를 넣은 표정 맞추기 전체 길이 */
+export const expressionCalibTotal = (p: CalibPacing = NO_PACING) => EXPRESSION_CALIB_TOTAL_SEC + STAGES.length * (p.lead + p.tail);
+
+/** 지금 몇 번째 단계의 어디쯤인지 — part: lead(보여 주기·준비) / measure(재는 중) / tail(확인), at: 그 구간 안에서 지난 초 */
+export function calibBeatAt(ct: number, p: CalibPacing = NO_PACING) {
   let start = 0;
-  for (const [step, len] of steps) {
-    if (ct <= start + len) return ct < start + CALIB_SETTLE_SEC ? 'settle' : step;
-    start += len;
+  for (let i = 0; i < STAGES.length; i++) {
+    const [stage, len] = STAGES[i];
+    const local = ct - start;
+    if (local <= p.lead + len + p.tail || i === STAGES.length - 1) {
+      if (local < p.lead) return { index: i, stage, part: 'lead' as const, at: local, len: p.lead };
+      if (local <= p.lead + len) return { index: i, stage, part: 'measure' as const, at: local - p.lead, len };
+      return { index: i, stage, part: 'tail' as const, at: local - p.lead - len, len: p.tail };
+    }
+    start += p.lead + len + p.tail;
   }
-  return null;
+  return { index: 0, stage: 'face' as const, part: 'lead' as const, at: 0, len: p.lead };
 }
 
-/** 지금 화면에 보여 줄 단계(settle은 그 단계에 포함) */
-export function calibStageAt(ct: number, withExpressions: boolean): 'face' | 'frown' | 'smile' {
-  if (!withExpressions || ct <= CALIB_FACE_SEC) return 'face';
-  return ct <= CALIB_FACE_SEC + CALIB_FROWN_SEC ? 'frown' : 'smile';
+/** 캘리브레이션을 시작한 지 ct초일 때의 단계(null: 끝남). withExpressions=false면 예전처럼 total초 내내 face(settle 없음).
+ * 앞뒤 여유(pacing)와 재기 시작 직후 0.5초는 settle — 값을 모으지 않는다 */
+export function calibStepAt(ct: number, withExpressions: boolean, total = EXPRESSION_CALIB_TOTAL_SEC, p: CalibPacing = NO_PACING): CalibStep | null {
+  if (ct < 0 || ct > total) return null;
+  if (!withExpressions) return 'face';
+  const b = calibBeatAt(ct, p);
+  return b.part === 'measure' && b.at >= CALIB_SETTLE_SEC ? b.stage : 'settle';
+}
+
+/** 지금 화면에 보여 줄 단계(앞뒤 여유·settle은 그 단계에 포함) */
+export function calibStageAt(ct: number, withExpressions: boolean, p: CalibPacing = NO_PACING): 'face' | 'frown' | 'smile' {
+  return withExpressions ? calibBeatAt(ct, p).stage : 'face';
 }
 
 const quantile = (values: number[], q: number) => {

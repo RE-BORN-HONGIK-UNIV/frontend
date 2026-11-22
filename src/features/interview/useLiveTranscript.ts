@@ -70,6 +70,7 @@ export function useLiveTranscript({ active, lang = 'ko-KR' }: { active: boolean;
     rec.onerror = (e) => {
       // no-speech(한동안 말 안 함)는 무시하고 onend에서 재시작
       if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        console.warn('[실시간 받아쓰기] 멈춤:', e.error); // 왜 서버 받아쓰기로 넘어갔는지 개발자 도구에서 보이게
         stopped = true;
         setFailed(true);
       }

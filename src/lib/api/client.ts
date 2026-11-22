@@ -7,6 +7,8 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
+  ReportCoachRequest,
+  ReportCoachResponse,
   HaruProfileResponse,
   HaruReplyRequest,
   HaruReplyResponse,
@@ -204,6 +206,15 @@ export const api = {
     USE_MOCK
       ? mockApi.createCoachNote()
       : request<CoachNoteResponse>(`/interview/sessions/${sessionId}/coach-note`, { method: 'POST' }),
+
+  /** 리포트 3·4번 칸 AI — 이미 있으면 그대로, 없으면 서버가 다듬을 대답을 골라 만든다(수 초~수십 초). */
+  createReportCoach: (sessionId: number, body: ReportCoachRequest) =>
+    USE_MOCK
+      ? mockApi.createReportCoach()
+      : request<ReportCoachResponse>(`/interview/sessions/${sessionId}/report-coach`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
 
   /** 맞춤 연습 힌트 — 질문 하나를 다시 답할 때의 시작 문장 틀·말하는 순서. 이전 답변을 보내면 그걸 바탕으로 맞춤. */
   getPracticeHint: (question: string, previousAnswer: string) =>

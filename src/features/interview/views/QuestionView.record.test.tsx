@@ -33,8 +33,8 @@ vi.mock('@/lib/api/client', () => ({
 /** 첫 질문(고정)에 한 번 답하고 제출해서, 다음 질문을 요청하는 지점까지 진행 */
 async function answerFirstQuestion() {
   render(<QuestionView stream={null} tier="warmup" onAllDone={vi.fn()} onQuit={vi.fn()} />);
-  fireEvent.click(await screen.findByText('대답 시작하기'));
-  fireEvent.click(await screen.findByText('답변 마치기'));
+  fireEvent.click(await screen.findByText('대답하기'));
+  fireEvent.click(await screen.findByText('대답 마치기'));
   await waitFor(() => expect(getNextQuestion).toHaveBeenCalled());
   await new Promise((r) => setTimeout(r, 0)); // 뒤에서 도는 저장 큐가 끝나도록
 }
@@ -58,8 +58,8 @@ describe('QuestionView 면접 기록 저장', () => {
 
   it('넘어가면 빈 답변으로 다음 질문을 요청한다', async () => {
     render(<QuestionView stream={null} tier="warmup" onAllDone={vi.fn()} onQuit={vi.fn()} />);
-    fireEvent.click(await screen.findByText('대답 시작하기'));
-    fireEvent.click(await screen.findByText('이 질문은 대답하지 않고 넘어갈게요'));
+    fireEvent.click(await screen.findByText('대답하기'));
+    fireEvent.click(await screen.findByText('이 질문은 넘어갈게요'));
     await waitFor(() => expect(getNextQuestion).toHaveBeenCalled());
     const [, , previousAnswer] = vi.mocked(getNextQuestion).mock.calls[0];
     expect(previousAnswer).toBeUndefined();

@@ -5,6 +5,7 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
+  ReportCoachResponse,
   HaruProfileResponse,
   HaruReplyRequest,
   HaruReplyResponse,
@@ -218,6 +219,11 @@ export const mockApi = {
         care: null,
       },
     };
+  },
+
+  async createReportCoach(): Promise<ReportCoachResponse> {
+    await delay(900);
+    return { source: 'fallback', result: { picked: [], rewrites: [], plan: [], care: null } };
   },
 
   async getInterviewSession(): Promise<InterviewSessionDetail> {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box } from '@/components/ui';
 import { StageHeader } from '@/components/StageHeader';
 import type { GazeBlinkResult } from '@/lib/api/types';
+import type { ExpressionThresholds } from '@/features/face/live/useLiveFaceSession';
 import { HaruCallView } from '@/features/face/live/HaruCallView';
 import { HaruProfileView } from '@/features/haru/HaruProfileView';
 import { loadHaruTalk, profileSourceItems } from '@/features/haru/store';
@@ -22,12 +23,18 @@ export default function FaceStage() {
   // 통화를 끝내면(빨간 버튼) 경량 웹처럼 "하루가 이렇게 이해했어요" 카드가 나오고, 확인하면 3단계로 간다.
   // 카드에서 확인한 내용은 기기에 남아 3단계가 다시 묻지 않는다(InterviewStage).
   const [profile, setProfile] = useState(false);
+  // 2단계 표정 맞추기 기준 — 바로 3단계로 이어 가면 같은 자리라 3단계 대기실에서 다시 맞추지 않게 넘긴다(저장은 안 함)
+  const [expr, setExpr] = useState<ExpressionThresholds | null>(null);
   const navigate = useNavigate();
-  const handleHungUp = useCallback(() => {
-    // 하루와 나눈 대답이 하나도 없으면(전부 넘김) 정리할 게 없으니 바로 3단계로
-    if (profileSourceItems(loadHaruTalk()).length) setProfile(true);
-    else navigate({ pathname: '/interview', search: window.location.search });
-  }, [navigate]);
+  const handleHungUp = useCallback(
+    (thresholds: ExpressionThresholds | null) => {
+      setExpr(thresholds);
+      // 하루와 나눈 대답이 하나도 없으면(전부 넘김) 정리할 게 없으니 바로 3단계로
+      if (profileSourceItems(loadHaruTalk()).length) setProfile(true);
+      else navigate({ pathname: '/interview', search: window.location.search }, { state: { expr: thresholds } });
+    },
+    [navigate],
+  );
 
   // 분석 결과가 나오면: 대시보드용 완료 메모(서버 조회가 안 될 때 대신 씀) + 최종 리포트에 쓸 세부값을 이 기기에 남긴다
   const save = useCallback((result: GazeBlinkResult) => {
@@ -50,7 +57,7 @@ export default function FaceStage() {
           <HaruProfileView
             badge="2단계를 마쳤어요"
             // 주소 뒤 ?test=1(개발용 3단계 테스트 모드)은 3단계로 그대로 넘긴다
-            onNext={(lines) => navigate({ pathname: '/interview', search: window.location.search }, { state: { aboutMe: lines } })}
+            onNext={(lines) => navigate({ pathname: '/interview', search: window.location.search }, { state: { aboutMe: lines, expr } })}
             onQuit={() => navigate('/dashboard')}
           />
         ) : (
