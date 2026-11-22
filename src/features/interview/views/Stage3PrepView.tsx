@@ -108,12 +108,11 @@ function WaitingRoom({
     face.startCalibration();
   };
 
-  // 하루 목소리: 들어오자마자 한 번, 표정을 다 풀면 한 번
-  const line = expr ? HARU_READY : retry ? HARU_RETRY : HARU_WAIT;
+  // 하루 목소리: 들어오자마자 한 번, 표정을 다 풀면 한 번. 2단계에서 바로 왔으면 표정 얘기 없이 들어갈 준비만
+  const line = carried ? HARU_CARRY : expr ? HARU_READY : retry ? HARU_RETRY : HARU_WAIT;
   useEffect(() => {
-    // 다시 하자는 말은 미리 녹음한 목소리가 없어서 글로만
-    if (tier && !retry) void speak(line);
-  }, [line, tier, retry]);
+    if (tier) void speak(line);
+  }, [line, tier]);
   useEffect(() => stopSpeak, []);
 
   // 마이크: 권한을 받아 스트림이 연결됐는지만 본다
@@ -266,7 +265,8 @@ const PACING = { lead: 3, tail: 0.6 };
 const SHOW_SEC = 2;
 
 const HARU_WAIT = '여기까지 같이 왔네요! 들어가기 전에 저랑 표정 한번 풀어 볼까요?';
-const HARU_READY = '좋아요, 표정이 풀렸어요. 부르면 들어가면 돼요.';
+const HARU_READY = '좋아요, 표정이 풀렸어요. 부르면 들어가요.';
+const HARU_CARRY = '여기까지 같이 왔네요! 숨 한번 고르고, 부르면 들어가요.';
 const HARU_RETRY = '얼굴이 잘 안 보였어요. 화면 가운데에 얼굴이 오게 하고 한 번 더 해 볼까요?';
 
 /** 점검 줄 하나: 점 + 이름 + 상태 */
