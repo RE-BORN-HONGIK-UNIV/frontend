@@ -198,7 +198,7 @@ function WaitingRoom({
                 <Status
                   label="표정"
                   ok={expr ? true : noCamera ? false : null}
-                  okText={carried ? '방금 2단계에서 맞춘 기준 그대로 써요' : '다 풀었어요'}
+                  okText={carried ? '방금 2단계에서 푼 표정 그대로 써요' : '다 풀었어요'}
                   failText="카메라가 없어서 건너뛰어요"
                   waitText={calibrating ? '푸는 중이에요' : retry ? '얼굴이 잘 안 보였어요' : '하루랑 같이 풀어요'}
                 />
@@ -229,12 +229,12 @@ function WaitingRoom({
         <details className="rb-wait__privacy">
           <summary>
             <ShieldIcon />
-            영상·음성은 저장하지 않고, 답변 글만 기록해요
+            영상·음성은 저장하지 않고, 대답 글만 남겨요
             <span>자세히</span>
           </summary>
           <p>
-            면접 중 질문과 내 답변 텍스트는 내 계정에 저장되고, 꼬리질문과 코치 노트를 만들기 위해 AI(Anthropic)에 전송돼요.
-            저장한 기록은 결과 화면에서 언제든 삭제할 수 있어요.
+            면접 중 질문과 내 대답 글은 내 계정에 저장되고, 이어서 묻는 질문과 리포트를 만들려고 AI로 보내요.
+            저장한 기록은 리포트에서 언제든 지울 수 있어요.
           </p>
         </details>
 

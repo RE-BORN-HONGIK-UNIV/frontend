@@ -45,7 +45,7 @@ type Turn = { main: number; sub: number };
  *  - 목소리: 대답하는 구간만 이어 녹음(useAnswerRecorder)해 면접이 끝나면 1단계 분석(/analyze, stage=3 — 1단계 점수는
  *    안 덮음)으로 보낸다. 결과와 질문별 말버릇·멈춤 표시는 뒤에서 저장돼 리포트가 열린 뒤에 채워진다(saveStage3Voice).
  * 화면은 경량 웹 Talk3: 어두운 면접실 가운데 면접관 사진(움직이지 않음) + 아래 흰 버튼 줄(소리 막대·상태·
- * 다시 들려주세요·답변 마치기), 질문은 글로 보여 주지 않는다(index.css .rb-s3).
+ * 다시 들려주세요·대답 마치기), 질문은 글로 보여 주지 않는다(index.css .rb-s3).
  */
 export function QuestionView({
   stream,
@@ -356,9 +356,9 @@ export function QuestionView({
   };
 
   const status: Record<Phase, string> = {
-    greeting: '면접관 인사 중',
+    greeting: '면접관이 인사하고 있어요',
     loading: '질문을 준비하고 있어요',
-    asking: '질문하는 중',
+    asking: '면접관이 묻고 있어요',
     waiting: '질문을 읽어 주세요',
     answering: '듣고 있어요',
     reviewing: '잘 들었어요',
@@ -411,12 +411,12 @@ export function QuestionView({
               </svg>
             </span>
             <div>
-              <b>면접을 마쳤어요. 수고하셨어요</b>
+              <b>면접을 마쳤어요. 수고했어요</b>
               <span>질문을 끝까지 마쳤어요.</span>
             </div>
           </div>
           <button type="button" className="rb-s3__btn" data-dark disabled={finishing} onClick={handleFinish}>
-            {finishing ? '정리하고 있어요…' : '결과 보러 가기 →'}
+            {finishing ? '정리하고 있어요' : '리포트 보기 →'}
           </button>
         </div>
       ) : (
@@ -451,20 +451,20 @@ export function QuestionView({
             </button>
             {phase === 'waiting' ? (
               <button type="button" className="rb-s3__btn" data-dark onClick={handleStartAnswer}>
-                대답 시작하기
+                대답하기
               </button>
             ) : (
               <button type="button" className="rb-s3__btn" data-dark onClick={handleDoneSpeaking} disabled={!listening}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M5 12l5 5L20 7" />
                 </svg>
-                답변 마치기
+                대답 마치기
               </button>
             )}
           </div>
           {/* 자리는 늘 차지하고 대답할 때만 보인다 — 나타날 때 가운데 정렬된 화면 전체가 위로 밀리지 않게 */}
           <button type="button" className="rb-s3__skip" onClick={handleSkip} disabled={!listening} aria-hidden={!listening} style={{ visibility: listening ? 'visible' : 'hidden' }}>
-            이 질문은 대답하지 않고 넘어갈게요
+            이 질문은 넘어갈게요
           </button>
         </>
       )}

@@ -241,7 +241,7 @@ export function HaruCallView({
             {mode === 'prep' && (
               <>
                 <TileTag top>
-                  <span className="rb-call__dot" /> 기다리는 중
+                  <span className="rb-call__dot" /> 기다리고 있어요
                 </TileTag>
                 <TileTag>하루</TileTag>
               </>
@@ -254,7 +254,7 @@ export function HaruCallView({
                     '통화 종료'
                   ) : (
                     <>
-                      <span className="rb-call__dot" /> 통화중 · {mmss(s.recordingElapsedSec)}
+                      <span className="rb-call__dot" /> 통화 중 · {mmss(s.recordingElapsedSec)}
                     </>
                   )}
                 </TileTag>
@@ -353,7 +353,7 @@ export function HaruCallView({
                 {s.phase === 'error'
                   ? '카메라를 켤 수 없어요'
                   : !cameraOn
-                    ? '카메라 켜는 중…'
+                    ? '카메라를 켜고 있어요'
                     : s.faceDetected
                       ? '얼굴이 잘 보여요'
                       : '얼굴이 안 보여요'}
@@ -374,7 +374,7 @@ export function HaruCallView({
           <div style={{ textAlign: 'center' }}>
             <Text fz={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               <EyeIcon />
-              <b>말하는 동안에는 하루를 응시해주세요</b>
+              <b>말하는 동안에는 하루를 바라봐 주세요</b>
             </Text>
             <Text fz={14} c="var(--rb-ink-soft)" mt={4}>
               그 밖에는 편하게 봐도 돼요
@@ -385,7 +385,7 @@ export function HaruCallView({
             <span className="rb-call__dial-btn" aria-hidden>
               <PhoneIcon />
             </span>
-            <span className="rb-call__dial-label">{s.phase === 'camera' ? '하루와 통화하기' : '카메라를 켜고 있어요…'}</span>
+            <span className="rb-call__dial-label">{s.phase === 'camera' ? '통화 시작하기' : '카메라를 켜고 있어요'}</span>
           </button>
           <button type="button" onClick={() => navigate('/dashboard')} style={linkStyle}>
             오늘은 여기까지 할게요
@@ -396,7 +396,7 @@ export function HaruCallView({
       {mode === 'calib' && s.phase === 'ready' && !calibrationLooksGood && (
         <Group justify="center" gap={12}>
           <Button radius="md" onClick={() => s.startCalibration()}>
-            다시 맞추기
+            다시 풀기
           </Button>
           <Button radius="md" variant="default" onClick={beginCall}>
             그대로 시작하기
@@ -425,12 +425,12 @@ export function HaruCallView({
           <div className="rb-call__controls">
             {t.phase === 'listen' ? (
               <button type="button" className="rb-call__action" data-kind="finish" onClick={() => void t.finish()}>
-                ✓ 답변 마치기
+                대답 마치기
               </button>
             ) : (
               !t.bye && (
                 <button type="button" className="rb-call__action" disabled={t.phase !== 'ready'} onClick={t.start}>
-                  🎙 하루를 보며 대답하기
+                  하루를 보며 대답하기
                 </button>
               )
             )}
@@ -449,7 +449,7 @@ export function HaruCallView({
                 다시 들려주세요
               </button>
               <button type="button" onClick={() => void t.finish(true)} disabled={t.phase !== 'ready'} style={linkStyle}>
-                이 질문 넘어가기
+                이 질문은 넘어갈게요
               </button>
             </Group>
           )}
@@ -487,7 +487,7 @@ export function HaruCallView({
 
       {mode === 'prep' && s.phase === 'error' && (
         <Alert color="red" variant="light" p="xs" fz={13}>
-          {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해주세요.'}
+          {s.errorMessage || '카메라를 시작할 수 없어요. 브라우저 권한을 확인해 주세요.'}
         </Alert>
       )}
     </Stack>

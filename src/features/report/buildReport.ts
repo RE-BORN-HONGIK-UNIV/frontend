@@ -28,43 +28,43 @@ interface AxisCopy {
   next: string; // "연습하면 좋아져요" 칩
 }
 
-/** 오각형 축 순서 (경량 웹과 같음): 안정성·유창성·침묵 조절·지속성·에너지 */
+/** 오각형 축 순서 (경량 웹과 같음): 떨림·채움말·긴 멈춤·소리 늘이기·말끝 흐림. 화면 이름은 정확한 용어 + 밑에 쉬운 풀이 */
 export const VOICE_AXES: AxisKey[] = ['stability', 'fluency', 'pause_ctrl', 'continuity', 'calm'];
-export const VOICE_AXIS_LABELS = ['안정성', '유창성', '침묵 조절', '지속성', '에너지'];
+export const VOICE_AXIS_LABELS = ['목소리 떨림', '채움말', '긴 멈춤', '소리 늘이기', '말끝 흐림'];
 
 /** CNN 축 → 서버 라벨 (backend app.py: stability=떨림, continuity=연장, calm=에너지) */
 const CNN_AXIS_LABEL: Partial<Record<AxisKey, CnnLabel>> = { stability: 'tremor', continuity: 'prolongation', calm: 'energy' };
 
 const AXIS_COPY: Record<AxisKey, AxisCopy> = {
   stability: {
-    name: '음성 안정성', easy: '목소리 떨림',
+    name: '목소리 떨림', easy: '목소리가 흔들리며 나오는 것',
     line: { good: '목소리가 처음부터 끝까지 고르게 나왔어요.', mid: '가끔 목소리가 살짝 흔들렸어요.', low: '목소리가 흔들린 순간이 여러 번 있었어요.' },
     chip: { good: '고르게 나왔어요', mid: '가끔 흔들렸어요', low: '자주 흔들렸어요' },
-    good: '고른 목소리', next: '목소리 떨림',
+    good: '고른 목소리', next: '목소리 떨림 줄이기',
   },
   fluency: {
-    name: '발화 유창성', easy: '"음, 어" 같은 말',
+    name: '채움말', easy: '"음, 어"처럼 생각할 때 끼워 넣는 말',
     line: { good: '"음, 어" 같은 말이 거의 없었어요.', mid: '"음, 어" 같은 말이 가끔 나왔어요.', low: '"음, 어" 같은 말이 자주 나왔어요.' },
     chip: { good: '거의 없어요', mid: '가끔 나와요', low: '자주 나와요' },
     good: '"음, 어"가 적어요', next: '"음, 어" 줄이기',
   },
   pause_ctrl: {
-    name: '침묵 조절력', easy: '오래 멈추기',
+    name: '긴 멈춤', easy: '대답하다가 1.2초 넘게 멈춘 순간',
     line: { good: '멈춤이 적당했어요. 짧게 숨 고르는 멈춤은 오히려 자연스러워요.', mid: '가끔 오래 멈췄어요.', low: '오래 멈춘 순간이 여러 번 있었어요.' },
     chip: { good: '적당해요', mid: '가끔 길어요', low: '자주 길어요' },
-    good: '적당한 멈춤', next: '오래 멈추기',
+    good: '적당한 멈춤', next: '긴 멈춤 줄이기',
   },
   continuity: {
-    name: '발화 지속성', easy: '소리 늘이기',
+    name: '소리 늘이기', easy: '"저어는"처럼 한 소리를 길게 끈 순간',
     line: { good: '소리를 늘이지 않고 또박또박 이어 갔어요.', mid: '"저어는"처럼 소리를 늘인 순간이 가끔 있었어요.', low: '소리를 길게 늘인 순간이 자주 있었어요.' },
     chip: { good: '또박또박해요', mid: '가끔 늘였어요', low: '자주 늘였어요' },
-    good: '또박또박', next: '소리 늘이기',
+    good: '또박또박', next: '늘이지 않고 말하기',
   },
   calm: {
-    name: '발화 에너지', easy: '끝까지 또렷하게',
+    name: '말끝 흐림', easy: '문장 끝으로 갈수록 목소리가 작아지는 것',
     line: { good: '문장 끝까지 또렷하게 말했어요.', mid: '문장 끝이 가끔 작아졌어요.', low: '문장 끝이 자주 작아졌어요.' },
     chip: { good: '끝까지 또렷해요', mid: '가끔 작아져요', low: '자주 작아져요' },
-    good: '끝까지 또렷하게', next: '문장 끝 또렷하게',
+    good: '끝까지 또렷하게', next: '말끝 또렷하게',
   },
 };
 

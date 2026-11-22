@@ -13,7 +13,7 @@ const STEPS: { no: StageNo; label: string }[] = [
   { no: 1, label: '목소리 대화' },
   { no: 2, label: '영상 통화' },
   { no: 3, label: '실전 면접' },
-  { no: 4, label: '결과' },
+  { no: 4, label: '리포트' },
 ];
 
 /** 이 기기에 남은 완료 기록(localProgress) — 마친 단계는 숫자 대신 체크로 보인다 */

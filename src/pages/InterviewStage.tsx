@@ -54,7 +54,7 @@ export default function InterviewStage() {
 
   // 집중 모드에서는 메뉴가 없어서 나갈 방법이 따로 필요함. 실수로 누르는 경우 대비해 한 번 더 확인
   const handleExit = () => {
-    if (window.confirm('면접을 그만둘까요? 진행 중인 면접은 처음부터 다시 해야 해요.')) {
+    if (window.confirm('면접을 그만할까요? 진행 중인 면접은 처음부터 다시 해야 해요.')) {
       navigate('/dashboard');
     }
   };

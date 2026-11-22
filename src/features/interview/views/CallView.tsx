@@ -57,7 +57,7 @@ export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () =>
       <span className="rb-call3__light" aria-hidden />
 
       <div className="rb-call3__text" aria-live="polite">
-        <h1>{name ? `${name} 님, ` : ''}들어가실 차례예요</h1>
+        <h1>{name ? `${name} 님, ` : ''}들어갈 차례예요</h1>
         {/* 문 너머 소리를 글로도 — 소리를 못 듣는 사람도 알게 */}
         <p className="rb-call3__cc" data-voice={beat === 'reply' || undefined}>
           {beat === 'reply' ? `“${COME_IN}”` : beat === 'knock' ? '(똑똑)' : '면접관이 기다리고 있어요'}

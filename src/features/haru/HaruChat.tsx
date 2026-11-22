@@ -252,7 +252,7 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
               className="rb-haru-talk__mic"
               data-listening={listening || undefined}
               disabled={!canStart && !listening}
-              aria-label={listening ? '답변 마치기' : '말하기 시작'}
+              aria-label={listening ? '대답 마치기' : '대답하기'}
               onClick={() => (listening ? void t.finish() : t.start())}
             >
               {listening ? <Wave /> : <MicIcon />}
@@ -271,7 +271,7 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
                     다시 들려주세요
                   </button>
                   <button type="button" onClick={() => void t.finish(true)} style={linkStyle}>
-                    이 질문은 대답하지 않고 넘어갈게요
+                    이 질문은 넘어갈게요
                   </button>
                 </>
               )}

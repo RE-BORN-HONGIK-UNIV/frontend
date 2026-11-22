@@ -91,7 +91,7 @@ export default function VoiceStage() {
     if (rec) analyze.mutate({ file: rec.file, calibration, turnStarts: rec.turnStarts });
   };
 
-  // 대화가 끝나면 화면을 넘기지 않고 대화 그대로, 하단 바만 "1단계를 마쳤어요 · 2단계 시작하기"로 —
+  // 대화가 끝나면 화면을 넘기지 않고 대화 그대로, 하단 바만 "1단계를 마쳤어요 · 2단계 영상 통화로"로 —
   // 결과는 최종 리포트에서만 보여 주므로 목소리 정리를 기다릴 필요가 없다(뒤에서 계속 정리되고 저장됨)
   const doneBar: DoneBar = {
     title: '1단계를 마쳤어요',
@@ -102,7 +102,7 @@ export default function VoiceStage() {
           ? analyze.error.message
           : '목소리를 정리하지 못했어요. 다시 보내 볼까요?'
         : // 정리 중이어도 같은 문구 — '정리하고 있어요 · 기다리지 않아도 돼요'는 기다려야 하나 헷갈리게 해서 뺐다
-          '결과는 3단계까지 마친 뒤 최종 리포트에서 함께 봐요',
+          '결과는 3단계까지 마친 뒤 리포트에서 함께 봐요.',
     actions: (
       <>
         {analyze.isError && !noAudio && (
@@ -111,10 +111,10 @@ export default function VoiceStage() {
           </button>
         )}
         <button type="button" onClick={reset} style={linkStyle}>
-          하루와 다시 이야기할래요
+          하루와 다시 이야기할게요
         </button>
         <Button radius="md" size="lg" onClick={() => navigate('/face')}>
-          2단계 시작하기 →
+          2단계 영상 통화로 →
         </Button>
       </>
     ),
@@ -182,7 +182,7 @@ export default function VoiceStage() {
 
               <Box mt={28} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                 <Button radius="md" size="lg" disabled={!micReady} onClick={() => setStarted(true)}>
-                  하루와 이야기 시작하기
+                  대화 시작하기
                 </Button>
                 {!micReady && (
                   <Text fz={12} c="var(--rb-ink-faint)">

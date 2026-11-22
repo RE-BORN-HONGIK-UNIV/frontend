@@ -37,7 +37,7 @@ describe('3단계 면접 대기실', () => {
   it('동의 체크박스 없이, 무엇이 저장·전송되는지만 알린다 (영상·음성은 저장 안 함, 삭제 가능)', async () => {
     renderPrep(media({ audio: true, video: true }));
     expect(await screen.findByText(/내 계정에 저장되고/)).toBeTruthy();
-    expect(screen.getByText(/AI\(Anthropic\)에 전송돼요/)).toBeTruthy();
+    expect(screen.getByText(/AI로 보내요/)).toBeTruthy();
     expect(screen.getByText(/영상·음성은 저장하지 않고/)).toBeTruthy();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
@@ -65,7 +65,7 @@ describe('3단계 면접 대기실', () => {
   it('2단계에서 바로 이어 오면 맞춘 기준을 그대로 쓰고, 난이도와 함께 넘긴다', async () => {
     const onStart = vi.fn();
     renderPrep(media({ audio: true, video: true }), onStart, { tension: 0.2, smile: 0.4 });
-    expect(screen.getByText(/방금 2단계에서 맞춘 기준/)).toBeTruthy();
+    expect(screen.getByText(/방금 2단계에서 푼 표정/)).toBeTruthy();
     fireEvent.click(await screen.findByText('준비됐어요'));
     expect(onStart).toHaveBeenCalledWith('standard', { tension: 0.2, smile: 0.4 });
   });

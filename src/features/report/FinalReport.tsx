@@ -345,7 +345,7 @@ export function FinalReport({
         <div className="opts">
           <Link className="opt" to="/voice">
             <b>1단계 목소리 대화</b>
-            <span>말버릇과 첫마디 연습</span>
+            <span>채움말과 첫마디 연습</span>
           </Link>
           <Link className="opt" to="/face">
             <b>2단계 영상 통화</b>
@@ -392,9 +392,9 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
       el: voice.fillers ? (
         <div className="card" key="fillers">
           <h3>
-            "음, 어" 같은 말 <Tag c={voice.fillers.chip} />
+            채움말 <Tag c={voice.fillers.chip} />
           </h3>
-          <p className="k">발화 유창성 · 대답을 받아쓴 글로 셌어요</p>
+          <p className="k">"음, 어"처럼 생각할 때 끼워 넣는 말 · 받아쓴 대답에서 셌어요</p>
           {voice.fillers.words.length > 0 && (
             <div className="words">
               {voice.fillers.words.map(([w, n]) => (
@@ -417,8 +417,8 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
         </div>
       ) : (
         <div className="card" key="fillers">
-          <h3>"음, 어" 같은 말</h3>
-          <p className="k">발화 유창성</p>
+          <h3>채움말</h3>
+          <p className="k">"음, 어"처럼 생각할 때 끼워 넣는 말</p>
           <Pending>어떤 말이 몇 번, 어디서 나왔는지는 이 기기에서 1단계를 다시 하면 보여요.</Pending>
         </div>
       ),
@@ -428,9 +428,9 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
       el: voice.pauses ? (
         <div className="card" key="pauses">
           <h3>
-            오래 멈추기 <Tag c={voice.pauses.chip} />
+            긴 멈춤 <Tag c={voice.pauses.chip} />
           </h3>
-          <p className="k">침묵 조절력 · 대답 중에 오래 멈춘 순간</p>
+          <p className="k">대답하다가 1.2초 넘게 멈춘 순간</p>
           <div className="ln" aria-hidden>
             {voice.pauses.marks.map((m, i) => (
               <i key={i} style={{ left: `${m.left}%`, width: `${m.width}%` }}>
@@ -446,8 +446,8 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
         </div>
       ) : (
         <div className="card" key="pauses">
-          <h3>오래 멈추기</h3>
-          <p className="k">침묵 조절력</p>
+          <h3>긴 멈춤</h3>
+          <p className="k">대답하다가 1.2초 넘게 멈춘 순간</p>
           <Pending>언제 몇 초 멈췄는지는 이 기기에서 1단계를 다시 하면 보여요.</Pending>
         </div>
       ),
@@ -459,7 +459,7 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
           <h3>
             소리 늘이기 {voice.prolong && <Tag c={voice.prolong.chip} />}
           </h3>
-          <p className="k">발화 지속성 · 한 소리를 길게 늘인 순간</p>
+          <p className="k">"저어는"처럼 한 소리를 길게 끈 순간</p>
           {voice.prolong ? (
             <>
               <ul className="mo">
@@ -475,7 +475,7 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
               <p className="d">{rich(voice.prolong.line)}</p>
             </>
           ) : (
-            <Pending>"저어는"처럼 늘인 말과 그 시각을 보여 드릴 예정이에요.</Pending>
+            <Pending>늘인 말과 그 시각은 아직 보여 드리지 못해요.</Pending>
           )}
         </div>
       ),
@@ -485,9 +485,9 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
       el: (
         <div className="card" key="energy">
           <h3>
-            끝까지 또렷하게 {voice.energy && <Tag c={voice.energy.chip} />}
+            말끝 흐림 {voice.energy && <Tag c={voice.energy.chip} />}
           </h3>
-          <p className="k">발화 에너지 · 한 문장 안에서 목소리 크기</p>
+          <p className="k">문장 끝으로 갈수록 목소리가 작아지는 것</p>
           {voice.energy ? (
             <>
               <div className="en" aria-hidden>
@@ -502,7 +502,7 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
               <p className="d">{rich(voice.energy.line)}</p>
             </>
           ) : (
-            <Pending>문장 끝으로 갈수록 목소리가 작아지는지 막대로 보여 드릴 예정이에요.</Pending>
+            <Pending>문장마다 목소리 크기는 아직 보여 드리지 못해요.</Pending>
           )}
         </div>
       ),
@@ -514,7 +514,7 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
           <h3>
             목소리 떨림 {voice.tremor && <Tag c={voice.tremor.chip} />}
           </h3>
-          <p className="k">음성 안정성 · 대화하는 동안 목소리가 얼마나 고르게 나왔는지</p>
+          <p className="k">목소리가 흔들리며 나오는 것</p>
           {voice.tremor ? (
             <>
               <svg className="trc" viewBox="0 0 600 84" preserveAspectRatio="none" aria-hidden>
@@ -528,13 +528,13 @@ function VoiceSection({ voice, loading }: { voice: VoiceReport | null; loading: 
               </svg>
               <div className="tickl">
                 <span>대화 처음</span>
-                <span>위 칸에 가까울수록 많이 흔들림</span>
+                <span>위 칸에 가까울수록 많이 흔들렸어요</span>
                 <span>대화 끝</span>
               </div>
               <p className="d">{rich(voice.tremor.line)}</p>
             </>
           ) : (
-            <Pending>대화하는 동안 목소리가 언제 흔들렸는지 선으로 보여 드릴 예정이에요.</Pending>
+            <Pending>언제 흔들렸는지는 아직 보여 드리지 못해요.</Pending>
           )}
         </div>
       ),
@@ -797,7 +797,7 @@ function InterviewSection({
 
   const handleDelete = async () => {
     if (!interview?.sessionId) return;
-    if (!window.confirm('이 면접의 질문과 답변 기록을 삭제할까요?\n되돌릴 수 없어요.')) return;
+    if (!window.confirm('이 면접의 질문과 대답 기록을 지울까요?\n되돌릴 수 없어요.')) return;
     setDeleting(true);
     setDeleteError(false);
     try {
@@ -830,7 +830,7 @@ function InterviewSection({
           <Link to="/interview">3단계 하러 가기 →</Link>
         </div>
       ) : deleted ? (
-        <p className="d">면접 기록을 삭제했어요. 질문과 답변이 서버에서 지워졌어요.</p>
+        <p className="d">면접 기록을 지웠어요. 질문과 대답이 서버에서 지워졌어요.</p>
       ) : (
         <div className="qv">
           {groups.length > 1 && (
@@ -880,12 +880,12 @@ function InterviewSection({
               })}
               {group.some((t) => scriptOf(t)) && (
                 <div className="keys">
-                  <span className="k1">말버릇</span>
+                  <span className="k1">채움말</span>
                   <span className="k3">긴 멈춤</span>
                 </div>
               )}
-              {marksStatus === 'pending' && <p className="note">대답 목소리를 정리하고 있어요. 조금 뒤에 말버릇 표시가 나타나요.</p>}
-              {marksStatus === 'failed' && <p className="note">이번엔 대답 목소리를 정리하지 못해서 말버릇 표시 없이 보여 드려요.</p>}
+              {marksStatus === 'pending' && <p className="note">대답 목소리를 정리하고 있어요. 조금 뒤에 채움말 표시가 나타나요.</p>}
+              {marksStatus === 'failed' && <p className="note">이번엔 대답 목소리를 정리하지 못해서 채움말 표시 없이 보여 드려요.</p>}
               {marksStatus !== 'pending' && !coachDone && interview.sessionId !== null && <p className="note">대답을 다듬고 있어요. 조금 뒤에 나타나요.</p>}
             </div>
           )}
@@ -896,13 +896,13 @@ function InterviewSection({
                 <>
                   기록은 내 계정에만 저장돼요{' '}
                   <button type="button" className="del" disabled={deleting} onClick={handleDelete}>
-                    {deleting ? '삭제하는 중…' : '기록 삭제'}
+                    {deleting ? '지우고 있어요' : '기록 지우기'}
                   </button>
                 </>
               ) : (
                 '이번 면접은 기록이 저장되지 않았어요'
               )}
-              {deleteError && ' · 삭제하지 못했어요. 잠시 후 다시 해 주세요.'}
+              {deleteError && ' · 지우지 못했어요. 잠시 뒤에 다시 해 주세요.'}
             </p>
             {at < groups.length - 1 && (
               <button type="button" className="next" onClick={() => setAt(at + 1)}>

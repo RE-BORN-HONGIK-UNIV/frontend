@@ -106,7 +106,7 @@ describe('말하기 습관 (1단계)', () => {
     // 정리에도 '준비 중' 축은 들어가지 않는다
     const { good, next } = buildSummary(r, null);
     expect(good).toEqual(['"음, 어"가 적어요', '또박또박']);
-    expect(next).toEqual(['오래 멈추기']);
+    expect(next).toEqual(['긴 멈춤 줄이기']);
   });
 
   it('참고용 모델(시험 미통과) 판정은 참고용이라고 붙이고 정리·연습 팁에는 쓰지 않는다', () => {
@@ -160,7 +160,7 @@ describe('이번 연습 정리', () => {
   it('좋은 구간은 "잘하고 있어요", 낮은 구간만 "연습하면 좋아져요"에 넣는다(중간은 어디에도 안 넣음)', () => {
     const s = buildSummary(buildVoiceReport({ at: 'x', result: analyze() }), buildFaceReport({ at: 'x', result: gaze() }));
     expect(s.good).toEqual(['고른 목소리', '또박또박', '끝까지 또렷하게', '편안한 깜빡임']);
-    expect(s.next).toEqual(['오래 멈추기', '표정 풀기']);
+    expect(s.next).toEqual(['긴 멈춤 줄이기', '표정 풀기']);
   });
 });
 
