@@ -80,6 +80,9 @@ describe('말하기 습관 (1단계)', () => {
     expect(r.spokenSec).toBeNull();
     expect(r.habits[4].chip.tone).toBe('p');
     expect(buildPlan(r, null)[0].how).toBe(TRAINING_TIPS.calm); // 가장 연습할 축(에너지)의 연습 제안
+    // 리포트 AI가 고른 습관이 앞에 오고 방법 문장만 AI 것, 모자라면 후보로 채운다. 후보에 없는 key는 무시
+    const ai = buildPlan(r, null, [{ key: 'gaze', how: 'x' }, { key: 'calm', how: '첫 문장을 한 톤 높여 시작해 봐요.' }]);
+    expect(ai).toEqual([{ ...buildPlan(r, null)[0], how: '첫 문장을 한 톤 높여 시작해 봐요.' }]);
   });
 
   it('모든 축이 좋으면 연습 제안을 따로 띄우지 않는다', () => {

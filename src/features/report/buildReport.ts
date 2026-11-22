@@ -374,25 +374,34 @@ const FACE_TIPS = {
 };
 
 export interface PlanItem {
+  /** 습관 이름(AxisKey 또는 blink·gaze·expr) — 리포트 AI가 이 key로 고른다 */
+  key: string;
   title: string;
   /** 근거 한 줄 — 이번 기록에서 나온 말 */
   why: string;
   how: string;
 }
 
-/**
- * 다음 연습 계획 두 가지. 목소리 '다음 연습 포인트'(주황) → 시선·표정 연습 포인트 → 목소리 '가끔'(노랑) 순.
- * shortcut: 코드가 고르고 정해 둔 방법 문장을 쓴다, 코치 노트 AI가 맞춤 계획을 쓰게 되면(spec 7-4) 그걸로 바꾼다.
- */
-export function buildPlan(voice: VoiceReport | null, face: FaceReport | null): PlanItem[] {
+/** 계획 후보 전부. 목소리 '다음 연습 포인트'(주황) → 시선·표정 연습 포인트 → 목소리 '가끔'(노랑) 순 */
+export function planCandidates(voice: VoiceReport | null, face: FaceReport | null): PlanItem[] {
   const fromVoice = (tone: Tone) =>
     (voice?.habits ?? [])
       .filter((h) => !h.reference && h.chip.tone === tone)
-      .map((h) => ({ title: AXIS_COPY[h.key].next, why: h.line, how: TRAINING_TIPS[h.key] }));
+      .map((h) => ({ key: h.key, title: AXIS_COPY[h.key].next, why: h.line, how: TRAINING_TIPS[h.key] }));
   const fromFace = face
     ? (['blink', 'gaze', 'expr'] as const)
         .filter((k) => face[k].chip.tone === 'p')
-        .map((k) => ({ title: FACE_SUMMARY[k].next, why: face[k].chip.text, how: FACE_TIPS[k] }))
+        .map((k) => ({ key: k, title: FACE_SUMMARY[k].next, why: face[k].chip.text, how: FACE_TIPS[k] }))
     : [];
-  return [...fromVoice('p'), ...fromFace, ...fromVoice('y')].slice(0, 2);
+  return [...fromVoice('p'), ...fromFace, ...fromVoice('y')];
+}
+
+/**
+ * 다음 연습 계획 두 가지. 리포트 AI가 고른 습관이 있으면 그 순서와 맞춤 방법 문장으로(제목·근거 숫자는 코드),
+ * 없거나 모자라면 후보 순서대로 정해 둔 방법 문장으로 채운다.
+ */
+export function buildPlan(voice: VoiceReport | null, face: FaceReport | null, ai: { key: string; how: string }[] = []): PlanItem[] {
+  const all = planCandidates(voice, face);
+  const chosen = ai.flatMap((a) => all.filter((c) => c.key === a.key).map((c) => ({ ...c, how: a.how })));
+  return [...chosen, ...all.filter((c) => !chosen.some((x) => x.key === c.key))].slice(0, 2);
 }

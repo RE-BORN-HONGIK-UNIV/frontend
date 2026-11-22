@@ -158,6 +158,24 @@ export interface InterviewSessionDetail extends InterviewSessionSummary {
   turns: { id: number; order: number; kind: 'main' | 'follow_up'; question: string; answer: string | null; askedAt: string; answeredAt: string | null }[];
 }
 
+/** 리포트 3·4번 칸 AI 요청 — 질문별 말버릇·긴 멈춤 숫자(브라우저가 만든 표시에서 셈)와 계획 후보 습관 */
+export interface ReportCoachRequest {
+  turns: { question: string; fillers: number; pauses: number }[];
+  candidates: { key: string; line: string }[];
+}
+
+/** 리포트 3·4번 칸 AI 결과 — 서버(coach/report.py)가 고르고 검사한 것. 면접 1번에 1개 저장. */
+export interface ReportCoachResponse {
+  source: 'llm' | 'fallback' | 'care';
+  result: {
+    /** 다듬을 대답으로 골라진 질문(코드 기준). 여기 없는 질문은 '그대로도 잘 전해져요' */
+    picked: string[];
+    rewrites: { question: string; text: string; changes: string[] }[];
+    plan: { key: string; how: string }[];
+    care: { greeting: string; body: string; resources: string } | null;
+  };
+}
+
 /** 면접 직후 코치 노트 — 서버(coach/)가 만들고 검증한 것. 카드(다음 한 걸음)는 서버 코드가 정한 4종류. */
 export type CoachCardKind = 'again' | 'light_practice' | 'daily_mission' | 'rest';
 

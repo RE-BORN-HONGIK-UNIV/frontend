@@ -5,7 +5,7 @@ import { StageHeader } from '@/components/StageHeader';
 import { api } from '@/lib/api/client';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import { FinalReport } from '@/features/report/FinalReport';
-import { SAMPLE_DETAILS, SAMPLE_INTERVIEW } from '@/features/report/sample';
+import { SAMPLE_COACH, SAMPLE_DETAILS, SAMPLE_INTERVIEW } from '@/features/report/sample';
 
 type Latest = { result: InterviewResult; at: string } | null;
 
@@ -79,6 +79,7 @@ export function SampleReportPage() {
       <FinalReport
         details={SAMPLE_DETAILS}
         interview={SAMPLE_INTERVIEW}
+        sampleCoach={SAMPLE_COACH}
         date="2026-10-31T10:32:00Z"
         notice={
           <div className="sample-note" role="note">

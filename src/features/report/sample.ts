@@ -1,4 +1,4 @@
-import type { AnalyzeResult } from '@/lib/api/types';
+import type { AnalyzeResult, ReportCoachResponse } from '@/lib/api/types';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import type { StageDetails } from './stageDetails';
 
@@ -153,4 +153,21 @@ export const SAMPLE_INTERVIEW: InterviewResult = {
     { kind: 'main', question: '맡은 일을 끝까지 하는 점이 일할 때 어떤 도움이 될까요?', answer: '' },
     { kind: 'main', question: '마지막으로 하고 싶은 말이 있으세요?', answer: '천천히지만 꾸준히 하겠습니다.' },
   ],
+};
+
+/** 예시 리포트의 3·4번 칸 AI 결과 — 실제 Claude 출력 모양을 본떠 손으로 쓴 값 (서버를 부르지 않는다) */
+export const SAMPLE_COACH: ReportCoachResponse = {
+  source: 'llm',
+  result: {
+    picked: ['간단히 자기소개를 해 주시겠어요?'],
+    rewrites: [
+      {
+        question: '간단히 자기소개를 해 주시겠어요?',
+        text: '저는 요리하는 걸 좋아하는 사람입니다. 요즘은 영상을 보면서 집에서 반찬을 만들어 보고 있습니다. 그러면서 순서를 정해 하나씩 끝내는 게 재미있다는 걸 알게 됐습니다.',
+        changes: ["'음·약간' 같은 말버릇을 뺐어요", "한 문장씩 끊어서 말투를 '~습니다'로 정리했어요"],
+      },
+    ],
+    plan: [{ key: 'fluency', how: "질문이 끝나면 숨을 한 번 쉰 뒤 '저는'으로 첫 문장을 시작해 봐요." }],
+    care: null,
+  },
 };

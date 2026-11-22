@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api/client';
 import { auth } from '@/lib/auth';
-import type { GazeBlinkLatest, GazeBlinkResult, Stage1Latest } from '@/lib/api/types';
+import type { GazeBlinkLatest, GazeBlinkResult, ReportCoachResponse, Stage1Latest } from '@/lib/api/types';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
 import {
   BLINK_NORMAL,
@@ -11,6 +11,7 @@ import {
   buildStage3FaceLines,
   buildSummary,
   buildVoiceReport,
+  planCandidates,
   VOICE_AXIS_LABELS,
   type Chip,
   type FaceReport,
@@ -19,6 +20,7 @@ import {
   type VoiceReport,
 } from './buildReport';
 import { Pentagon } from './Pentagon';
+import { markStats } from './stage3Marks';
 import { loadStageDetails, STAGE_DETAILS_EVENT, type StageDetails } from './stageDetails';
 import './report.css';
 
@@ -132,24 +134,71 @@ export function reportDateTime(d: Date): string {
   return `${day} (${week}) ${time}`;
 }
 
-const WRITING_STEPS = ['말하기 습관을 살펴보고 있어요', '시선과 표정을 모으고 있어요', '실전 면접을 돌아보고 있어요'];
+const WRITING_STEPS = ['말하기 습관을 살펴보고 있어요', '시선과 표정을 모으고 있어요', '대답을 다듬고 연습 계획을 세우고 있어요'];
 const WRITING_STEP_MS = 650;
+/** 이만큼 기다려도 안 끝나면 리포트를 먼저 보여 주고 남은 칸은 다 되면 채운다 (shortcut: 실제 분석·AI 시간을 재 보고 정한다) */
+const WRITING_MAX_MS = 30000;
 
 /**
- * 면접 직후 리포트가 '띡' 나타나지 않게, 하루가 리포트를 쓰는 것처럼 잠깐(약 2.3초) 보여 준다 — 실제로 기다리는 건
- * 아니고(값은 이미 있음) 마음의 준비를 하는 짧은 사이. 단계 줄이 하나씩 체크된다. '동작 줄이기' 설정이면 건너뜀.
+ * 면접 직후 하루가 리포트를 쓰는 화면. 줄마다 실제 일이 끝나야 체크된다(ready[i]) — 목소리 분석, 시선·표정, 리포트 AI.
+ * 다 끝나면 리포트 전체를 한 번에 보여 준다. WRITING_MAX_MS가 지나면 기다리지 않는다. '동작 줄이기' 설정이면 건너뜀.
  * 반환: 지금 단계(0~3), 끝났으면 null
  */
-function useWritingIntro(enabled: boolean): number | null {
+function useWritingIntro(enabled: boolean, ready: boolean[]): number | null {
   const [step, setStep] = useState<number | null>(() =>
     enabled && !(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) ? 0 : null,
   );
+  const waiting = step !== null && step < WRITING_STEPS.length && !ready[step];
   useEffect(() => {
-    if (step === null) return;
+    if (step === null || waiting) return;
     const t = setTimeout(() => setStep(step >= WRITING_STEPS.length ? null : step + 1), step >= WRITING_STEPS.length ? 350 : WRITING_STEP_MS);
     return () => clearTimeout(t);
-  }, [step]);
+  }, [step, waiting]);
+  useEffect(() => {
+    if (!enabled) return;
+    const t = setTimeout(() => setStep(null), WRITING_MAX_MS);
+    return () => clearTimeout(t);
+  }, [enabled]);
   return step;
+}
+
+/**
+ * 리포트 3·4번 칸 AI(서버 coach/report.py). 목소리 분석이 끝나 말버릇 표시가 나온 뒤 한 번만 부른다 —
+ * 서버는 표시를 모르니 질문별 말버릇 수·긴 멈춤 수를 같이 보낸다. 서버가 저장하므로 다시 열면 바로 온다.
+ * 반환: 결과(실패·기록 없음이면 null)와 끝났는지
+ */
+function useReportCoach(
+  interview: InterviewResult | null | undefined,
+  marks: { question: string; script: string }[] | null,
+  ready: boolean,
+  candidates: PlanItem[],
+): { coach: ReportCoachResponse | null; done: boolean } {
+  const [coach, setCoach] = useState<ReportCoachResponse | null>(null);
+  const [done, setDone] = useState(false);
+  const sid = interview?.sessionId ?? null;
+  const go = interview !== undefined && ready;
+  useEffect(() => {
+    if (!go || done) return;
+    if (sid === null || !interview) {
+      setDone(true);
+      return;
+    }
+    let cancelled = false;
+    const turns = interview.turns.map((t) => {
+      const script = marks?.find((m) => m.question === t.question)?.script;
+      return { question: t.question, ...(script ? markStats(script) : { fillers: 0, pauses: 0 }) };
+    });
+    api
+      .createReportCoach(sid, { turns, candidates: candidates.map((c) => ({ key: c.key, line: c.why })) })
+      .then((r) => !cancelled && setCoach(r))
+      .catch(() => undefined)
+      .finally(() => !cancelled && setDone(true));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 준비되면 한 번만 부른다(표시·후보는 그때 값)
+  }, [go, sid]);
+  return { coach, done };
 }
 
 function WritingIntro({ name, step }: { name: string | null; step: number }) {
@@ -190,6 +239,7 @@ export function FinalReport({
   notice,
   writingIntro = false,
   onAgain,
+  sampleCoach,
 }: {
   /** 3단계 면접 기록 — undefined면 불러오는 중, null이면 아직 없음 */
   interview: InterviewResult | null | undefined;
@@ -203,12 +253,17 @@ export function FinalReport({
   writingIntro?: boolean;
   /** "3단계 실전 면접" 카드 — 같은 화면에서 다시 시작할 때(면접 직후). 없으면 /interview로 */
   onAgain?: () => void;
+  /** 예시 화면의 3·4번 칸 AI 결과 — 주면 서버를 부르지 않는다 */
+  sampleCoach?: ReportCoachResponse;
 }) {
   const { voice, face, loading, marks, marksStatus, stage2, stage3 } = useStageReports(details);
   const summary = buildSummary(voice, face);
   const [today] = useState(() => reportDateTime(date ? new Date(date) : new Date()));
   const name = auth.name;
-  const writing = useWritingIntro(writingIntro);
+  const voiceReady = marksStatus !== 'pending' && !loading;
+  const live = useReportCoach(interview, marks, voiceReady, planCandidates(voice, face));
+  const { coach, done: coachDone } = sampleCoach ? { coach: sampleCoach, done: true } : live;
+  const writing = useWritingIntro(writingIntro, [voiceReady, !loading, coachDone]);
   if (writing !== null) return <WritingIntro name={name} step={writing} />;
 
   return (
@@ -279,8 +334,8 @@ export function FinalReport({
 
       <VoiceSection voice={voice} loading={loading} />
       <FaceSection face={face} loading={loading} stage2={stage2} stage3={stage3} />
-      <InterviewSection interview={interview} marks={marks} marksStatus={marksStatus} />
-      <PlanSection plan={buildPlan(voice, face)} />
+      <InterviewSection interview={interview} marks={marks} marksStatus={marksStatus} coach={coach} coachDone={coachDone} />
+      {coach?.result.care ? <CareSection care={coach.result.care} /> : <PlanSection plan={buildPlan(voice, face, coach?.result.plan)} />}
 
       <section className="sec">
         <div className="sh">
@@ -716,18 +771,29 @@ function InterviewSection({
   interview,
   marks,
   marksStatus,
+  coach,
+  coachDone,
 }: {
   interview: InterviewResult | null | undefined;
   marks: { question: string; script: string }[] | null;
   marksStatus: 'pending' | 'failed' | null;
+  coach: ReportCoachResponse | null;
+  coachDone: boolean;
 }) {
-  const [at, setAt] = useState(0);
+  const [picked, setAt] = useState<number | null>(null);
   const [deleted, setDeleted] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
   const groups = interview ? groupTurns(interview.turns) : [];
-  const group = groups[Math.min(at, groups.length - 1)];
   const scriptOf = (t: InterviewTranscriptTurn) => marks?.find((m) => m.question === t.question)?.script;
+  const rewriteOf = (t: InterviewTranscriptTurn) => coach?.result.rewrites.find((r) => r.question === t.question);
+  // AI가 다듬을 대답으로 고르지 않은 대답(코드 기준) — 위기 신호로 AI를 건너뛴 경우는 말하지 않는다
+  const fine = (t: InterviewTranscriptTurn) => !!coach && !coach.result.care && !!t.answer.trim() && !coach.result.picked.includes(t.question);
+  const dotted = groups.map((g) => g.some((t) => rewriteOf(t)));
+  const anyRewrite = dotted.some(Boolean);
+  // 처음엔 다듬은 말이 있는 첫 질문부터 (spec 7-2)
+  const at = picked ?? Math.max(0, dotted.indexOf(true));
+  const group = groups[Math.min(at, groups.length - 1)];
 
   const handleDelete = async () => {
     if (!interview?.sessionId) return;
@@ -747,9 +813,13 @@ function InterviewSection({
     <section className="sec">
       <div className="sh">
         <span className="no">3</span>
-        <h2>실전 면접 돌아보기</h2>
+        <h2>{anyRewrite ? '이렇게 말해 보면' : '실전 면접 돌아보기'}</h2>
       </div>
-      <p className="sub">면접관의 질문과 내 대답을 하나씩 넘겨 보며 다시 봐요. 대답 내용은 평가하지 않아요.</p>
+      <p className="sub">
+        {anyRewrite
+          ? '내용은 그대로 두고, 면접관에게 더 잘 전해지는 순서와 말투로 다듬었어요.'
+          : '면접관의 질문과 내 대답을 하나씩 넘겨 보며 다시 봐요. 대답 내용은 평가하지 않아요.'}
+      </p>
       {interview === undefined ? (
         <div className="empty">
           <span>3단계 기록을 불러오는 중이에요…</span>
@@ -768,23 +838,42 @@ function InterviewSection({
               {groups.map((_, i) => (
                 <button key={i} type="button" role="tab" aria-selected={i === at} className={i === at ? 'on' : ''} onClick={() => setAt(i)}>
                   질문 {i + 1}
+                  {dotted[i] && <i className="dot" aria-label="다듬은 말 있음" />}
                 </button>
               ))}
             </div>
           )}
+          {anyRewrite && groups.length > 1 && <p className="dotkey">점이 있는 질문은 다듬은 말이 있어요</p>}
           {group && (
             <div className="qcard">
               {group.map((t, i) => {
                 const script = scriptOf(t);
+                const rw = rewriteOf(t);
                 return (
                   <div key={i} className={i ? 'fu' : undefined}>
                     <p className={i ? 'q2' : 'q1'}>{i ? `이어서 묻는 질문 · ${t.question}` : t.question}</p>
+                    {anyRewrite && t.answer.trim() && <p className="said">내가 한 말</p>}
                     {script ? (
                       <Script t={script} />
                     ) : t.answer.trim() ? (
                       <div className="script">{t.answer}</div>
                     ) : (
                       <p className="d">이 질문은 대답을 남기지 않았어요.</p>
+                    )}
+                    {rw ? (
+                      <div className="rw">
+                        <span className="h">이렇게 말해 보면 어때요?</span>
+                        <p>{rw.text}</p>
+                        {rw.changes.length > 0 && (
+                          <ul>
+                            {rw.changes.map((c) => (
+                              <li key={c}>{c}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : (
+                      fine(t) && <div className="rw ok">이 대답은 그대로도 잘 전해져요.</div>
                     )}
                   </div>
                 );
@@ -797,6 +886,7 @@ function InterviewSection({
               )}
               {marksStatus === 'pending' && <p className="note">대답 목소리를 정리하고 있어요. 조금 뒤에 말버릇 표시가 나타나요.</p>}
               {marksStatus === 'failed' && <p className="note">이번엔 대답 목소리를 정리하지 못해서 말버릇 표시 없이 보여 드려요.</p>}
+              {marksStatus !== 'pending' && !coachDone && interview.sessionId !== null && <p className="note">대답을 다듬고 있어요. 조금 뒤에 나타나요.</p>}
             </div>
           )}
           <div className="nav">
@@ -851,6 +941,19 @@ function PlanSection({ plan }: { plan: PlanItem[] }) {
       ) : (
         <p className="sub">이번엔 따로 고른 연습이 없어요. 지금처럼 해 봐요.</p>
       )}
+    </section>
+  );
+}
+
+/** 위기 신호가 있을 때 — 연습 계획 대신 돌봄 안내 (서버 coach/safety.py 문구) */
+function CareSection({ care }: { care: { greeting: string; body: string; resources: string } }) {
+  return (
+    <section className="sec">
+      <div className="sh">
+        <h2>{care.greeting}</h2>
+      </div>
+      <p className="sub">{care.body}</p>
+      {care.resources && <p className="sub">{care.resources}</p>}
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildStage3Marks } from './stage3Marks';
+import { buildStage3Marks, markStats } from './stage3Marks';
 
 const w = (text: string, start: number, end = start + 0.4) => ({ text, start, end });
 
@@ -40,5 +40,12 @@ describe('3단계 질문별 말버릇·멈춤 표시', () => {
     );
     expect(marks.map((m) => m.question)).toEqual(['첫 질문', '세 번째']);
     expect(marks[0].script).toBe('[f:음] 저는 [l:저어는] 요리를');
+  });
+});
+
+describe('markStats', () => {
+  it('표시 글에서 말버릇 수와 긴 멈춤 수를 센다', () => {
+    expect(markStats('[f:음] 저는 [p:4초 멈춤] [l:저어] [f:어] [p:6초 멈춤]')).toEqual({ fillers: 2, pauses: 2 });
+    expect(markStats('표시 없음')).toEqual({ fillers: 0, pauses: 0 });
   });
 });
