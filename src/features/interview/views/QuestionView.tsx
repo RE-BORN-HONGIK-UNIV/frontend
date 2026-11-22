@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { useLiveTranscript } from '@/features/interview/useLiveTranscript';
-import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer, uploadAnswer } from '@/features/interview/api';
+import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer } from '@/features/interview/api';
 import { FOLLOW_UP_BANK, pickUnused, QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
 import { CLOSING_LINE, getInterviewer, GREETING_LINE, totalQuestions } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
@@ -292,9 +292,10 @@ export function QuestionView({
 
     const blob = blobRef.current;
     let answer = text.trim();
-    if (blob) {
-      await uploadAnswer(blob); // TODO: 실제 업로드·음성/표정 분석 API 연동 (지금은 mock)
-      if (!answer) answer = await transcribeAnswer(blob);
+    // 대답 녹음은 저장하지 않는다(목소리 분석은 면접이 끝난 뒤 이어 녹음한 파일로). 받아쓴 글이 없을 때만 서버 받아쓰기
+    if (blob && !answer) {
+      console.info('[받아쓰기] 실시간 받아쓰기 글이 없어 서버 받아쓰기로', { supported: live.supported });
+      answer = await transcribeAnswer(blob);
     }
 
     const current = transcriptRef.current[transcriptRef.current.length - 1];
