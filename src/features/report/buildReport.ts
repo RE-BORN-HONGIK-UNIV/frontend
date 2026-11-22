@@ -83,7 +83,6 @@ export interface VoiceReport {
   fillers: { chip: Chip; count: number; words: [string, number][]; ticks: number[]; line: string } | null;
   pauses: { chip: Chip; count: number; marks: { left: number; width: number; label: string }[]; line: string } | null;
   spokenSec: number | null;
-  tip: string | null;
   /* ↓ 서버가 값을 주기 전까지 null → 화면은 "준비 중" 칸 (types.ts AnalyzeResult의 *_detail 참고) */
   prolong: { chip: Chip; items: { word: string; at: string }[]; line: string } | null;
   energy: { chip: Chip; bars: number[]; line: string } | null;
@@ -139,14 +138,6 @@ export function buildVoiceReport(src: Stage1Source, others: VoiceFlowSources = {
       reference,
     };
   });
-  // 연습 팁은 값이 있고 참고용이 아닌 축 중에서만 고른다 (유창성·침묵 조절은 CNN이 아니라 항상 값이 있다)
-  const ready = habits.flatMap((h) => {
-    const v = scores[h.key];
-    return v === null || h.reference ? [] : [{ k: h.key, v }];
-  });
-  const worst = ready.length ? ready.reduce((a, b) => (b.v < a.v ? b : a)) : null;
-  const tip = worst === null || scoreTier(worst.v) === 'good' ? null : TRAINING_TIPS[worst.k];
-
   let fillers: VoiceReport['fillers'] = null;
   let pauses: VoiceReport['pauses'] = null;
   let spokenSec: number | null = null;
@@ -230,7 +221,6 @@ export function buildVoiceReport(src: Stage1Source, others: VoiceFlowSources = {
     fillers,
     pauses,
     spokenSec,
-    tip,
     prolong,
     energy,
     tremor,
@@ -350,19 +340,59 @@ export function buildSummary(voice: VoiceReport | null, face: FaceReport | null)
 }
 
 /**
- * 3단계 면접 중(대답하는 동안) 깜빡임·시선·표정을 2단계와 나란히 적는 한 줄씩 — 경량 웹 리포트의
- * "실전 면접에서 1분에 22번 깜빡였어요(2단계 19번)"처럼. 평가 말 없이 센 값만 쓴다(좋다·나쁘다 판단은 칩이 이미 함).
- * stage2가 없으면(기기를 바꿔 세부값이 없음) 3단계 값만.
+ * 2단계 → 3단계(실전 면접) 비교 한 문장씩 — 처음 1→2→3단계를 마친 리포트의 시선과 표정 칸(그림이 값을 보여 줌).
+ * 평가 말 없이 어느 쪽으로 달라졌는지만 쓴다(좋다·나쁘다 판단은 칩이 이미 함). 차이가 작으면 "비슷했어요".
  */
-export function buildStage3FaceLines(stage3: GazeBlinkResult, stage2?: GazeBlinkResult | null) {
-  const n = (x: number) => Math.round(x);
-  const sec1 = (x: number) => `${Math.round(x * 10) / 10}초`;
-  const pct = (x: number) => `${Math.round(x * 100)}%`;
+export function buildStage3FaceLines(stage3: GazeBlinkResult, stage2: GazeBlinkResult) {
+  const dir = (d: number, small: number) => (Math.abs(d) < small ? 0 : Math.sign(d));
+  const blink = dir(stage3.blink.rate_per_min - stage2.blink.rate_per_min, 2);
+  const gaze = dir(stage3.gaze.avg_fixation_sec - stage2.gaze.avg_fixation_sec, 0.3);
+  // "미소가 조금 늘고, 굳은 순간이 줄었어요" — 늘다/줄다 줄기에 '고'/'었어요'를 붙인다
+  const expr = (
+    [
+      ['미소가 조금 ', dir(stage3.expression.smile_ratio - stage2.expression.smile_ratio, 0.03)],
+      ['굳은 순간이 ', dir(stage3.expression.tension_ratio - stage2.expression.tension_ratio, 0.03)],
+    ] as [string, number][]
+  )
+    .filter(([, d]) => d !== 0)
+    .map(([w, d]) => `${w}${d > 0 ? '늘' : '줄'}`);
   return {
-    blink: `실전 면접에서는 1분에 ${n(stage3.blink.rate_per_min)}번 깜빡였어요${stage2 ? `(2단계 ${n(stage2.blink.rate_per_min)}번)` : ''}.`,
-    gaze: `실전 면접에서는 면접관을 한 번 볼 때 평균 ${sec1(stage3.gaze.avg_fixation_sec)} 바라봤어요${stage2 ? `(2단계 ${sec1(stage2.gaze.avg_fixation_sec)})` : ''}.`,
-    expr: `실전 면접에서는 미소 지은 시간 ${pct(stage3.expression.smile_ratio)}, 굳은 시간 ${pct(stage3.expression.tension_ratio)}였어요${
-      stage2 ? `(2단계 미소 ${pct(stage2.expression.smile_ratio)}, 굳은 시간 ${pct(stage2.expression.tension_ratio)})` : ''
-    }.`,
+    blink: blink === 0 ? '깜빡임은 2단계와 실전 면접이 비슷했어요.' : `실전 면접에서는 조금 ${blink > 0 ? '더 자주' : '덜'} 깜빡였어요.`,
+    gaze:
+      gaze === 0
+        ? '바라보는 길이는 2단계와 실전 면접이 비슷했어요.'
+        : `실전 면접에서는 한 번 볼 때 조금 더 ${gaze > 0 ? '오래' : '짧게'} 바라봤어요.`,
+    expr: expr.length ? `실전 면접에서는 ${expr.join('고, ')}었어요.` : '표정은 2단계와 실전 면접이 비슷했어요.',
   };
+}
+
+/** 시선·표정·깜빡임이 연습 포인트일 때 다음 연습 계획에 쓰는 방법 한 줄 (목소리는 TRAINING_TIPS) */
+const FACE_TIPS = {
+  blink: '대답을 시작하기 전에 숨을 한 번 쉬며 눈을 천천히 감았다 떠 보세요.',
+  gaze: '첫 문장을 말하는 동안만 상대의 눈을 보고, 그다음은 편하게 해도 돼요.',
+  expr: '대답 전에 입꼬리를 살짝 올리고 시작해 보세요. 3단계 대기실의 표정 풀기를 한 번 더 해도 좋아요.',
+};
+
+export interface PlanItem {
+  title: string;
+  /** 근거 한 줄 — 이번 기록에서 나온 말 */
+  why: string;
+  how: string;
+}
+
+/**
+ * 다음 연습 계획 두 가지. 목소리 '다음 연습 포인트'(주황) → 시선·표정 연습 포인트 → 목소리 '가끔'(노랑) 순.
+ * shortcut: 코드가 고르고 정해 둔 방법 문장을 쓴다, 코치 노트 AI가 맞춤 계획을 쓰게 되면(spec 7-4) 그걸로 바꾼다.
+ */
+export function buildPlan(voice: VoiceReport | null, face: FaceReport | null): PlanItem[] {
+  const fromVoice = (tone: Tone) =>
+    (voice?.habits ?? [])
+      .filter((h) => !h.reference && h.chip.tone === tone)
+      .map((h) => ({ title: AXIS_COPY[h.key].next, why: h.line, how: TRAINING_TIPS[h.key] }));
+  const fromFace = face
+    ? (['blink', 'gaze', 'expr'] as const)
+        .filter((k) => face[k].chip.tone === 'p')
+        .map((k) => ({ title: FACE_SUMMARY[k].next, why: face[k].chip.text, how: FACE_TIPS[k] }))
+    : [];
+  return [...fromVoice('p'), ...fromFace, ...fromVoice('y')].slice(0, 2);
 }

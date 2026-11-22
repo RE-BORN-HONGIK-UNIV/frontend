@@ -23,7 +23,9 @@ describe('최종 리포트 화면', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('예시 화면이에요.')).toBeTruthy();
-    expect(screen.getByText('1분에 22번')).toBeTruthy();
+    // 시선과 표정은 2단계와 실전 면접을 나란히, 실전 면접 질문은 넘겨 보기
+    expect(screen.getByText('실전 면접에서는 조금 덜 깜빡였어요.')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '질문 2' })).toBeTruthy();
     expect(api.createCoachNote).not.toHaveBeenCalled();
     expect(api.latestStage1).not.toHaveBeenCalled();
   });

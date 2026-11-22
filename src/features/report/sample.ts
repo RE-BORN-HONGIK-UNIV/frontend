@@ -109,15 +109,32 @@ export const SAMPLE_DETAILS: StageDetails = {
       per_question: { blink_per_min: [28, 21, 19, 22], gaze_avg_sec: [2.1, 3.4, 4.0, 3.8] },
     },
   },
-  // 3단계 면접 중 대답하는 동안의 얼굴(2단계와 같은 분석) — "실전 면접에서는 …(2단계 …)" 줄
+  // 3단계 면접 중 대답하는 동안의 얼굴(2단계와 같은 분석) — 시선과 표정 칸의 2단계·실전 면접 비교
   stage3Face: {
     at: '2026-10-31T10:32:00Z',
     result: {
       blink: { rate_per_min: 20, status: '정상', score: 100, events: [], highlight: null },
-      gaze: { avg_fixation_sec: 4.1, score: 90, highlight: null, segments: [] },
+      gaze: {
+        avg_fixation_sec: 4.1, score: 90, highlight: null,
+        segments: [
+          { type: 'fixation', start: 0, end: 4.6 },
+          { type: 'aversion', start: 4.6, end: 5.1 },
+          { type: 'fixation', start: 5.1, end: 9.1 },
+          { type: 'aversion', start: 9.1, end: 9.5 },
+          { type: 'fixation', start: 9.5, end: 12.4 },
+        ],
+      },
       expression: {
         smile_score: 40, tension_score: 80, score: 60, status: '보통', smile_ratio: 0.12, tension_ratio: 0.04,
-        frame_count: 600, highlight: null, segments: [],
+        frame_count: 600, highlight: null,
+        segments: [
+          { type: 'tension', start: 0, end: 0.5 },
+          { type: 'neutral', start: 0.5, end: 4 },
+          { type: 'smile', start: 4, end: 4.7 },
+          { type: 'neutral', start: 4.7, end: 9 },
+          { type: 'smile', start: 9, end: 9.7 },
+          { type: 'neutral', start: 9.7, end: 12 },
+        ],
       },
       previous: null,
     },

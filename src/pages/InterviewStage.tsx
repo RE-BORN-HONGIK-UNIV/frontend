@@ -8,7 +8,6 @@ import type { DifficultyTier } from '@/features/interview/difficulty';
 import { Stage3PrepView } from '@/features/interview/views/Stage3PrepView';
 import { QuestionView } from '@/features/interview/views/QuestionView';
 import { CallView } from '@/features/interview/views/CallView';
-import { ResultView } from '@/features/interview/views/ResultView';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import { HaruProfileView } from '@/features/haru/HaruProfileView';
 import type { ExpressionThresholds } from '@/features/face/live/useLiveFaceSession';
@@ -120,21 +119,15 @@ export default function InterviewStage() {
 
         {step === 'prep' && <Stage3PrepView media={media} carried={carried} onStart={handlePrepStart} />}
 
-        {/* 3단계를 마치면 1·2·3단계를 한 장에 모은 최종 리포트(경량 웹 흐름). 3단계 부분은 기존 결과 화면 그대로 */}
+        {/* 3단계를 마치면 1·2·3단계를 한 장에 모은 최종 리포트(경량 웹 흐름) */}
         {step === 'result' && result && (
           <FinalReport
             writingIntro
-            answeredCount={result.turns.filter((t) => t.answer.trim()).length}
-            interview={
-              <ResultView
-                result={result}
-                tier={tier}
-                onRetry={() => {
-                  setResult(null);
-                  setStep('prep'); // 시작 화면부터 다시 (카메라·마이크 연결은 유지됨)
-                }}
-              />
-            }
+            interview={result}
+            onAgain={() => {
+              setResult(null);
+              setStep('prep'); // 시작 화면부터 다시 (카메라·마이크 연결은 유지됨)
+            }}
           />
         )}
       </Box>

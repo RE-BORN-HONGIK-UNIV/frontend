@@ -14,16 +14,3 @@ export interface InterviewResult {
   startedAt: number;
   endedAt: number;
 }
-
-export interface ResultSummary {
-  questionCount: number;
-  answeredCount: number;
-  /** 소요 시간(분). 1분 미만도 "약 1분"으로 보여주려고 최소 1. */
-  minutes: number;
-}
-
-export function summarizeResult(result: InterviewResult): ResultSummary {
-  const answeredCount = result.turns.filter((t) => t.answer.trim() !== '').length;
-  const minutes = Math.max(1, Math.round((result.endedAt - result.startedAt) / 60_000));
-  return { questionCount: result.turns.length, answeredCount, minutes };
-}

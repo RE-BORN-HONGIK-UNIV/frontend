@@ -14,14 +14,14 @@ describe('최종 리포트 첫 화면', () => {
   it('면접 직후엔 리포트를 쓰는 화면을 잠깐 보여 주고 리포트로 넘어간다', () => {
     render(
       <MemoryRouter>
-        <FinalReport writingIntro answeredCount={0} interview={<div>면접</div>} details={{}} />
+        <FinalReport writingIntro interview={{ turns: [], sessionId: null, startedAt: 0, endedAt: 0 }} details={{}} />
       </MemoryRouter>,
     );
     expect(screen.getByText(/리포트/).closest('.rb-report-writing')).toBeTruthy();
     for (let i = 0; i < 6; i++) act(() => vi.advanceTimersByTime(700));
     expect(document.querySelector('.rb-report-writing')).toBeNull();
-    // 대답 수가 0이면 '질문 0개에 대답' 대신
-    expect(screen.getByText('실전 면접을 끝까지 마쳤어요')).toBeTruthy();
+    // 면접을 마쳤으면 하루가 맨 위에서 맞아 준다
+    expect(screen.getByText('수고했어요! 끝까지 해냈네요.')).toBeTruthy();
   });
 
   it('날짜에 요일과 시:분:초', () => {
