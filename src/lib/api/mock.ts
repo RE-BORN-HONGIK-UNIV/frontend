@@ -5,6 +5,7 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
+  ReportCoachResponse,
   HaruProfileResponse,
   HaruReplyRequest,
   HaruReplyResponse,
@@ -220,6 +221,11 @@ export const mockApi = {
     };
   },
 
+  async createReportCoach(): Promise<ReportCoachResponse> {
+    await delay(900);
+    return { source: 'fallback', result: { picked: [], rewrites: [], plan: [], care: null } };
+  },
+
   async getInterviewSession(): Promise<InterviewSessionDetail> {
     await delay();
     throw new Error('mock: 면접 기록 없음');
@@ -233,6 +239,11 @@ export const mockApi = {
   async saveLiveGazeBlink(): Promise<LiveSaveResponse> {
     await delay();
     return { previous: null }; // mock엔 서버 이력이 없어서 비교는 localProgress 폴백이 맡음
+  },
+
+  async interviewAnxiety(): Promise<{ score: number | null; tier: string; items: Record<string, number> }> {
+    await delay();
+    return { score: 14.2, tier: 'standard', items: {} };
   },
 
   async latestStage1(): Promise<LatestResponse<Stage1Latest>> {

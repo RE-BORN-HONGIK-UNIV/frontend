@@ -51,6 +51,9 @@ export function stepGaze(
   baselinePitch = 0,
   smoothingAlpha = 0.3,
   minSegmentSec = 0.3,
+  /** 캘리브레이션 눈동자 기준(calibrateBaselineIris). 기본 0 = 예전 판정 */
+  baselineIrisX = 0,
+  baselineIrisY = 0,
 ): Segment | null {
   let gazeState: GazeState;
   if (raw === null) {
@@ -64,6 +67,11 @@ export function stepGaze(
       state.smoothed.oy,
       baselineYaw,
       baselinePitch,
+      undefined,
+      undefined,
+      undefined,
+      baselineIrisX,
+      baselineIrisY,
     );
     gazeState = looking ? 'fixation' : 'aversion';
   }
@@ -89,4 +97,44 @@ export function detectGazeSegmentsBatch(
   }
   flushGaze(state);
   return state.segmentBuffer.committed;
+}
+
+/**
+ * 0.4초 넘게 눈이 감긴 구간(blink.ts MAX_BLINK_DURATION)을 시선 이탈로 바꾼다 — 2026-11.
+ * 아래를 보면 눈꺼풀이 따라 내려가 eyeBlink가 올라가고(Becker & Fuchs, 1988), 고개·눈동자 값은 기준 안에 남아
+ * "하루를 봄"으로 잡히던 문제(3명 중 1명이 대답 중 아래를 본 3.3초가 그대로 "봄"이었음). 웃거나 찡그려서 눈이
+ * 가늘어진 건 호출하는 쪽에서 미리 뺀다(미소 중 감김은 넘기지 않음 — useLiveFaceSession).
+ *
+ * (하루의 몸을 보는 것도 이탈로 보려고 "하루의 어깨 보기" 캘리브레이션 경계를 만들었다가 뺐다 — 고개 없이 눈만 내리면
+ * 웹캠이 구분하지 못해 경계가 항상 꺼졌다. backend step2/ACCURACY_NOTES.md 참고)
+ */
+export function markClosuresAsAversion(segments: Segment[], closures: { start: number; end: number }[]): Segment[] {
+  if (!closures.length) return segments;
+  const pieces: Segment[] = [];
+  for (const seg of segments) {
+    if (seg.type !== 'fixation') {
+      pieces.push({ ...seg });
+      continue;
+    }
+    let cursor = seg.start;
+    const cuts = closures
+      .filter((c) => c.end > seg.start && c.start < seg.end)
+      .sort((a, b) => a.start - b.start);
+    for (const c of cuts) {
+      const a = Math.max(c.start, seg.start);
+      const b = Math.min(c.end, seg.end);
+      if (a > cursor) pieces.push({ type: 'fixation', start: cursor, end: a });
+      if (b > Math.max(a, cursor)) pieces.push({ type: 'aversion', start: Math.max(a, cursor), end: b });
+      cursor = Math.max(cursor, b);
+    }
+    if (seg.end > cursor) pieces.push({ type: 'fixation', start: cursor, end: seg.end });
+  }
+  // 이어 붙은 같은 종류는 합친다
+  const merged: Segment[] = [];
+  for (const p of pieces) {
+    const last = merged[merged.length - 1];
+    if (last && last.type === p.type && Math.abs(last.end - p.start) < 1e-9) last.end = p.end;
+    else merged.push({ ...p });
+  }
+  return merged;
 }

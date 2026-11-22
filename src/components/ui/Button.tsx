@@ -51,7 +51,8 @@ export function Button({
       disabled: disabled || loading,
       onClick: rest.onClick,
       to: rest.to,
-      className: rest.className,
+      // rb-btn: 마우스를 올리면 살짝만 진해짐(index.css) — 커서가 여기 있다는 걸 알 정도로만
+      className: rest.className ? `rb-btn ${rest.className}` : 'rb-btn',
       style: {
         display: 'inline-flex',
         alignItems: 'center',
@@ -66,7 +67,7 @@ export function Button({
         borderRadius: RADIUS[radius] ?? RADIUS.md,
         cursor: disabled || loading ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        transition: 'opacity 120ms ease, transform 120ms ease',
+        transition: 'opacity 120ms ease, transform 120ms ease, filter 120ms ease',
         ...variantStyle,
         ...styles?.root,
         ...style,

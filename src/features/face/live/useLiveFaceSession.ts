@@ -8,19 +8,41 @@ import { MAX_CAPTURE_SEC } from '@/features/face/constants';
 import {
   createBlinkFsmState,
   computeBlinkBlendshapeScore,
+  isBlinkLength,
   stepBlendshapeBlink,
   type Blink,
 } from './blink';
-import { calibrateBaselineGaze, DEFAULT_BASELINE_GAZE, type GazeBaseline } from './calibration';
+import {
+  calibrateBaselineGaze,
+  calibrateBaselineIris,
+  calibrateBaselineTension,
+  calibStepAt,
+  expressionCalibTotal,
+  type CalibPacing,
+  calibStageAt,
+  personalThreshold,
+  DEFAULT_BASELINE_GAZE,
+  DEFAULT_BASELINE_IRIS,
+  type GazeBaseline,
+  type IrisBaseline,
+} from './calibration';
 import { computeIrisOffset, matrixToHeadPose } from './headPose';
-import { createGazeFsmState, flushGaze, stepGaze } from './gaze';
+import { createGazeFsmState, flushGaze, markClosuresAsAversion, stepGaze } from './gaze';
 import { createSegmentBufferState } from './segmentBuffer';
 import {
+  avgBlendshape,
   computeExpressionForFrame,
+  JAW_OPEN_KEY,
+  SMILE_KEYS,
+  TENSION_KEYS,
   createExpressionFsmState,
   flushExpression,
   stepExpression,
   summarizeExpression,
+  combineSmileRatio,
+  SMILE_THRESHOLD,
+  TENSION_DELTA_THRESHOLD,
+  TENSION_MIN_SEC,
 } from './expression';
 import { scoreBlinkRate, scoreExpression, scoreGazeSegments } from './scoring';
 import { LEFT_EYE_EAR_IDX, LEFT_IRIS_IDX, RIGHT_EYE_EAR_IDX, RIGHT_IRIS_IDX } from './landmarkIndices';
@@ -66,16 +88,96 @@ import type { Point2D } from './types';
  * 로컬) 이력으로 폴백.
  */
 
+// 기본 5초(화면 가운데 보기). 표정 맞추기(expressionCalibration)면 눈 3초 + 찡그림 2초 + 미소 2초 = 7초(calibration.ts)
 const CALIBRATION_SEC = 5;
+
+/**
+ * measureOnlyWhenAnswering일 때 대답 구간의 앞뒤를 잘라 내는 시간(초).
+ * 2단계 통화에서는 "하루를 보며 대답하기"·"답변 마치기" 버튼을 누르려고 화면 아래를 보게 되는데, 이 순간이
+ * 시선 회피로 잡히면 안 된다. 버튼을 누른 뒤 눈이 하루에게 돌아가는 시간, 마치기 버튼으로 눈이 내려가는 시간을
+ * 각각 1초로 잡았다 — 사람이 시선을 옮겨 다시 고정하는 데 걸리는 시간(단속운동+고정은 보통 수백 ms)보다 넉넉하게
+ * 잡은 값이고, 임계값이 아니라 "언제 재는지"만 정하는 값이라 정확도 검증 대상은 아니다. 실제 사용에서 아직
+ * 버튼 쪽 시선이 남는다면 늘리면 된다.
+ */
+const ANSWER_LEAD_SKIP_SEC = 1;
+const ANSWER_TAIL_TRIM_SEC = 1;
+/** 대답을 이만큼도 안 했으면(전부 넘김 등) 결과를 만들지 않는다 — 0초짜리 결과가 "적게 깜빡였어요"처럼 보이지 않게 */
+const MIN_MEASURED_SEC = 1;
+
+/** 대답 구간 동안 모아 두는 프레임 — 끝의 ANSWER_TAIL_TRIM_SEC를 버리려고 그만큼 늦게 판정한다 */
+interface PendingFrame {
+  t: number;
+  blendshapes: Record<string, number> | null;
+  gazeRaw: { yaw: number; pitch: number; ox: number; oy: number } | null;
+}
 
 /** 서버 저장 응답을 기다리는 최대 시간 — 결과 화면이 네트워크 때문에 오래 막히지 않게. */
 const SAVE_TIMEOUT_MS = 5000;
 
-export type LivePhase = 'idle' | 'loading' | 'calibrating' | 'ready' | 'recording' | 'error';
+/** camera: 카메라는 켜졌고 캘리브레이션을 기다리는 중(calibrateOnDemand일 때만 — startCalibration()으로 시작) */
+export type LivePhase = 'idle' | 'loading' | 'camera' | 'calibrating' | 'ready' | 'recording' | 'error';
 
 export interface CalibrationSummary {
   /** 캘리브레이션 5초 중 얼굴이 검출된 프레임 비율(0~1). */
   detectedRatio: number;
+}
+
+/**
+ * 정확도 검증용 장면 기록 한 줄(debug 모드에서만 — HaruCallView ?debug=1). 판정에 쓰는 원래 값을 그대로 넘기고,
+ * 스무딩·대답 구간 자르기·판정은 검증 스크립트(backend tests/labeling/evaluate_live.py)가 앱과 같은 방식으로 다시 계산한다.
+ * 그래야 같은 기록으로 여러 방식(예: 눈동자 보정 전/후)을 비교할 수 있다.
+ */
+export interface DebugFrame {
+  /** 세션 시작부터 초 */
+  t: number;
+  calibrating: boolean;
+  /** 사용자가 대답 중인지(setAnswering) — 앞뒤 1초 자르기 전 */
+  answering: boolean;
+  face: boolean;
+  yaw: number | null;
+  pitch: number | null;
+  irisX: number | null;
+  irisY: number | null;
+  /** 지금까지 잡힌 캘리브레이션 기준(캘리브레이션 전이면 0) */
+  baseYaw: number;
+  basePitch: number;
+  baseIrisX: number;
+  baseIrisY: number;
+  smileRaw: number | null;
+  jawOpen: number | null;
+  /** 앱이 실제로 쓰는 미소 값(입 벌림 처리 반영) */
+  smileApp: number | null;
+  tensionApp: number | null;
+  blinkScore: number | null;
+  /** 캘리브레이션 단계 — 0 아님, 1 하루의 눈 보기(무표정), 2 표정을 바꾸는 중(값에서 뺌), 3 찡그리기, 4 웃기 */
+  calibStep: 0 | 1 | 2 | 3 | 4;
+  /** 이 사람의 판정 기준(표정 맞추기 결과, 끝나기 전엔 기본값) — 찡그림은 평소 대비, 미소는 미소 값 그대로 */
+  tensionThreshold: number;
+  smileThreshold: number;
+  /** 판정 방식을 바꾸려고 함께 모으는 표정 값(MediaPipe blendshape, 왼·오른쪽 평균) — 아직 판정에는 안 씀.
+   * lookH는 (오른쪽을 봄) − (왼쪽을 봄): eyeLookOutLeft·eyeLookInRight 평균 − eyeLookInLeft·eyeLookOutRight 평균 */
+  lookDown: number | null;
+  lookUp: number | null;
+  lookH: number | null;
+  /** 웃을 때 함께 올라가는 볼 */
+  cheekSquint: number | null;
+  /** 눈을 가늘게 뜸(웃거나 찡그릴 때) — 깜빡임과 구분하려고 */
+  eyeSquint: number | null;
+  /** 미간을 내림(긴장 판정의 원래 값, 개인 기준 빼기 전) */
+  browDown: number | null;
+  /** 눈썹 안쪽을 올림(걱정하는 표정) */
+  browInnerUp: number | null;
+  /** 찡그림 판정의 평소 값(캘리브레이션 중 미간 중앙값, 끝나기 전엔 0). tensionApp = browDown − 이 값 */
+  baseTension: number;
+}
+
+const avgKeys = (bs: Record<string, number> | null, keys: string[]) => (bs ? avgBlendshape(bs, keys) : null);
+const CALIB_STEP_CODE = { face: 1, settle: 2, frown: 3, smile: 4 } as const;
+
+/** 표정 맞추기로 정한 이 사람의 찡그림·미소 판정 기준 */
+export interface ExpressionThresholds {
+  tension: number;
+  smile: number;
 }
 
 export interface UseLiveFaceSessionOptions {
@@ -83,9 +185,51 @@ export interface UseLiveFaceSessionOptions {
   onComplete: (result: GazeBlinkResult) => void;
   /** 촬영 중 질문이 바뀐 시각들(촬영 시작부터 초) — 주면 결과에 질문별 깜빡임·눈 맞춤(per_question)을 붙인다 */
   getQuestionStarts?: () => number[];
+  /** true면 카메라가 켜져도 캘리브레이션을 바로 시작하지 않고 startCalibration()을 기다린다.
+   * 2단계 하루 통화: 대기실(하루·내 카메라 나란히)에서는 연결만 확인하고, "통화 시작하기"를 누른 뒤 통화 화면
+   * 정중앙(하루가 나올 자리)에 내 얼굴을 5초 띄워 캘리브레이션한다 — 시선 기준을 하루를 볼 자리에서 잡아야 해서. */
+  calibrateOnDemand?: boolean;
+  /** true면 촬영 중에도 setAnswering(true)인 동안(앞뒤 1초 제외)만 깜빡임·표정·시선을 잰다.
+   * 2단계 하루 통화: 하루가 말하는 동안이나 버튼을 누르느라 아래를 본 순간이 시선 회피로 잡히지 않게 —
+   * 대기실 안내("말하는 동안에는 하루를 봐 주세요 · 그 밖에는 편하게 봐도 돼요")와 실제 측정을 맞춘다. */
+  measureOnlyWhenAnswering?: boolean;
+  /** measureOnlyWhenAnswering인데 대답한 구간이 거의 없어 결과를 만들지 않았을 때 */
+  onEmpty?: () => void;
+  /** false면 결과를 2단계 이력(서버 Stage2Result·기기의 2단계 기록)에 남기지 않는다 — 3단계 면접 중 분석용.
+   * 3단계 값이 2단계 "지난번과 비교"·대시보드에 섞이지 않게. 기본 true(2단계). */
+  persist?: boolean;
+  /** 잴 수 있는 최대 시간(초). 기본 MAX_CAPTURE_SEC(3분, 2단계 업로드 영상 길이 제한과 같은 값) */
+  maxCaptureSec?: number;
+  /** 정확도 검증용 — 주면 매 장면 값을 넘긴다(DebugFrame). 평소엔 안 줌 */
+  onDebugFrame?: (frame: DebugFrame) => void;
+  /** true면 캘리브레이션에 표정 맞추기를 더한다 — 하루의 눈 보기(무표정) 3초 → 찡그리기 2초 → 웃기 2초
+   * (calibration.ts calibStepAt·personalThreshold). 화면이 calibrationStep에 맞춰 안내를 바꿔야 한다. 기본 false(5초 무표정) */
+  expressionCalibration?: boolean;
+  /** 이미 맞춰 둔 표정 기준 — 표정 맞추기 없이(시선 5초만) 캘리브레이션할 때 기본값 대신 쓴다.
+   * 3단계 면접실: 대기실에서 맞췄거나 2단계에서 바로 이어 온 값 */
+  presetThresholds?: ExpressionThresholds | null;
+  /** 표정 맞추기 단계마다 앞(보여 주기·준비)·뒤(확인) 여유 — 이 동안은 값을 모으지 않는다. 기본 0(2단계 그대로) */
+  calibPacing?: CalibPacing;
 }
 
-export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: UseLiveFaceSessionOptions) {
+export function useLiveFaceSession({
+  videoRef,
+  onComplete,
+  getQuestionStarts,
+  calibrateOnDemand = false,
+  measureOnlyWhenAnswering = false,
+  onEmpty,
+  persist = true,
+  maxCaptureSec = MAX_CAPTURE_SEC,
+  onDebugFrame,
+  expressionCalibration = false,
+  presetThresholds = null,
+  calibPacing,
+}: UseLiveFaceSessionOptions) {
+  const calibrationSec = expressionCalibration ? expressionCalibTotal(calibPacing) : CALIBRATION_SEC;
+  // tick은 처음 그린 때의 함수를 계속 쓰므로 최신 콜백을 ref로 넘긴다
+  const debugRef = useRef(onDebugFrame);
+  debugRef.current = onDebugFrame;
   const [phase, setPhase] = useState<LivePhase>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -103,15 +247,110 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
   const elapsedSecRef = useRef(0);
   const recordingStartTRef = useRef(0);
 
-  const calibBufferRef = useRef<[number, GazeBaseline | null][]>([]);
+  // 캘리브레이션 5초 동안 모은 고개 각도·눈동자 위치(얼굴 미검출이면 null)
+  const calibBufferRef = useRef<[number, (GazeBaseline & IrisBaseline) | null][]>([]);
   const baselineGazeRef = useRef<GazeBaseline>(DEFAULT_BASELINE_GAZE);
+  // 하루(통화 중 하루가 나올 자리)를 볼 때의 눈동자 위치 — calibration.ts calibrateBaselineIris 참고
+  const baselineIrisRef = useRef<IrisBaseline>(DEFAULT_BASELINE_IRIS);
+  // 두 단계 캘리브레이션: 하루의 어깨를 볼 때 값(모으는 중·결과). 결과는 아직 판정에 안 쓰고 기록만
+  // 표정 맞추기: 찡그릴 때 미간 값·웃을 때 미소 값, 그리고 무표정 때 미소 값
+  const frownCalibRef = useRef<(number | null)[]>([]);
+  const smileCalibRef = useRef<(number | null)[]>([]);
+  const neutralSmileCalibRef = useRef<(number | null)[]>([]);
+  // 이 사람의 판정 기준(표정 맞추기를 안 했거나 못 쟀으면 기본값)
+  const tensionThresholdRef = useRef(TENSION_DELTA_THRESHOLD);
+  const smileThresholdRef = useRef(SMILE_THRESHOLD);
   const calibratedRef = useRef(false);
+  // 캘리브레이션을 시작한 시각(세션 시작부터 초). calibrateOnDemand면 startCalibration() 전까지 null
+  const calibStartTRef = useRef<number | null>(calibrateOnDemand ? null : 0);
 
   const blinkFsmRef = useRef(createBlinkFsmState());
   const blinksRef = useRef<Blink[]>([]);
   const gazeFsmRef = useRef(createGazeFsmState());
   const exprFsmRef = useRef(createExpressionFsmState());
   const exprSeriesRef = useRef<[number, number | null, number | null][]>([]);
+  // 2026-11 판정 변경(gaze.ts·blink.ts·expression.ts 주석 참고)
+  // 0.4초 넘게 감긴 구간(웃어서 가늘어진 건 뺌) — 끝날 때 시선 이탈로 바꾼다
+  const longClosuresRef = useRef<Blink[]>([]);
+  // 지금 감겨 있는 동안 원래 미소 값의 최댓값 — 웃어서 눈이 가늘어진 건지 보려고
+  const closureSmileMaxRef = useRef(0);
+  // 찡그림 판정의 평소 값 — 캘리브레이션 "하루의 눈 보기" 동안 미간(browDown) 중앙값(expression.ts 찡그림 판정 구조)
+  const tensionCalibRef = useRef<(number | null)[]>([]);
+  const baselineTensionRef = useRef(0);
+  // 하루 말을 들을 때 미소(대답 중이 아닐 때) — 프레임 수와 미소 프레임 수
+  const listenSmileRef = useRef({ hits: 0, frames: 0 });
+
+  // measureOnlyWhenAnswering — 지금 대답 중인지, 대답을 시작한 시각, 아직 판정 안 한 프레임(끝 1초 버리기용),
+  // 이번 대답에서 실제로 판정한 첫·마지막 프레임 시각, 지금까지 판정한 대답 구간들
+  const answeringRef = useRef(false);
+  const answerStartTRef = useRef(0);
+  const pendingFramesRef = useRef<PendingFrame[]>([]);
+  const windowFirstTRef = useRef<number | null>(null);
+  const windowLastTRef = useRef<number | null>(null);
+  const measuredWindowsRef = useRef<{ start: number; end: number }[]>([]);
+
+  const measuredSec = () =>
+    measuredWindowsRef.current.reduce((a, w) => a + (w.end - w.start), 0) +
+    (windowFirstTRef.current !== null && windowLastTRef.current !== null ? windowLastTRef.current - windowFirstTRef.current : 0);
+
+  /** 프레임 하나를 깜빡임·표정·시선에 반영(최종 결과에 들어감) */
+  const measureFrame = (
+    t: number,
+    blendshapes: Record<string, number> | null,
+    gazeRaw: { yaw: number; pitch: number; ox: number; oy: number } | null,
+  ) => {
+    const blinkScore = computeBlinkBlendshapeScore(blendshapes);
+    const smileRaw = blendshapes ? avgBlendshape(blendshapes, SMILE_KEYS) : 0;
+    if (blinkFsmRef.current.inBlink || (blinkScore ?? 0) >= 0.5) closureSmileMaxRef.current = Math.max(closureSmileMaxRef.current, smileRaw);
+    const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
+    if (blink) {
+      // 0.4초까지만 깜빡임. 더 길면 아래를 본 것 — 웃느라 눈이 가늘어진 게 아니면 시선 이탈로 넘긴다
+      if (isBlinkLength(blink)) blinksRef.current.push(blink);
+      else if (closureSmileMaxRef.current < smileThresholdRef.current) longClosuresRef.current.push(blink);
+    }
+    if (!blinkFsmRef.current.inBlink) closureSmileMaxRef.current = 0;
+
+    stepExpression(exprFsmRef.current, t, blendshapes, baselineTensionRef.current, undefined, tensionThresholdRef.current, smileThresholdRef.current);
+    const exprFrame = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
+    exprSeriesRef.current.push([t, exprFrame ? exprFrame.smile : null, exprFrame ? exprFrame.tension : null]);
+
+    // 측정 중인 시점엔 캘리브레이션이 이미 끝난 뒤라(beginRecording은 phase==='ready'에서만 호출 가능)
+    // baseline은 항상 계산돼 있다.
+    stepGaze(
+      gazeFsmRef.current,
+      t,
+      gazeRaw,
+      baselineGazeRef.current.yaw,
+      baselineGazeRef.current.pitch,
+      undefined,
+      undefined,
+      baselineIrisRef.current.ox,
+      baselineIrisRef.current.oy,
+    );
+
+    if (windowFirstTRef.current === null) windowFirstTRef.current = t;
+    windowLastTRef.current = t;
+  };
+
+  /** 대답 하나가 끝났을 때 — 남은 프레임(끝 1초)은 버리고, 열려 있던 구간을 닫아 다음 대답과 이어지지 않게 한다 */
+  const closeAnswerWindow = () => {
+    pendingFramesRef.current = [];
+    // 대답이 끝날 때 감겨 있던 건 버린다(원래도 끝나지 않은 깜빡임은 버림) — 안 버리면 다음 대답까지 이어져
+    // 수십 초짜리 "긴 감김"이 되고, 그게 시선 이탈로 바뀌어 다음 대답 앞부분을 잘못 깎는다
+    blinkFsmRef.current = createBlinkFsmState();
+    closureSmileMaxRef.current = 0;
+    if (windowFirstTRef.current !== null && windowLastTRef.current !== null) {
+      measuredWindowsRef.current.push({ start: windowFirstTRef.current, end: windowLastTRef.current });
+      flushGaze(gazeFsmRef.current);
+      flushExpression(exprFsmRef.current);
+    }
+    windowFirstTRef.current = null;
+    windowLastTRef.current = null;
+    // 구간 버퍼·깜빡임 상태·시선 스무딩을 새로 — 쌓인 결과(committed)만 남긴다
+    gazeFsmRef.current = { smoothed: null, segmentBuffer: { ...createSegmentBufferState(), committed: gazeFsmRef.current.segmentBuffer.committed } };
+    exprFsmRef.current = { segmentBuffer: { ...createSegmentBufferState(), committed: exprFsmRef.current.segmentBuffer.committed } };
+    blinkFsmRef.current = createBlinkFsmState();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -146,7 +385,7 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
         await video.play();
 
         sessionStartRef.current = performance.now();
-        setPhase('calibrating');
+        setPhase(calibrateOnDemand ? 'camera' : 'calibrating');
 
         const tick = () => {
           if (cancelled || finishedRef.current || !landmarkerRef.current || !videoRef.current) return;
@@ -175,22 +414,87 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
             gazeRaw = { yaw, pitch, ox, oy };
           }
 
-          if (t <= CALIBRATION_SEC) {
-            calibBufferRef.current.push([t, gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch } : null]);
-          } else if (!calibratedRef.current) {
+          const calibT = calibStartTRef.current === null ? null : t - calibStartTRef.current;
+          const calibStep = calibT === null ? null : calibStepAt(calibT, expressionCalibration, calibrationSec, calibPacing);
+
+          if (debugRef.current) {
+            const ef = computeExpressionForFrame(blendshapes, baselineTensionRef.current);
+            debugRef.current({
+              t,
+              calibrating: calibStep !== null,
+              answering: answeringRef.current,
+              face: landmarks !== null,
+              yaw: gazeRaw?.yaw ?? null,
+              pitch: gazeRaw?.pitch ?? null,
+              irisX: gazeRaw?.ox ?? null,
+              irisY: gazeRaw?.oy ?? null,
+              baseYaw: baselineGazeRef.current.yaw,
+              basePitch: baselineGazeRef.current.pitch,
+              baseIrisX: baselineIrisRef.current.ox,
+              baseIrisY: baselineIrisRef.current.oy,
+              smileRaw: blendshapes ? (avgBlendshape(blendshapes, SMILE_KEYS)) : null,
+              jawOpen: blendshapes ? (blendshapes[JAW_OPEN_KEY] ?? 0) : null,
+              smileApp: ef ? ef.smile : null,
+              tensionApp: ef ? ef.tension : null,
+              blinkScore: computeBlinkBlendshapeScore(blendshapes),
+              calibStep: calibStep === null ? 0 : CALIB_STEP_CODE[calibStep],
+              tensionThreshold: tensionThresholdRef.current,
+              smileThreshold: smileThresholdRef.current,
+              lookDown: avgKeys(blendshapes, ['eyeLookDownLeft', 'eyeLookDownRight']),
+              lookUp: avgKeys(blendshapes, ['eyeLookUpLeft', 'eyeLookUpRight']),
+              lookH:
+                blendshapes === null
+                  ? null
+                  : avgBlendshape(blendshapes, ['eyeLookOutLeft', 'eyeLookInRight']) -
+                    avgBlendshape(blendshapes, ['eyeLookInLeft', 'eyeLookOutRight']),
+              cheekSquint: avgKeys(blendshapes, ['cheekSquintLeft', 'cheekSquintRight']),
+              eyeSquint: avgKeys(blendshapes, ['eyeSquintLeft', 'eyeSquintRight']),
+              browDown: avgKeys(blendshapes, [...TENSION_KEYS]),
+              browInnerUp: avgKeys(blendshapes, ['browInnerUp']),
+              baseTension: baselineTensionRef.current,
+            });
+          }
+
+          const pose = gazeRaw ? { yaw: gazeRaw.yaw, pitch: gazeRaw.pitch, ox: gazeRaw.ox, oy: gazeRaw.oy } : null;
+          if (calibStep === 'face') {
+            calibBufferRef.current.push([t, pose]);
+            tensionCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, TENSION_KEYS) : null);
+            neutralSmileCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, SMILE_KEYS) : null);
+          } else if (calibStep === 'frown') {
+            frownCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, TENSION_KEYS) : null);
+          } else if (calibStep === 'smile') {
+            smileCalibRef.current.push(blendshapes ? avgBlendshape(blendshapes, SMILE_KEYS) : null);
+          } else if (calibStep === null && calibT !== null && !calibratedRef.current) {
             calibratedRef.current = true;
+            // 시선·눈동자 기준은 "하루의 눈"을 본 구간에서만 잡는다(두 단계면 처음 3초, 아니면 5초 전체)
             const buffer = calibBufferRef.current;
-            const baseline = calibrateBaselineGaze(buffer.map(([, p]) => p));
+            const baseline = calibrateBaselineGaze(buffer.map(([, p]) => (p ? { yaw: p.yaw, pitch: p.pitch } : null)));
             baselineGazeRef.current = baseline;
+            const irisBaseline = calibrateBaselineIris(buffer.map(([, p]) => (p ? { ox: p.ox, oy: p.oy } : null)));
+            baselineIrisRef.current = irisBaseline;
+            baselineTensionRef.current = calibrateBaselineTension(tensionCalibRef.current);
+            if (expressionCalibration) {
+              // 표정 맞추기 — 이 사람의 찡그림·미소 크기로 기준을 맞춘다(calibration.ts personalThreshold)
+              tensionThresholdRef.current = personalThreshold(tensionCalibRef.current, frownCalibRef.current, {
+                min: 0.04,
+                max: TENSION_DELTA_THRESHOLD,
+                fallback: TENSION_DELTA_THRESHOLD,
+                relative: true,
+              });
+              smileThresholdRef.current = personalThreshold(neutralSmileCalibRef.current, smileCalibRef.current, {
+                min: 0.15,
+                max: SMILE_THRESHOLD,
+                fallback: SMILE_THRESHOLD,
+                relative: false,
+              });
+            } else if (presetThresholds) {
+              tensionThresholdRef.current = presetThresholds.tension;
+              smileThresholdRef.current = presetThresholds.smile;
+            }
             for (const [bt, bPose] of buffer) {
-              const bRaw = bPose ? { yaw: bPose.yaw, pitch: bPose.pitch, ox: 0, oy: 0 } : null;
-              // 캘리브레이션 버퍼엔 iris offset을 안 남겨뒀으니, 리플레이 시엔
-              // yaw/pitch만으로 판정한다 — 이 5초 구간은 애초에 baseline 계산용
-              // "정면 봐주세요" 구간이라 실제 iris offset도 0에 가까워서 결과에
-              // 미치는 영향이 미미함. 이 리플레이는 gaze FSM의 EMA 스무딩
-              // 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
+              // 이 리플레이는 gaze FSM의 EMA 스무딩 상태를 이어주기 위한 것 — 아래에서 segmentBuffer는 다시
               // 초기화하므로 이 구간이 실제 구간 판정에 남지는 않는다.
-              stepGaze(gazeFsmRef.current, bt, bRaw, baseline.yaw, baseline.pitch);
+              stepGaze(gazeFsmRef.current, bt, bPose, baseline.yaw, baseline.pitch, undefined, undefined, irisBaseline.ox, irisBaseline.oy);
             }
             gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
 
@@ -202,24 +506,26 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
           // recording이 시작된 뒤부터만 최종 결과에 반영 — 캘리브레이션·대기
           // 구간 값은 여기서 버려진다(위 함수 docstring 참고).
           if (isRecordingRef.current) {
-            const blinkScore = computeBlinkBlendshapeScore(blendshapes);
-            const blink = stepBlendshapeBlink(blinkFsmRef.current, t, blinkScore);
-            if (blink) blinksRef.current.push(blink);
+            if (!measureOnlyWhenAnswering) {
+              measureFrame(t, blendshapes, gazeRaw);
+            } else if (answeringRef.current) {
+              // 대답을 시작하고 1초 뒤부터 모으고, 1초 늦게 판정한다 — 대답을 마치면 판정 안 한 마지막 1초는 버려진다
+              if (t - answerStartTRef.current >= ANSWER_LEAD_SKIP_SEC) pendingFramesRef.current.push({ t, blendshapes, gazeRaw });
+              const queue = pendingFramesRef.current;
+              while (queue.length && queue[0].t <= t - ANSWER_TAIL_TRIM_SEC) {
+                const f = queue.shift() as PendingFrame;
+                measureFrame(f.t, f.blendshapes, f.gazeRaw);
+              }
+            } else if (blendshapes) {
+              // 하루 말을 들을 때: 미소만 잰다(입을 다물고 있어 입 벌림 규칙이 검증된 상황 — expression.ts combineSmileRatio)
+              const ef = computeExpressionForFrame(blendshapes);
+              listenSmileRef.current.frames += 1;
+              if (ef && ef.smile >= smileThresholdRef.current) listenSmileRef.current.hits += 1;
+            }
 
-            stepExpression(exprFsmRef.current, t, blendshapes);
-            const exprFrame = computeExpressionForFrame(blendshapes);
-            exprSeriesRef.current.push([
-              t,
-              exprFrame ? exprFrame.smile : null,
-              exprFrame ? exprFrame.tension : null,
-            ]);
-
-            // isRecordingRef가 true인 시점엔 캘리브레이션이 이미 끝난
-            // 뒤라(beginRecording은 phase==='ready'에서만 호출 가능) baseline은
-            // 항상 계산돼 있다.
-            stepGaze(gazeFsmRef.current, t, gazeRaw, baselineGazeRef.current.yaw, baselineGazeRef.current.pitch);
-
-            if (t - recordingStartTRef.current >= MAX_CAPTURE_SEC) {
+            // 3분 제한: 대답 구간만 재는 경우엔 실제로 잰 시간으로 센다
+            const capturedSec = measureOnlyWhenAnswering ? measuredSec() : t - recordingStartTRef.current;
+            if (capturedSec >= maxCaptureSec) {
               elapsedSecRef.current = t;
               setElapsedSec(t);
               void finish();
@@ -251,6 +557,23 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** calibrateOnDemand일 때 캘리브레이션 5초를 지금부터 시작 */
+  function startCalibration() {
+    // camera: 처음 / ready: 얼굴이 잘 안 잡혀서 다시 맞출 때
+    if (phase !== 'camera' && phase !== 'ready') return;
+    calibratedRef.current = false;
+    calibBufferRef.current = [];
+    frownCalibRef.current = [];
+    smileCalibRef.current = [];
+    neutralSmileCalibRef.current = [];
+    tensionThresholdRef.current = TENSION_DELTA_THRESHOLD;
+    smileThresholdRef.current = SMILE_THRESHOLD;
+    tensionCalibRef.current = [];
+    baselineTensionRef.current = 0;
+    calibStartTRef.current = elapsedSecRef.current;
+    setPhase('calibrating');
+  }
+
   /** 캘리브레이션 확인 후 사용자가 "촬영 시작"을 눌렀을 때 — 이 순간부터
    * 실제로 점수에 반영되는 구간이 시작된다. */
   function beginRecording() {
@@ -259,16 +582,37 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     blinksRef.current = [];
     exprFsmRef.current = createExpressionFsmState();
     exprSeriesRef.current = [];
+    longClosuresRef.current = [];
+    closureSmileMaxRef.current = 0;
+    listenSmileRef.current = { hits: 0, frames: 0 };
     gazeFsmRef.current.segmentBuffer = createSegmentBufferState();
     recordingStartTRef.current = elapsedSecRef.current;
     isRecordingRef.current = true;
     setPhase('recording');
   }
 
+  /** measureOnlyWhenAnswering일 때 — 사용자가 대답을 시작(true)/마침(false)할 때 부른다 */
+  function setAnswering(on: boolean) {
+    if (on === answeringRef.current) return;
+    answeringRef.current = on;
+    if (on) {
+      answerStartTRef.current = elapsedSecRef.current;
+      pendingFramesRef.current = [];
+      // 이전 대답(또는 캘리브레이션) 때의 시선 스무딩 값이 새 대답 첫 프레임에 섞이지 않게
+      gazeFsmRef.current.smoothed = null;
+    } else {
+      closeAnswerWindow();
+    }
+  }
+
   async function finish() {
     if (finishedRef.current) return;
     finishedRef.current = true;
     isRecordingRef.current = false;
+    if (measureOnlyWhenAnswering) {
+      answeringRef.current = false;
+      closeAnswerWindow();
+    }
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -277,19 +621,36 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     flushGaze(gazeFsmRef.current);
     flushExpression(exprFsmRef.current);
 
-    const durationSec = Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
+    // 대답한 구간이 거의 없으면(전부 넘김 등) 결과를 만들지 않는다 — 0초로 계산한 값이 리포트·이력에 남지 않게
+    if (measureOnlyWhenAnswering && measuredSec() < MIN_MEASURED_SEC) {
+      onEmpty?.();
+      return;
+    }
+
+    const durationSec = measureOnlyWhenAnswering
+      ? measuredSec()
+      : Math.max(0, elapsedSecRef.current - recordingStartTRef.current);
     const blinkResult = scoreBlinkRate(blinksRef.current.length, durationSec);
-    const gazeResult = scoreGazeSegments(gazeFsmRef.current.segmentBuffer.committed);
-    const expressionSummary = summarizeExpression(exprSeriesRef.current);
+    // 0.4초 넘게 감긴 구간(아래를 봄)은 시선 이탈로 — gaze.ts markClosuresAsAversion
+    const gazeSegments = markClosuresAsAversion(gazeFsmRef.current.segmentBuffer.committed, longClosuresRef.current);
+    const gazeResult = scoreGazeSegments(gazeSegments);
+    const answerSummary = summarizeExpression(exprSeriesRef.current, TENSION_MIN_SEC, tensionThresholdRef.current, smileThresholdRef.current);
+    // 미소는 대답 + 하루 말을 들을 때(measureOnlyWhenAnswering일 때만 듣기 프레임이 있음), 긴장은 대답 중만
+    const expressionSummary = {
+      ...answerSummary,
+      smileRatio: combineSmileRatio(answerSummary, listenSmileRef.current.hits, listenSmileRef.current.frames),
+    };
     const expressionResult = scoreExpression(expressionSummary.smileRatio, expressionSummary.tensionRatio);
 
-    // 서버 저장이 실패·지연되는 경우의 폴백 이력 — 브라우저 로컬(같은 기기에서만 유효)
-    const { previous: localPrevious } = localProgress.appendStage2Result({
-      blinkRatePerMin: blinkResult.ratePerMin,
-      avgFixationSec: gazeResult.avgFixationSec,
-      smileRatio: expressionSummary.smileRatio,
-      tensionRatio: expressionSummary.tensionRatio,
-    });
+    // 서버 저장이 실패·지연되는 경우의 폴백 이력 — 브라우저 로컬(같은 기기에서만 유효). 3단계(persist=false)는 안 남김
+    const { previous: localPrevious } = persist
+      ? localProgress.appendStage2Result({
+          blinkRatePerMin: blinkResult.ratePerMin,
+          avgFixationSec: gazeResult.avgFixationSec,
+          smileRatio: expressionSummary.smileRatio,
+          tensionRatio: expressionSummary.tensionRatio,
+        })
+      : { previous: null };
 
     const result: GazeBlinkResult = {
       blink: {
@@ -302,7 +663,7 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
       gaze: {
         avg_fixation_sec: gazeResult.avgFixationSec,
         score: gazeResult.score,
-        segments: gazeFsmRef.current.segmentBuffer.committed as GazeBlinkResult['gaze']['segments'],
+        segments: gazeSegments as GazeBlinkResult['gaze']['segments'],
         highlight: null,
       },
       expression: {
@@ -324,15 +685,20 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     if (starts.length) {
       result.per_question = splitByQuestion(
         blinksRef.current,
-        gazeFsmRef.current.segmentBuffer.committed,
+        gazeSegments,
         starts.map((s) => recordingStartTRef.current + s),
         elapsedSecRef.current,
+        measureOnlyWhenAnswering ? measuredWindowsRef.current : undefined,
       );
     }
 
     // 결과를 서버(Stage2Result)에 저장하고, 서버 이력 기준의 "직전 기록"을 받아 비교에 쓴다.
     // 업로드 모드 이력과 합쳐지고 기기를 바꿔도 이어지며, 3단계 난이도·ai-agent도 읽을 수 있음.
     // 실패·시간초과·서버에 이력 없음이면 로컬 이력으로 폴백 — 결과 화면은 절대 안 막는다.
+    if (!persist) {
+      onComplete(result);
+      return;
+    }
     setSaving(true);
     try {
       const saved = await Promise.race([
@@ -355,10 +721,22 @@ export function useLiveFaceSession({ videoRef, onComplete, getQuestionStarts }: 
     saving,
     faceDetected,
     calibrationSummary,
-    calibrationSec: CALIBRATION_SEC,
-    maxCaptureSec: MAX_CAPTURE_SEC,
+    calibrationSec,
+    /** 캘리브레이션을 시작한 뒤 지난 초(시작 전이면 0) */
+    calibrationElapsedSec: calibStartTRef.current === null ? 0 : Math.max(0, elapsedSec - calibStartTRef.current),
+    /** 캘리브레이션 중 지금 단계 — face: 하루의 눈 보기(무표정), frown: 찡그리기, smile: 웃기. 캘리브레이션 중이 아니면 null */
+    calibrationStep:
+      phase !== 'calibrating' || calibStartTRef.current === null
+        ? null
+        : calibStageAt(elapsedSec - calibStartTRef.current, expressionCalibration, calibPacing),
+    startCalibration,
+    /** 표정 맞추기로 정한 기준. 아직 안 맞췄거나 표정 맞추기를 안 하는 세션이면 null */
+    getExpressionThresholds: (): ExpressionThresholds | null =>
+      expressionCalibration && calibratedRef.current ? { tension: tensionThresholdRef.current, smile: smileThresholdRef.current } : null,
+    maxCaptureSec,
     recordingElapsedSec: isRecordingRef.current ? Math.max(0, elapsedSec - recordingStartTRef.current) : 0,
     beginRecording,
+    setAnswering,
     finish,
     /** 지금이 촬영 시작부터 몇 초인지 (질문이 바뀐 시각을 적을 때). 촬영 중이 아니면(3분이 지나 끝남 등) null */
     recordingNowSec: () => (isRecordingRef.current ? Math.max(0, elapsedSecRef.current - recordingStartTRef.current) : null),

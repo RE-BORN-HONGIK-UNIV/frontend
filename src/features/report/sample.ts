@@ -1,4 +1,4 @@
-import type { AnalyzeResult } from '@/lib/api/types';
+import type { AnalyzeResult, ReportCoachResponse } from '@/lib/api/types';
 import type { InterviewResult } from '@/features/interview/resultSummary';
 import type { StageDetails } from './stageDetails';
 
@@ -109,6 +109,36 @@ export const SAMPLE_DETAILS: StageDetails = {
       per_question: { blink_per_min: [28, 21, 19, 22], gaze_avg_sec: [2.1, 3.4, 4.0, 3.8] },
     },
   },
+  // 3단계 면접 중 대답하는 동안의 얼굴(2단계와 같은 분석) — 시선과 표정 칸의 2단계·실전 면접 비교
+  stage3Face: {
+    at: '2026-10-31T10:32:00Z',
+    result: {
+      blink: { rate_per_min: 20, status: '정상', score: 100, events: [], highlight: null },
+      gaze: {
+        avg_fixation_sec: 4.1, score: 90, highlight: null,
+        segments: [
+          { type: 'fixation', start: 0, end: 4.6 },
+          { type: 'aversion', start: 4.6, end: 5.1 },
+          { type: 'fixation', start: 5.1, end: 9.1 },
+          { type: 'aversion', start: 9.1, end: 9.5 },
+          { type: 'fixation', start: 9.5, end: 12.4 },
+        ],
+      },
+      expression: {
+        smile_score: 40, tension_score: 80, score: 60, status: '보통', smile_ratio: 0.12, tension_ratio: 0.04,
+        frame_count: 600, highlight: null,
+        segments: [
+          { type: 'tension', start: 0, end: 0.5 },
+          { type: 'neutral', start: 0.5, end: 4 },
+          { type: 'smile', start: 4, end: 4.7 },
+          { type: 'neutral', start: 4.7, end: 9 },
+          { type: 'smile', start: 9, end: 9.7 },
+          { type: 'neutral', start: 9.7, end: 12 },
+        ],
+      },
+      previous: null,
+    },
+  },
 };
 
 /** sessionId가 null이라 코치 노트를 요청하지 않고(AI 호출 없음) 기본 카드만 보인다. */
@@ -123,4 +153,21 @@ export const SAMPLE_INTERVIEW: InterviewResult = {
     { kind: 'main', question: '맡은 일을 끝까지 하는 점이 일할 때 어떤 도움이 될까요?', answer: '' },
     { kind: 'main', question: '마지막으로 하고 싶은 말이 있으세요?', answer: '천천히지만 꾸준히 하겠습니다.' },
   ],
+};
+
+/** 예시 리포트의 3·4번 칸 AI 결과 — 실제 Claude 출력 모양을 본떠 손으로 쓴 값 (서버를 부르지 않는다) */
+export const SAMPLE_COACH: ReportCoachResponse = {
+  source: 'llm',
+  result: {
+    picked: ['간단히 자기소개를 해 주시겠어요?'],
+    rewrites: [
+      {
+        question: '간단히 자기소개를 해 주시겠어요?',
+        text: '저는 요리하는 걸 좋아하는 사람입니다. 요즘은 영상을 보면서 집에서 반찬을 만들어 보고 있습니다. 그러면서 순서를 정해 하나씩 끝내는 게 재미있다는 걸 알게 됐습니다.',
+        changes: ["'음·약간' 같은 말버릇을 뺐어요", "한 문장씩 끊어서 말투를 '~습니다'로 정리했어요"],
+      },
+    ],
+    plan: [{ key: 'fluency', how: "질문이 끝나면 숨을 한 번 쉰 뒤 '저는'으로 첫 문장을 시작해 봐요." }],
+    care: null,
+  },
 };

@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   calibrateBaselineEar,
   calibrateBaselineGaze,
+  calibrateBaselineIris,
   calibrateBaselineTension,
+  calibBeatAt,
+  calibStepAt,
+  expressionCalibTotal,
+  calibStageAt,
+  personalThreshold,
   DEFAULT_BASELINE_EAR,
   DEFAULT_BASELINE_TENSION,
 } from './calibration';
@@ -63,5 +69,76 @@ describe('calibrateBaselineTension (backend calibrate_baseline_tension 포팅)',
   it('값이 하나도 없으면 DEFAULT_BASELINE_TENSION으로 폴백한다', () => {
     expect(calibrateBaselineTension([null, null])).toBe(DEFAULT_BASELINE_TENSION);
     expect(calibrateBaselineTension([])).toBe(DEFAULT_BASELINE_TENSION);
+  });
+});
+
+describe('calibrateBaselineIris (2026-11 — 하루를 볼 때의 눈동자 위치)', () => {
+  it('캘리브레이션 동안 눈동자 위치의 중앙값을 기준으로 잡는다(얼굴 미검출 프레임은 뺌)', () => {
+    expect(
+      calibrateBaselineIris([null, { ox: 0.02, oy: 0.18 }, { ox: 0.0, oy: 0.2 }, { ox: 0.05, oy: 0.5 }]),
+    ).toEqual({ ox: 0.02, oy: 0.2 });
+  });
+
+  it('얼굴이 한 번도 안 잡히면 (0, 0) — 예전과 같은 판정', () => {
+    expect(calibrateBaselineIris([null, null])).toEqual({ ox: 0, oy: 0 });
+  });
+});
+
+describe('표정 맞추기 캘리브레이션(하루의 눈 3초 → 찡그리기 2초 → 웃기 2초)', () => {
+  it('단계마다 처음 0.5초는 빼고, 7초가 지나면 끝', () => {
+    expect(calibStepAt(0.2, true)).toBe('settle');
+    expect(calibStepAt(1, true)).toBe('face');
+    expect(calibStepAt(3.2, true)).toBe('settle');
+    expect(calibStepAt(4, true)).toBe('frown');
+    expect(calibStepAt(5.3, true)).toBe('settle');
+    expect(calibStepAt(6.5, true)).toBe('smile');
+    expect(calibStepAt(7.1, true)).toBeNull();
+    expect(calibStageAt(3.2, true)).toBe('frown');
+    expect(calibStageAt(6, true)).toBe('smile');
+  });
+
+  it('표정 맞추기를 안 하면 예전처럼 5초 내내 무표정', () => {
+    expect(calibStepAt(0.1, false, 5)).toBe('face');
+    expect(calibStepAt(4.5, false, 5)).toBe('face');
+    expect(calibStepAt(5.1, false, 5)).toBeNull();
+    expect(calibStageAt(4.5, false)).toBe('face');
+  });
+
+  const opts = { min: 0.04, max: 0.08, fallback: 0.08, relative: true };
+  it('찡그림 기준 = (찡그림 상위 10% − 무표정) × 1/3, [0.04, 0.08] 안으로', () => {
+    const neutral = Array(20).fill(0.03);
+    // 찡그림이 무표정보다 0.18 높은 사람 → 0.06
+    expect(personalThreshold(neutral, Array(20).fill(0.21), opts)).toBeCloseTo(0.06, 5);
+    // 찡그림이 작게 잡히는 사람(+0.09) → 0.03이지만 하한 0.04
+    expect(personalThreshold(neutral, Array(20).fill(0.12), opts)).toBeCloseTo(0.04, 5);
+    // 아주 크게 찡그려도 지금 기준(0.08)보다 엄격해지지 않음
+    expect(personalThreshold(neutral, Array(20).fill(0.6), opts)).toBeCloseTo(0.08, 5);
+  });
+
+  it('찡그림을 못 쟀거나 오르지 않았으면 기본값', () => {
+    expect(personalThreshold([0.03], [null, null], opts)).toBe(0.08);
+    expect(personalThreshold([0.03], [0.02, 0.03], opts)).toBe(0.08);
+  });
+
+  it('미소 기준 = 무표정 + (웃음 − 무표정) × 1/3, [0.15, 0.35] 안으로', () => {
+    const smile = { min: 0.15, max: 0.35, fallback: 0.35, relative: false };
+    // 웃어도 0.28까지만 오르는 사람 → 0.093이지만 하한 0.15
+    expect(personalThreshold([0, 0], Array(10).fill(0.28), smile)).toBeCloseTo(0.15, 5);
+    // 0.75까지 오르는 사람 → 0.25
+    expect(personalThreshold([0, 0], Array(10).fill(0.75), smile)).toBeCloseTo(0.25, 5);
+    expect(personalThreshold([0, 0], Array(10).fill(1), smile)).toBeCloseTo(0.3333, 3);
+  });
+});
+
+describe('표정 맞추기 앞뒤 여유(3단계 대기실)', () => {
+  const p = { lead: 3, tail: 0.5 };
+  it('보여 주기·준비와 확인 구간에서는 값을 모으지 않고, 재는 구간에서만 모은다', () => {
+    expect(expressionCalibTotal(p)).toBe(17.5);
+    expect(calibStepAt(1, true, 17.5, p)).toBe('settle'); // 무표정 보여 주기
+    expect(calibStepAt(4, true, 17.5, p)).toBe('face'); // 무표정 재는 중
+    expect(calibStepAt(6.2, true, 17.5, p)).toBe('settle'); // 무표정 확인
+    expect(calibStepAt(10, true, 17.5, p)).toBe('frown');
+    expect(calibStepAt(16, true, 17.5, p)).toBe('smile');
+    expect(calibBeatAt(7.5, p)).toMatchObject({ stage: 'frown', part: 'lead' });
   });
 });

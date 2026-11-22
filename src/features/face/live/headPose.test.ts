@@ -119,6 +119,14 @@ describe('isLookingAtCamera (backend is_looking_at_camera 포팅)', () => {
     expect(isLookingAtCamera(25, 0, 0.0, 0.0)).toBe(false);
   });
 
+  it('눈동자 기준(캘리브레이션)이 있으면 그 위치에서 ±0.15로 본다 — 하루가 카메라보다 아래에 있을 때', () => {
+    // 하루를 보느라 눈동자가 아래로 0.2 치우친 사람: 기준 없이는 회피, 기준(0.2)이면 정면
+    expect(isLookingAtCamera(0, 0, 0.0, 0.2)).toBe(false);
+    expect(isLookingAtCamera(0, 0, 0.0, 0.2, 0, 0, 10, 10, 0.15, 0, 0.2)).toBe(true);
+    // 기준에서 다시 0.15 넘게 벗어나면(옆이나 더 아래를 봄) 회피
+    expect(isLookingAtCamera(0, 0, 0.0, 0.4, 0, 0, 10, 10, 0.15, 0, 0.2)).toBe(false);
+  });
+
   it('커스텀 임계값이 기본값을 덮어쓴다', () => {
     // 기본 yaw_thresh(10)라면 통과할 값이지만, 더 엄격한 5로 좁히면 회피로 판정
     expect(isLookingAtCamera(8, 0, 0.0, 0.0, 0, 0, 5)).toBe(false);

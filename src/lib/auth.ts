@@ -26,6 +26,28 @@ function del(k: string) {
   }
 }
 
+// 로그인 상태가 바뀌면 알린다 — 머리줄처럼 이미 그려진 화면이 새로고침 없이 바로 바뀌게(useAuthVersion).
+// 예전엔 메인 화면에서 로그아웃하면 같은 주소(/)로 가서 화면을 다시 그리지 않아 '이름님 · 로그아웃'이 남았다.
+const listeners = new Set<() => void>();
+let version = 0;
+function changed() {
+  version += 1;
+  listeners.forEach((l) => l());
+}
+export function subscribeAuth(listener: () => void) {
+  listeners.add(listener);
+  // 다른 탭에서 로그인·로그아웃한 것도 반영
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === null || e.key.startsWith('rb.')) changed();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('storage', onStorage);
+  };
+}
+export const authVersion = () => version;
+
 export const auth = {
   get token() {
     return get(TOKEN_KEY);
@@ -51,6 +73,7 @@ export const auth = {
   setNickname(nickname: string) {
     set(NAME_KEY, nickname);
     set(NICK_KEY, 'true');
+    changed();
   },
   signIn(token: string, name: string, email?: string, guest = false) {
     set(TOKEN_KEY, token);
@@ -60,6 +83,7 @@ export const auth = {
     if (guest) set(GUEST_KEY, 'true');
     else del(GUEST_KEY);
     del(NICK_KEY);
+    changed();
   },
   signOut() {
     del(TOKEN_KEY);
@@ -67,5 +91,6 @@ export const auth = {
     del(EMAIL_KEY);
     del(GUEST_KEY);
     del(NICK_KEY);
+    changed();
   },
 };

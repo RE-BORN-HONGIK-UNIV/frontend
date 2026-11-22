@@ -13,7 +13,7 @@ const STEPS: { no: StageNo; label: string }[] = [
   { no: 1, label: '목소리 대화' },
   { no: 2, label: '영상 통화' },
   { no: 3, label: '실전 면접' },
-  { no: 4, label: '결과' },
+  { no: 4, label: '리포트' },
 ];
 
 /** 이 기기에 남은 완료 기록(localProgress) — 마친 단계는 숫자 대신 체크로 보인다 */
@@ -66,7 +66,7 @@ export function StageHeader({ current }: { current: StageNo }) {
     // 좁은 화면 처리(여백, 지금 단계만 이름 보이기)는 index.css의 .rb-stagebar — CSS라 첫 화면부터 맞는 모양
     <Box component="header" className="rb-stagebar">
       <Link to="/" aria-label="메인 화면으로" className="rb-stagebar__logo">
-        <RebornWordmark size={30} animate={false} />
+        <RebornWordmark size={36} animate={false} />
       </Link>
 
       <nav aria-label="훈련 단계" className="rb-stagebar__nav">

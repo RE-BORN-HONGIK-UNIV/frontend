@@ -14,7 +14,7 @@ function Mark({ on }: { on: boolean }) {
       style={{
         width: 22,
         height: 22,
-        borderRadius: '50%',
+        borderRadius: '100%',
         display: 'grid',
         placeItems: 'center',
         border: `2px solid ${on ? 'var(--rb-primary)' : 'var(--rb-line-strong)'}`,

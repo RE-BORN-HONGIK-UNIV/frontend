@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth';
+import { prerecordedUrls } from './prerecorded';
 
 // 백엔드 주소 — .env에 VITE_API_BASE_URL 없으면 로컬 기본값 사용
 // ??가 아니라 ||를 써서 빈 문자열("")로 설정된 경우도 기본값으로 처리함.
@@ -76,6 +77,8 @@ export async function transcribeAnswer(blob: Blob): Promise<string> {
  * 실패하면 null (컴포넌트 쪽에서 null이면 바로 다음 단계로 넘어가게 처리되어 있음).
  */
 export async function getSpeechAudioUrl(text: string, tier?: DifficultyTier | 'haru'): Promise<string | null> {
+  const pre = prerecordedUrls(text);
+  if (pre?.length === 1) return pre[0];
   try {
     const res = await fetch(`${API_BASE_URL}/interview/tts`, {
       method: 'POST',

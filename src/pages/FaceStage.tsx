@@ -1,32 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Paper, SimpleGrid, Stack, Text } from '@/components/ui';
+import { Box } from '@/components/ui';
 import { StageHeader } from '@/components/StageHeader';
 import type { GazeBlinkResult } from '@/lib/api/types';
-import { FACE_GUIDE_ITEMS } from '@/features/face/constants';
+import type { ExpressionThresholds } from '@/features/face/live/useLiveFaceSession';
 import { HaruCallView } from '@/features/face/live/HaruCallView';
-import { linkStyle } from '@/features/haru/styles';
+import { HaruProfileView } from '@/features/haru/HaruProfileView';
+import { loadHaruTalk, profileSourceItems } from '@/features/haru/store';
 import { localProgress } from '@/features/progress/localProgress';
 import { stage2OverallScore } from '@/features/progress/stageProgress';
 import { saveStage2Detail } from '@/features/report/stageDetails';
 
-const MAXW = 720;
-
-function Check() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rb-primary-strong)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text fz={13} fw={700} c="var(--rb-primary-strong)" style={{ letterSpacing: '0.08em' }}>
-      {children}
-    </Text>
-  );
-}
+/** 통화 대기실·통화 화면은 경량 웹처럼 넓게(하루·내 카메라 두 칸) */
+const CALL_MAXW = 1600;
 
 /* ── page ────────────────────────────────────────────────── */
 
@@ -34,13 +20,24 @@ export default function FaceStage() {
   // 2단계는 하루와 영상 통화하는 동안 실시간 분석만 한다(HaruCallView — 경량 웹 2단계 화면을 가져옴).
   // 예전 "영상 업로드" 모드(POST /analyze/gaze-blink)는 2026-10-31 팀 결정으로 폐기.
   // 결과는 여기서 따로 보여 주지 않고 3단계를 마친 뒤 최종 통합 리포트에서 한 번에 보여 준다(경량 웹 흐름).
-  const [result, setResult] = useState<GazeBlinkResult | null>(null);
-  const [callKey, setCallKey] = useState(0);
+  // 통화를 끝내면(빨간 버튼) 경량 웹처럼 "하루가 이렇게 이해했어요" 카드가 나오고, 확인하면 3단계로 간다.
+  // 카드에서 확인한 내용은 기기에 남아 3단계가 다시 묻지 않는다(InterviewStage).
+  const [profile, setProfile] = useState(false);
+  // 2단계 표정 맞추기 기준 — 바로 3단계로 이어 가면 같은 자리라 3단계 대기실에서 다시 맞추지 않게 넘긴다(저장은 안 함)
+  const [expr, setExpr] = useState<ExpressionThresholds | null>(null);
   const navigate = useNavigate();
+  const handleHungUp = useCallback(
+    (thresholds: ExpressionThresholds | null) => {
+      setExpr(thresholds);
+      // 하루와 나눈 대답이 하나도 없으면(전부 넘김) 정리할 게 없으니 바로 3단계로
+      if (profileSourceItems(loadHaruTalk()).length) setProfile(true);
+      else navigate({ pathname: '/interview', search: window.location.search }, { state: { expr: thresholds } });
+    },
+    [navigate],
+  );
 
   // 분석 결과가 나오면: 대시보드용 완료 메모(서버 조회가 안 될 때 대신 씀) + 최종 리포트에 쓸 세부값을 이 기기에 남긴다
-  useEffect(() => {
-    if (!result) return;
+  const save = useCallback((result: GazeBlinkResult) => {
     localProgress.markStage2Done(
       stage2OverallScore({
         blink: result.blink.score,
@@ -49,57 +46,23 @@ export default function FaceStage() {
       }),
     );
     saveStage2Detail(result);
-  }, [result]);
+  }, []);
 
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <StageHeader current={2} />
 
-      <Box style={{ maxWidth: MAXW, margin: '0 auto', padding: '20px 16px 0' }}>
-        {result ? (
-          <Paper p={24} radius="lg" withBorder style={{ background: 'var(--rb-surface)', borderColor: 'var(--rb-line)' }}>
-            <Stack gap={12} align="center" ta="center">
-              <Text fz={17} fw={700}>
-                2단계를 마쳤어요
-              </Text>
-              <Text fz={13} c="var(--rb-ink-soft)">
-                하루 얼굴을 보며 끝까지 이야기했어요. 결과는 3단계 실전 면접을 마친 뒤 최종 리포트에서 함께 보여 드려요.
-              </Text>
-              <Button radius="md" onClick={() => navigate('/interview')}>
-                하루가 정리한 이야기 보고 3단계로 가기 →
-              </Button>
-              <button
-                type="button"
-                style={linkStyle}
-                onClick={() => {
-                  setResult(null);
-                  setCallKey((k) => k + 1);
-                }}
-              >
-                하루와 다시 통화할래요
-              </button>
-            </Stack>
-          </Paper>
+      <Box style={{ maxWidth: CALL_MAXW, margin: '0 auto', padding: '50px 16px 0' }}>
+        {profile ? (
+          <HaruProfileView
+            badge="2단계를 마쳤어요"
+            // 주소 뒤 ?test=1(개발용 3단계 테스트 모드)은 3단계로 그대로 넘긴다
+            onNext={(lines) => navigate({ pathname: '/interview', search: window.location.search }, { state: { aboutMe: lines, expr } })}
+            onQuit={() => navigate('/dashboard')}
+          />
         ) : (
-          <Stack gap={20}>
-            <SectionLabel>분석 전 체크리스트</SectionLabel>
-            <SimpleGrid cols={{ base: 2, sm: 3 }} spacing={10}>
-              {FACE_GUIDE_ITEMS.map((g) => (
-                <Stack key={g.title} gap={6} style={{ background: 'var(--rb-surface)', border: '1px solid var(--rb-line)', borderRadius: 12, padding: '14px 12px' }}>
-                  <Check />
-                  <Text fz={13} fw={600} c="var(--rb-primary-strong)">
-                    {g.title}
-                  </Text>
-                  <Text fz={11} c="var(--rb-ink-soft)" style={{ lineHeight: 1.5 }}>
-                    {g.desc}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
-
-            <SectionLabel>하루와 영상 통화</SectionLabel>
-            <HaruCallView key={callKey} onComplete={setResult} />
-          </Stack>
+          // 경량 웹 대기실 화면 그대로 — 예전 체크리스트 6칸·"하루와 영상 통화" 라벨은 뺐다(안내는 대기실 화면 안에)
+          <HaruCallView onComplete={save} onHungUp={handleHungUp} />
         )}
       </Box>
     </Box>

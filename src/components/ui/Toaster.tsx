@@ -32,8 +32,8 @@ export function showToast(message: string, color: ToastItem['color'], title?: st
 
 const TINT: Record<ToastItem['color'], { bg: string; fg: string }> = {
   brand: { bg: 'var(--rb-primary-deep)', fg: '#fff' },
-  red: { bg: '#a32d2d', fg: '#fff' },
-  gray: { bg: 'var(--rb-ink)', fg: '#fff' },
+  red: { bg: 'var(--rb-danger)', fg: 'var(--rb-surface)' },
+  gray: { bg: 'var(--rb-ink)', fg: 'var(--rb-surface)' },
 };
 
 /** main.tsx에 한 번만 마운트. 어디서든 lib/toast의 toast.success(...) 등으로 띄움. */

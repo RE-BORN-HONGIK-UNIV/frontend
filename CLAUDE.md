@@ -44,7 +44,7 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 
 지금은 순수 로직 유닛테스트만 있음(`src/**/*.test.ts` — `combineAnxietyScore`,
 `getTier`, `scoreColor` 등 결정적 함수). `@testing-library/react` + jsdom은
-설치·설정(`src/test/setup.ts`)까지 끝났고 컴포넌트 테스트는 `NeedStagesView`·`Dashboard`·`ResultView`·`IntroView`·`QuestionView.record`·`PracticePage`·`HaruProfileView` 뿐 —
+설치·설정(`src/test/setup.ts`)까지 끝났고 컴포넌트 테스트는 `NeedStagesView`·`Dashboard`·`ResultView`·`Stage3PrepView`·`QuestionView.record`·`PracticePage`·`HaruProfileView` 뿐 —
 필요해지면 `*.test.tsx`로 추가.
 
 백엔드 쪽 계층별(순수 로직/정확도 검증/API 통합) 테스트 설계는
@@ -68,7 +68,7 @@ vite(rollup 기반)의 `Plugin` 타입이 서로 안 맞아서, 한 파일에서
 - 백엔드 연동 전 임시 로직(mock 값, 고정 질문 리스트 등)은 코드에 왜 임시인지와
   실제 연동 시 뭘 바꾸면 되는지를 주석으로 남긴다 (`src/features/interview/difficulty.ts`
   의 `QUESTION_BANK` 패턴 참고).
-- 면접 답변 텍스트는 민감정보다. 면접 시작 화면(`IntroView`)에는 동의 체크박스 없이 "저장되고 AI로 전송된다"는 안내만
+- 면접 답변 텍스트는 민감정보다. 3단계 시작 화면(`Stage3PrepView`, 경량 웹 "이제 실전 면접이에요")에는 동의 체크박스 없이 "저장되고 AI로 전송된다"는 안내만
   둔다(팀 결정: 동의율이 낮을 것). 이 안내와 결과 화면의 기록 삭제는 유지하고, 동의 방식은 약관/개인정보 처리방침
   쪽에서 팀이 확인할 것. 결과 화면에는 점수·등급·비교 같은 평가 표현을 넣지 않는다(사회불안 사용자가 평가받는
   느낌을 받으면 다시 오지 않음). 최종 통합 리포트(경량 웹 화면)도 0~100 점수 숫자는 보이지 않고 상태 칩과 실제로 센

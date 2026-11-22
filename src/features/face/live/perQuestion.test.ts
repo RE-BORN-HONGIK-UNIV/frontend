@@ -23,3 +23,14 @@ describe('질문별로 나누기', () => {
     expect(r.blink_per_min).toHaveLength(2);
   });
 });
+
+describe('splitByQuestion — 대답한 구간만 잰 경우(measured)', () => {
+  it('깜빡임은 질문 구간 전체가 아니라 그 안에서 실제로 잰 시간으로 나눈다', () => {
+    // 질문 1: 0~60초 중 대답한 건 30~60초(30초), 그 안에서 5번 → 1분에 10번
+    const blinks = [31, 35, 40, 45, 50].map((s) => ({ start: s, end: s + 0.2 }));
+    const out = splitByQuestion(blinks, [], [0, 60], 120, [{ start: 30, end: 60 }]);
+    expect(out.blink_per_min[0]).toBe(10);
+    // 질문 2는 넘겨서 잰 시간이 없다 → 0
+    expect(out.blink_per_min[1]).toBe(0);
+  });
+});

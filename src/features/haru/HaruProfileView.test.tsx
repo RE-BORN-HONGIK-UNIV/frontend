@@ -30,7 +30,7 @@ describe('하루가 이렇게 이해했어요 카드', () => {
     render(<HaruProfileView onNext={onNext} />);
     const input = await screen.findByLabelText('관심 있는 것');
     fireEvent.change(input, { target: { value: '집에서 반찬 만들기' } });
-    fireEvent.click(screen.getByText('맞아요, 다음으로 →'));
+    fireEvent.click(screen.getByText('맞아요, 3단계 실전 면접으로 →'));
     expect(onNext).toHaveBeenCalledWith(['부를 이름: 지우', '관심 있는 것: 집에서 반찬 만들기']);
     expect(loadHaruTalk().profile?.items[1].value).toBe('집에서 반찬 만들기');
   });
@@ -39,6 +39,13 @@ describe('하루가 이렇게 이해했어요 카드', () => {
     vi.mocked(api.haruProfile).mockRejectedValue(new Error('offline'));
     render(<HaruProfileView onNext={vi.fn()} />);
     expect(await screen.findByDisplayValue('요리를 배우고 있어요')).toBeTruthy();
+    expect(screen.getByText(/대답을 그대로 가져왔어요/)).toBeTruthy();
+  });
+
+  it('서버가 AI 없이 대답을 그대로 줬을 때도 고쳐 달라고 알린다', async () => {
+    vi.mocked(api.haruProfile).mockResolvedValue({ items: [{ label: '부를 이름', value: '지우' }], source: 'fallback' });
+    render(<HaruProfileView onNext={vi.fn()} />);
+    expect(await screen.findByDisplayValue('지우')).toBeTruthy();
     expect(screen.getByText(/대답을 그대로 가져왔어요/)).toBeTruthy();
   });
 
@@ -55,7 +62,7 @@ describe('하루가 이렇게 이해했어요 카드', () => {
     vi.mocked(api.haruProfile).mockResolvedValue({ items: [{ label: '부를 이름', value: '지우' }], source: 'llm' });
     const first = render(<HaruProfileView onNext={vi.fn()} />);
     await screen.findByDisplayValue('지우');
-    fireEvent.click(screen.getByText('맞아요, 다음으로 →'));
+    fireEvent.click(screen.getByText('맞아요, 3단계 실전 면접으로 →'));
     first.unmount();
     render(<HaruProfileView onNext={vi.fn()} />);
     expect(await screen.findByDisplayValue('지우')).toBeTruthy();

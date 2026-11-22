@@ -13,7 +13,7 @@ import { Pentagon } from '@/features/report/Pentagon';
 const STEPS: { title: string; desc: string; mock: () => ReactNode; label: string }[] = [
   {
     title: '목소리로 가볍게 이야기해요',
-    desc: '이력서나 자료는 필요 없어요. 이름, 요즘 관심사처럼 편한 이야기부터 말로 나눠요. 하루의 말은 채팅처럼 글로도 보여요.',
+    desc: '이름, 요즘 관심사처럼 편한 이야기부터 하루와 대화해요. 하루의 말은 채팅처럼 글로도 보여요.',
     mock: () => <ChatMock />,
     label: '하루와 채팅처럼 목소리로 대화하는 화면 예시',
   },
@@ -137,7 +137,7 @@ function ChatMock() {
         <span style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--rb-primary)', display: 'grid', placeItems: 'center', flex: 'none' }}>
           <MicIcon />
         </span>
-        말하는 중… 다 말했으면 "답변 마치기"를 눌러요
+        말하는 중… 다 말했으면 "대답 마치기"를 눌러요
       </div>
     </div>
   );
@@ -166,7 +166,7 @@ function InterviewMock() {
     <div style={mockCard}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--rb-ink-faint)', marginBottom: 10 }}>
         <span>
-          <b style={{ color: 'var(--rb-ink)' }}>실전 면접</b> · 질문 2 / 5
+          <b style={{ color: 'var(--rb-ink)' }}>실전 면접</b>
         </span>
         <span>● 카메라 켜짐</span>
       </div>
@@ -178,7 +178,7 @@ function InterviewMock() {
           position: 'relative',
           aspectRatio: '16 / 10',
           borderRadius: 12,
-          background: '#d9dfe5 url(/interviewer/idle.jpg) center / cover no-repeat',
+          background: '#d9dfe5 url(/interviewer/interviewer.jpg) center 22% / cover no-repeat',
         }}
       >
         <div
@@ -208,7 +208,7 @@ function ReportMock() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
         <div style={{ border: '1px solid var(--rb-line)', borderRadius: 12, padding: 12 }}>
           <h4 style={{ fontSize: 13, margin: '0 0 6px' }}>말하기 습관</h4>
-          <Pentagon v={[0.8, 0.62, 0.78, 0.74, 0.7]} size={190} labels={['안정성', '유창성', '침묵 조절', '지속성', '에너지']} />
+          <Pentagon v={[0.8, 0.62, 0.78, 0.74, 0.7]} size={190} labels={['목소리 떨림', '채움말', '긴 멈춤', '소리 늘이기', '말끝 흐림']} />
         </div>
         <div style={{ border: '1px solid var(--rb-line)', borderRadius: 12, padding: 12 }}>
           <h4 style={{ fontSize: 13, margin: '0 0 8px' }}>시선과 표정</h4>
@@ -241,10 +241,10 @@ function ReportMock() {
         </div>
       </div>
       <p style={{ fontSize: 13, lineHeight: 1.6, margin: '14px 0 12px', color: 'var(--rb-ink-soft)' }}>
-        <b style={{ color: 'var(--rb-ink)' }}>코치 노트</b> · 실전 면접에서 긴 멈춤이 줄고 면접관을 더 오래 바라봤어요. (예시)
+        <b style={{ color: 'var(--rb-ink)' }}>다음 연습 계획</b> · 실전 면접에서 긴 멈춤이 줄고 면접관을 더 오래 바라봤어요. (예시)
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {['1단계 다시 연습', '2단계 다시 연습', '3단계 다시 연습'].map((t, i) => (
+        {['1단계 목소리 대화', '2단계 영상 통화', '3단계 실전 면접'].map((t, i) => (
           <span
             key={t}
             style={{

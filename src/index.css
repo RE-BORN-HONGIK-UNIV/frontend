@@ -161,8 +161,8 @@
   --color-primary-tint: var(--rb-primary-tint);
   --color-primary-deep-tint: var(--rb-primary-deep-tint);
 
-  --font-sans: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
-  --font-display: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; /* 제목도 본문과 같은 에이투지체 (예전 Spectral 세리프는 한글이 없어 한글 제목이 시스템 명조로 나왔음) */
+  --font-sans: 'Google Sans', 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+  --font-display: 'Google Sans', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; /* 제목도 본문과 같은 에이투지체 (예전 Spectral 세리프는 한글이 없어 한글 제목이 시스템 명조로 나왔음) */
 
   --radius-xs: 6px;
   --radius-sm: 10px;
@@ -176,6 +176,10 @@
   --rb-bg: #edf2ea;
   --rb-surface: #ffffff;
   --rb-surface-tint: #f1f5ef;
+  /* 메인 화면 반투명 판(panel)과 회색 섹션 배경 — 예전엔 Landing.tsx에 흰색·#f5f5f4로 고정돼 다크 모드에서 글자가 안 보였다 */
+  --rb-glass: rgba(255, 255, 255, 0.62);
+  --rb-glass-strong: rgba(255, 255, 255, 0.72);
+  --rb-section-alt: #f5f5f4;
 
   --rb-ink: #232826;
   --rb-ink-soft: #68706b;
@@ -196,6 +200,10 @@
   --rb-amber-strong: #9a7423;
   --rb-amber-tint: #f7edd8;
 
+  /* 오류·위험(입력 오류, 오류 알림, 삭제) — 통화 끊기 버튼(#e5484d)과는 따로 */
+  --rb-danger: #a32d2d;
+  --rb-danger-tint: #fbeceb;
+
   /* 2단계 결과의 점수 막대(ScoreTrack) 전용 — 브랜드 그린·경고 앰버와 겹치지
      않는 파란 계열로, "정상/주의" 같은 상태 판정이 아니라 그냥 "점수 크기"를
      나타내는 중립적인 색이라 별도로 둠 */
@@ -205,7 +213,7 @@
   /* lighter left→right wash, used for page-header backgrounds (kept separate from --rb-grad
      so the logo wordmark elsewhere stays at full saturation) */
   --rb-header-grad: linear-gradient(105deg, var(--rb-primary) 0%, #a3d2b3 100%);
-  --rb-font-display: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; /* 제목도 본문과 같은 에이투지체 (예전 Spectral 세리프는 한글이 없어 한글 제목이 시스템 명조로 나왔음) */
+  --rb-font-display: 'Google Sans', 'Noto Sans KR', system-ui, sans-serif; /* 제목도 본문과 같은 에이투지체 (예전 Spectral 세리프는 한글이 없어 한글 제목이 시스템 명조로 나왔음) */
 
   color-scheme: light;
 }
@@ -221,6 +229,9 @@
   --rb-bg: #12160f;
   --rb-surface: #1b2118;
   --rb-surface-tint: #212821;
+  --rb-glass: rgba(27, 33, 24, 0.72);
+  --rb-glass-strong: rgba(27, 33, 24, 0.82);
+  --rb-section-alt: #161b13;
 
   --rb-ink: #e8ede5;
   --rb-ink-soft: #a9b6a5;
@@ -241,6 +252,9 @@
   --rb-amber-strong: #e4c583;
   --rb-amber-tint: #3a3220;
 
+  --rb-danger: #f0a29b;
+  --rb-danger-tint: #3a2220;
+
   --rb-meter: #6f9ce0;
 }
 
@@ -258,7 +272,7 @@ body {
   margin: 0;
   background: var(--rb-bg);
   color: var(--rb-ink);
-  font-family: 'A2z', 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+  font-family: 'Google Sans', 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -298,6 +312,10 @@ a {
 .rb-audience-card:hover {
   /* 카드의 인라인 background(흰색)보다 우선해야 해서 !important */
   background: var(--rb-primary-deep-tint) !important;
+  /* 마우스를 올리면 카드가 살짝 떠오르는 그림자 */
+  box-shadow:
+    0 2px 6px rgba(35, 40, 38, 0.06),
+    0 18px 36px -12px rgba(35, 40, 38, 0.7) !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .rb-audience-card {
@@ -336,6 +354,50 @@ a {
   }
 }
 
+/* ── 화면 전환(navTransition.ts) — View Transitions를 지원하면 그쪽이 맡고, 위 페이드인은 끈다(효과가 겹치지 않게) ── */
+@supports (view-transition-name: none) {
+  .rb-page-enter {
+    animation: none;
+  }
+}
+/* 기본: 크로스페이드 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: ease;
+}
+/* 훈련 단계 사이: 앞으로 가면 새 화면이 오른쪽에서, 뒤로 가면 왼쪽에서(살짝만 — 40px) */
+:root[data-nav='forward']::view-transition-old(root) { animation: rbSlideOutLeft 300ms ease both; }
+:root[data-nav='forward']::view-transition-new(root) { animation: rbSlideInRight 300ms ease both; }
+:root[data-nav='back']::view-transition-old(root) { animation: rbSlideOutRight 300ms ease both; }
+:root[data-nav='back']::view-transition-new(root) { animation: rbSlideInLeft 300ms ease both; }
+@keyframes rbSlideOutLeft { to { opacity: 0; transform: translateX(-40px); } }
+@keyframes rbSlideInRight { from { opacity: 0; transform: translateX(40px); } }
+@keyframes rbSlideOutRight { to { opacity: 0; transform: translateX(40px); } }
+@keyframes rbSlideInLeft { from { opacity: 0; transform: translateX(-40px); } }
+/* 화면이 바뀌어도 그대로 있는 것들은 따로 떼어 둔다 — 단계 머리줄·다크 모드 버튼·진행 막대가 같이 미끄러지지 않게 */
+.rb-stagebar { view-transition-name: rb-stagebar; }
+.rb-topbar { view-transition-name: rb-topbar; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* ── 맨 위 진행 막대(TopProgress.tsx) ── */
+.rb-topbar {
+  position: fixed; top: 0; left: 0; z-index: 1000; height: 3px; width: 0;
+  background: var(--rb-primary); box-shadow: 0 0 8px var(--rb-primary); border-radius: 0 2px 2px 0;
+  pointer-events: none; opacity: 1;
+}
+.rb-topbar[data-state='run'] { width: 85%; transition: width 1.4s cubic-bezier(0.1, 0.6, 0.3, 1); }
+.rb-topbar[data-state='done'] { width: 100%; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease 0.15s; }
+@media (prefers-reduced-motion: reduce) {
+  .rb-topbar[data-state='run'], .rb-topbar[data-state='done'] { transition: none; }
+}
+
 /* ── 로고 워드마크(RebornWordmark) 라이트/다크 이미지 전환 — data-theme
    속성 기준(React state를 안 거쳐서 테마 전환 시 리렌더 없이 즉시 바뀜).
    기본은 라이트 버전만 보이고, 다크 테마일 때만 서로 바뀐다. */
@@ -353,22 +415,33 @@ a {
 }
 
 /* ── logo entry animation: 로고 이미지 전체가 살짝 아래·작게 시작해서 페이드인 ── */
-@keyframes rbLogoIn {
-  0% {
-    transform: translateY(6px) scale(0.92);
-    opacity: 0;
+/* 메인 로고: 펜으로 R부터 n·리본까지 써 내려가듯 왼쪽에서 오른쪽으로 드러난다(2026-11, 예전엔 작게 커지며 '뿅').
+   로고가 그림(PNG)이라 획 순서대로 그리지는 못하고, 끝이 부드러운 가림막을 왼쪽→오른쪽으로 걷는다.
+   필기체가 대체로 왼쪽→오른쪽으로 이어져 써서 쓰는 느낌이 난다. 가림막은 로고 폭의 2.2배, 부드러운 끝은 폭의 약 9% */
+@keyframes rbLogoWrite {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
   }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+  to {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
   }
 }
-.rb-logo-anim {
-  animation: rbLogoIn 560ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
+.rb-logo-anim img {
+  -webkit-mask-image: linear-gradient(90deg, #000 48%, transparent 52%);
+  mask-image: linear-gradient(90deg, #000 48%, transparent 52%);
+  -webkit-mask-size: 220% 100%;
+  mask-size: 220% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: rbLogoWrite 1.8s cubic-bezier(0.45, 0.05, 0.35, 1) 0.15s both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .rb-logo-anim {
+  .rb-logo-anim img {
     animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }
 
@@ -508,6 +581,10 @@ a {
     transform: translateY(0) scaleY(1);
   }
 }
+/* 3단계 결과 '다음 한 걸음' 카드 — 마우스를 올리면 살짝 진해진다 */
+.rb-step-card__box { transition: background-color 0.15s ease, border-color 0.15s ease; }
+.rb-step-card__box:hover { background-color: var(--rb-surface-tint) !important; border-color: var(--rb-line-strong) !important; }
+.rb-step-card__box:hover[style*='--rb-primary'] { border-color: var(--rb-primary) !important; }
 .rb-step-card {
   transform-origin: top center;
   animation: rbStepUnfold 480ms cubic-bezier(0.2, 0.85, 0.3, 1) both;
@@ -685,7 +762,11 @@ a {
   grid-template-areas: 'logo steps exit';
   align-items: center;
   gap: 12px;
-  padding: 14px 40px;
+  /* 높이·여백·로고 크기를 다른 화면 머리줄(.rb-siteheader: 80px, 좌우 40px, 로고 36)과 같게 — 단계 화면만 낮아(약 66px)
+     메인·마이페이지와 오갈 때 흰 머리줄 높이가 달라 보였다 */
+  box-sizing: border-box;
+  min-height: 80px;
+  padding: 0 40px;
 }
 .rb-stagebar__logo { grid-area: logo; justify-self: start; display: inline-flex; }
 .rb-stagebar__nav { grid-area: steps; }
@@ -716,6 +797,7 @@ a {
   .rb-stagebar {
     grid-template-columns: 1fr auto;
     grid-template-areas: 'logo exit' 'steps steps';
+    min-height: 0;
     padding: 10px 16px 12px;
     gap: 8px;
   }
@@ -758,7 +840,6 @@ a {
 }
 .rb-haru-talk__haru > [role='img'] { max-width: 190px; }
 .rb-haru-talk__who { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.rb-haru-talk__hint { margin-top: 14px; font-size: 14px; line-height: 1.6; color: var(--rb-ink-soft); max-width: 9em; }
 .rb-haru-talk__chat { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .rb-haru-talk__log {
   flex: 1;
@@ -766,7 +847,7 @@ a {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px; /* 같은 사람이 이어 보낸 말풍선은 붙여서, 사람이 바뀌면 .rb-chat__row--first가 간격을 더 준다 */
+  gap: 6px;
   padding: 36px 40px;
 }
 .rb-haru-talk__bar {
@@ -840,14 +921,64 @@ a {
   .rb-haru-talk__haru > [role='img'] { max-width: 64px; flex: 0 0 64px; }
   .rb-haru-talk__who { align-items: flex-start; }
   .rb-haru-talk__who strong { font-size: 17px !important; }
-  .rb-haru-talk__hint { margin-top: 2px; max-width: none; font-size: 12px; }
   .rb-haru-talk__chat { border-radius: 18px; }
   .rb-haru-talk__log { padding: 18px 16px; }
   .rb-haru-talk__bar { padding: 14px 16px; gap: 12px; }
   .rb-haru-talk__aside { margin-left: 0; width: 100%; justify-content: space-between; }
 }
-
-
+/* 메인 "무료로 시작하기" — 마우스를 올리면 박스가 진해지고 바깥 화살표가 오른쪽으로 */
+.rb-start-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  border-radius: 18px;
+}
+.rb-start-cta__box {
+  background: var(--rb-primary-tint);
+  color: var(--rb-primary-strong);
+  padding: 10px 18px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.rb-start-cta__arrow {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--rb-primary);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--rb-primary) 35%, transparent);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.rb-start-cta:hover .rb-start-cta__box,
+.rb-start-cta:focus-visible .rb-start-cta__box {
+  background: var(--rb-primary);
+  color: #fff;
+}
+.rb-start-cta:hover .rb-start-cta__arrow,
+.rb-start-cta:focus-visible .rb-start-cta__arrow {
+  transform: translateX(6px);
+  background: var(--rb-primary-strong);
+}
+.rb-start-cta:focus-visible {
+  outline: 3px solid var(--rb-primary);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-start-cta__box,
+  .rb-start-cta__arrow {
+    transition: none;
+  }
+  .rb-start-cta:hover .rb-start-cta__arrow {
+    transform: none;
+  }
+}
 /* 대화 말풍선 — 카카오톡처럼: 하루는 왼쪽 프로필 사진·이름 + 꼬리 달린 말풍선, 내 대답은 오른쪽. 시간은 없음 */
 .rb-chat__row { display: flex; align-items: flex-start; gap: 10px; }
 .rb-chat__row--first { margin-top: 10px; }
@@ -896,3 +1027,561 @@ a {
   .rb-chat__avatar { border-radius: 13px; }
   .rb-chat__bubble { font-size: 15px; padding: 10px 14px; }
 }
+
+/* 2단계 하루 영상 통화(HaruCallView) — 경량 웹 대기실(하루·나 두 칸) → 캘리브레이션(한 칸, 가운데 내 얼굴 5초) → 통화(같은 자리에 하루).
+   같은 <video>를 계속 쓰려고 DOM은 그대로 두고 data-mode로 배치만 바꾼다. */
+.rb-call__title {
+  margin: 0;
+  font-family: var(--rb-font-display);
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--rb-ink);
+}
+.rb-call { position: relative; width: 100%; margin: 0 auto; }
+.rb-call__haru,
+.rb-call__me { position: relative; overflow: hidden; border-radius: 24px; }
+.rb-call__me { background: #2a2e33; }
+.rb-call__me video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; transition: opacity 0.3s; }
+/* 대기실: 두 칸 나란히 */
+.rb-call[data-mode='prep'] { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.rb-call[data-mode='prep'] .rb-call__haru,
+.rb-call[data-mode='prep'] .rb-call__me { aspect-ratio: 16/9; }
+/* 캘리브레이션·통화: 한 칸(정중앙) — 하루와 내 화면을 같은 자리에 겹친다 */
+.rb-call[data-mode='ring'],
+.rb-call[data-mode='calib'],
+.rb-call[data-mode='call'] {
+  /* 크게, 단 아래 조작 버튼까지 한 화면에 들어오게 화면 높이에 맞춰 줄어든다 */
+  max-width: min(1160px, calc((100dvh - 330px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  margin-top: 8px;
+}
+.rb-call[data-mode='ring'] .rb-call__haru,
+.rb-call[data-mode='calib'] .rb-call__haru,
+.rb-call[data-mode='call'] .rb-call__haru { position: absolute; inset: 0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08); }
+/* 하루 그림: 넓은 칸에서 머리가 잘리지 않게 높이에 맞춰 아래 정렬(빈 곳은 그림 배경색) */
+.rb-call__haru > [role='img'] {
+  background-size: auto 94% !important;
+  background-position: center bottom !important;
+  background-color: #e3defc !important; /* 하루 그림 자체의 배경색과 같게 — 다르면 그림 둘레에 네모가 보임 */
+  transition: filter 0.7s ease, transform 0.7s ease;
+}
+/* 하루가 말할 때의 영상(HaruTalkVideo) — 정지 그림과 똑같이 높이 94%·아래 가운데(영상도 3:4) */
+.rb-call__talk {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  height: 94%; aspect-ratio: 3 / 4; width: auto; object-fit: cover;
+  pointer-events: none; transition: opacity 0.2s ease;
+  /* 브라우저마다 영상 색이 조금씩 달라(색 변환 차이) 통화 칸 배경과 네모 경계가 생기지 않게 좌우·위 가장자리를 녹인다 */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 6%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 6%);
+  mask-composite: intersect;
+}
+/* 통화 칸 테두리: 얇은 초록 */
+.rb-call[data-mode='ring'] .rb-call__haru,
+.rb-call[data-mode='calib'] .rb-call__haru,
+.rb-call[data-mode='call'] .rb-call__haru { border: 2px solid var(--rb-primary); }
+.rb-call[data-mode='ring'] .rb-call__haru > [role='img'] { filter: blur(14px) brightness(0.7); transform: scale(1.08); }
+/* 전화 오는 화면·연결 중·통화: 내 화면은 숨김(카메라는 계속 켜져 있어 분석은 됨), 통화 연결 직후 2초만 오른쪽 위에 작게 */
+.rb-call[data-mode='ring'] .rb-call__me,
+.rb-call[data-mode='calib'] .rb-call__me,
+.rb-call[data-mode='call'] .rb-call__me {
+  position: absolute; right: 16px; top: 16px; width: 24%; aspect-ratio: 4 / 3; z-index: 2;
+  border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 0.6s;
+}
+.rb-call[data-mode='call'] .rb-call__me[data-pip] { opacity: 1; }
+/* 통화 조작 줄 — 대답 버튼 + 빨간 전화 끊기 */
+.rb-call__controls {
+  display: flex; align-items: center; gap: 14px; padding: 8px;
+  background: var(--rb-surface); border: 1px solid var(--rb-line); border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+.rb-call__action {
+  min-width: 240px; height: 56px; padding: 0 28px; border: none; border-radius: 999px; cursor: pointer;
+  background: var(--rb-primary-strong); color: #fff; font: inherit; font-size: 17px; font-weight: 700;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.rb-call__action:hover:not(:disabled) { background: var(--rb-primary-deep); }
+.rb-call__action[data-kind='finish'] { background: #1c1f22; }
+.rb-call__action:disabled { opacity: 0.45; cursor: not-allowed; }
+.rb-call__hangup {
+  width: 56px; height: 56px; flex: 0 0 56px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center; background: #e5484d; color: #fff; transition: transform 0.15s ease, filter 0.15s ease;
+}
+.rb-call__hangup:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.05); }
+/* 통화를 끝낸 뒤 — 눌린 채 흐리게 남겨 두고, 옆에 "3단계 시작하기" */
+.rb-call__hangup:disabled { opacity: 0.4; cursor: default; }
+.rb-call__action:focus-visible, .rb-call__hangup:focus-visible { outline: 3px solid var(--rb-primary); outline-offset: 3px; }
+/* 하루에게서 영상 통화가 오는 화면 — 휴대폰 전화 수신 화면처럼 */
+.rb-ring {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 7% 16px 5%; color: #fff; text-align: center;
+}
+.rb-ring__who { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rb-ring__sub { font-size: 16px; opacity: 0.85; letter-spacing: 0.02em; }
+.rb-ring__name { font-family: var(--rb-font-display); font-size: clamp(40px, 6vw, 64px); font-weight: 700; color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.25); }
+/* 이름 아래 도형 — 마름모 세 개가 차례로 밝아졌다 흐려진다(전화가 오고 있다는 표시) */
+.rb-ring__shapes { display: flex; gap: 14px; margin-top: 10px; height: 26px; align-items: center; }
+.rb-ring__shapes i {
+  width: 18px; height: 18px; border-radius: 4px; transform: rotate(45deg);
+  background: rgba(255, 255, 255, 0.9); opacity: 0.25; animation: rbRingShape 1.5s ease-in-out infinite;
+}
+.rb-ring__shapes i:nth-child(2) { animation-delay: 0.25s; }
+.rb-ring__shapes i:nth-child(3) { animation-delay: 0.5s; }
+@keyframes rbRingShape {
+  0%, 100% { opacity: 0.25; transform: rotate(45deg) scale(0.8); }
+  40% { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+.rb-ring__actions { display: flex; gap: min(30vw, 260px); }
+.rb-ring__btn {
+  width: 76px; height: 76px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center; color: #fff; transition: transform 0.15s ease, filter 0.15s ease;
+}
+.rb-ring__btn:hover { transform: scale(1.06); filter: brightness(1.05); }
+.rb-ring__btn:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.rb-ring__btn[data-kind='decline'] { background: #e5484d; }
+.rb-ring__btn[data-kind='accept'] { background: #30c25f; animation: rbRingAccept 1.6s ease-out infinite; }
+@keyframes rbRingAccept {
+  0% { box-shadow: 0 0 0 0 rgba(48, 194, 95, 0.55); }
+  100% { box-shadow: 0 0 0 22px rgba(48, 194, 95, 0); }
+}
+.rb-ring__labels { display: flex; gap: min(30vw, 260px); margin-top: -4%; font-size: 15px; }
+.rb-ring__labels span { width: 76px; }
+@media (prefers-reduced-motion: reduce) {
+  .rb-ring__shapes i, .rb-ring__btn[data-kind='accept'] { animation: none; opacity: 0.8; }
+  .rb-call__haru > [role='img'] { transition: none; }
+}
+.rb-call__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #34d27b; margin-right: 6px; vertical-align: 1px; }
+.rb-call__dot[data-off] { background: #f2b544; }
+.rb-call__qtag {
+  position: absolute; right: 16px; top: 16px; background: rgba(255, 255, 255, 0.92); color: #232826;
+  font-size: 14px; font-weight: 600; border-radius: 10px; padding: 6px 12px;
+}
+.rb-call__note { position: absolute; right: 16px; bottom: 16px; color: rgba(255, 255, 255, 0.75); font-size: 13px; }
+.rb-call__center {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center;
+  color: rgba(255, 255, 255, 0.85); font-size: 16px;
+}
+.rb-call__calib {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(420px, 86%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  background: rgba(21, 24, 28, 0.72); color: #fff; border-radius: 14px; padding: 14px 18px; overflow: hidden;
+}
+.rb-call__calib:empty { display: none; }
+/* 캘리브레이션 전 안내(응답 직후) — 읽을 시간을 따로 준다 */
+.rb-call__guide {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; width: min(420px, 88%);
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+  background: rgba(21, 24, 28, 0.82); color: #fff; border-radius: 16px; padding: 20px 22px;
+}
+.rb-call__guide b { font-size: 18px; text-align: center; }
+.rb-call__guide { word-break: keep-all; }
+.rb-call__guide ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; }
+.rb-call__guide li { padding-left: 18px; position: relative; }
+.rb-call__guide li i { position: absolute; left: 0; top: 0.5em; width: 10px; height: 10px; border-radius: 50%; background: #34d27b; }
+.rb-call__guide em { font-style: normal; color: #7ee2a8; font-weight: 700; }
+.rb-call__guide > span { font-size: 13px; opacity: 0.8; text-align: center; }
+.rb-call__guide button {
+  margin-top: 4px; align-self: center; border: 0; border-radius: 999px; padding: 10px 26px;
+  background: #34d27b; color: #10301e; font-weight: 700; font-size: 15px; cursor: pointer;
+}
+/* 캘리브레이션 중 볼 곳 — 하루의 눈(38%)에서 어깨 쪽(65%)으로 부드럽게 내려간다 */
+.rb-calib-dot {
+  position: absolute; left: 50%; z-index: 3; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+  background: #34d27b; box-shadow: 0 0 0 4px rgba(52, 210, 123, 0.35); transition: top 0.45s ease;
+  animation: rb-calib-pulse 1s ease-in-out infinite;
+}
+@keyframes rb-calib-pulse { 50% { box-shadow: 0 0 0 9px rgba(52, 210, 123, 0.15); } }
+@media (prefers-reduced-motion: reduce) { .rb-calib-dot { animation: none; transition: none; } }
+.rb-call__calib b { font-size: 17px; }
+.rb-call__calib span { font-size: 13px; opacity: 0.85; }
+.rb-call__calib i { position: absolute; left: 0; bottom: 0; height: 3px; background: #34d27b; transition: width 0.2s linear; }
+.rb-call__notice {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;
+  background: rgba(21, 24, 28, 0.72); color: #fff; border-radius: 12px; padding: 10px 16px;
+  font-size: 14px; font-weight: 600; text-align: center; line-height: 1.5; max-width: 80%;
+}
+@media (max-width: 760px) {
+  .rb-call[data-mode='prep'] { grid-template-columns: 1fr; gap: 14px; }
+  .rb-call[data-mode='ring'],
+  .rb-call[data-mode='calib'],
+  .rb-call[data-mode='call'] { aspect-ratio: 4 / 5; }
+  .rb-ring__actions, .rb-ring__labels { gap: 120px; }
+  .rb-call__haru, .rb-call__me { border-radius: 18px; }
+}
+/* 1단계를 마친 뒤 하단 바의 체크 표시 — 누르는 버튼이 아님 */
+.rb-haru-talk__mic[data-done] { cursor: default; }
+/* "하루가 이렇게 이해했어요" 카드(HaruProfileView) — 경량 웹 Profile 화면처럼 왼쪽 항목 이름 · 오른쪽 내용 한 줄씩 */
+.rb-profile__title {
+  margin: 0; font-family: var(--rb-font-display); font-size: clamp(26px, 4vw, 34px); font-weight: 700;
+  letter-spacing: -0.02em; color: var(--rb-ink);
+}
+.rb-profile__title span { color: var(--rb-primary); }
+.rb-profile { margin: 0; border-top: 1.5px solid var(--rb-ink); }
+.rb-profile__row {
+  display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--rb-line); min-height: 60px;
+}
+.rb-profile__row dt { font-size: 14px; color: var(--rb-ink-soft); }
+.rb-profile__row dd { margin: 0; }
+.rb-profile__value {
+  width: 100%; border: 1px solid transparent; border-radius: 8px; background: transparent;
+  padding: 8px 10px; margin-left: -10px; font: inherit; font-size: 16px; color: var(--rb-ink);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  /* 긴 대답도 다 보이게 글 길이만큼 커짐(지원 안 하는 브라우저는 드래그로 키움) */
+  display: block; resize: vertical; field-sizing: content;
+}
+.rb-profile__value:hover { background: var(--rb-surface-tint); }
+.rb-profile__value:focus { outline: none; border-color: var(--rb-primary); background: var(--rb-surface); }
+.rb-profile__value::placeholder { color: var(--rb-ink-faint); }
+.rb-profile__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+@media (max-width: 560px) {
+  .rb-profile__row { grid-template-columns: 1fr; gap: 0; padding: 10px 0; }
+}
+/* 3단계 시작 화면(Stage3PrepView) — 경량 웹 Prep3 */
+/* E. 오늘의 면접 안내 — 안내문 한 장 */
+.rb-prep3__notice { margin-top: 28px; border: 1px solid var(--rb-line-strong); border-radius: 18px; overflow: hidden; }
+.rb-prep3__notice header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px;
+  background: var(--rb-surface-tint); border-bottom: 1px dashed var(--rb-line-strong);
+}
+.rb-prep3__notice h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--rb-ink); }
+.rb-prep3__notice h1 em { font-style: normal; color: var(--rb-primary); }
+.rb-prep3__notice dl { margin: 0; padding: 6px 24px; }
+.rb-prep3__notice dl > div { display: grid; grid-template-columns: 88px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rb-line); }
+.rb-prep3__notice dl > div:last-child { border-bottom: none; }
+.rb-prep3__notice dt { font-size: 14px; font-weight: 700; color: var(--rb-ink-soft); }
+.rb-prep3__notice dd { margin: 0; font-size: 15px; line-height: 1.6; color: var(--rb-ink); word-break: keep-all; }
+.rb-prep3__ready { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.rb-prep3__status { display: inline-flex; align-items: center; gap: 7px; color: var(--rb-ink-soft); }
+.rb-prep3__status b { color: var(--rb-ink); font-weight: 700; }
+.rb-prep3__status i { width: 9px; height: 9px; border-radius: 50%; background: var(--rb-line-strong); }
+.rb-prep3__status[data-state='ok'] i { background: var(--rb-primary); box-shadow: 0 0 0 3px var(--rb-primary-tint); }
+.rb-prep3__status[data-state='fail'] i { background: #e5a23b; }
+.rb-prep3__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.rb-prep3__link { border: none; background: none; padding: 4px 0; cursor: pointer; font: inherit; font-size: 14px; color: var(--rb-ink-soft); }
+.rb-prep3__start {
+  border: none; border-radius: 14px; padding: 16px 28px; cursor: pointer; font: inherit; font-size: 17px; font-weight: 700;
+  background: #1c1f22; color: #fff; transition: background-color 0.15s ease;
+}
+.rb-prep3__start:hover:not(:disabled) { background: #000; }
+.rb-prep3__start:disabled { background: var(--rb-surface-tint); color: var(--rb-ink-soft); box-shadow: inset 0 0 0 1px var(--rb-line-strong); cursor: not-allowed; }
+/* 다크 모드에서 검은 버튼이 어두운 카드에 묻히지 않게 초록으로 */
+:root[data-theme='dark'] .rb-prep3__start:not(:disabled) { background: var(--rb-primary); color: #10301e; }
+:root[data-theme='dark'] .rb-prep3__start:hover:not(:disabled) { background: var(--rb-primary-strong); }
+.rb-prep3__link:focus-visible, .rb-prep3__start:focus-visible, .rb-wait__go:focus-visible, .rb-wait__privacy summary:focus-visible {
+  outline: 2px solid var(--rb-primary); outline-offset: 3px; border-radius: 10px;
+}
+@media (max-width: 560px) {
+  .rb-prep3__notice dl > div { grid-template-columns: 1fr; gap: 4px; }
+  .rb-prep3__start { width: 100%; }
+}
+/* 3단계 면접 대기실(Stage3PrepView) — 왼쪽 하루(표정 맞추기), 오른쪽 접수증 카드 */
+.rb-wait { width: 100%; max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 28px; }
+/* 왼쪽 하루 칸은 오른쪽 카드와 위아래 끝을 맞춘다. 하루 그림은 아래가 배경색으로 사라지게 그려져 있어서
+   자르지 않고 칸 바닥에 세운다(잘린 증명사진처럼 보이지 않게). 머리 위 빈 곳에 하루 말풍선 */
+.rb-wait__left { position: relative; min-height: 440px; border-radius: 22px; overflow: hidden; background: #e3defc; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08); }
+.rb-wait__say {
+  position: absolute; z-index: 1; left: 18px; right: 18px; top: 18px; background: #fff; color: #232826; border-radius: 16px;
+  padding: 14px 18px; font-size: 16px; line-height: 1.55; box-shadow: 0 6px 18px rgba(60, 40, 120, 0.1); word-break: keep-all;
+}
+.rb-wait__say p { margin: 0; }
+/* 표정 맞추기 중 하루의 지시 — 따라 할 말이라 굵게 */
+.rb-wait__say:has(.rb-wait__steps) p { font-size: 17px; font-weight: 700; }
+.rb-wait__say::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; transform: translateX(-50%) rotate(45deg); background: #fff; }
+.rb-wait__say small { display: block; font-size: 12px; font-weight: 700; color: #3b6b4c; margin-bottom: 2px; }
+/* 표정 맞추기 3단계 — 지금 단계는 진하게, 지난 단계는 체크 */
+.rb-wait__steps { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: #68706b; }
+.rb-wait__steps ol { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.rb-wait__steps li { counter-increment: step; padding: 3px 9px; border-radius: 999px; background: #f1f5ef; white-space: nowrap; }
+.rb-wait__steps li::before { content: counter(step) ' '; font-weight: 700; }
+.rb-wait__steps li[data-on] { background: #3b6b4c; color: #fff; font-weight: 700; }
+.rb-wait__steps li[data-done] { color: #3b6b4c; font-weight: 700; }
+.rb-wait__steps li[data-done]::before { content: '✓ '; }
+/* 이번 표정 막대 — 준비는 회색, 재는 동안과 확인은 초록 */
+.rb-wait__bar { display: block; height: 4px; margin-top: 10px; border-radius: 4px; background: #eef0f2; overflow: hidden; }
+.rb-wait__bar i { display: block; height: 100%; border-radius: 4px; background: #34d27b; transition: width 0.15s linear; }
+.rb-wait__bar[data-part='lead'] i { background: #c9d3c5; }
+/* 재는 동안 하루 칸 테두리가 초록으로 — "지금이에요" 신호 */
+.rb-wait__left::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 4px #34d27b; opacity: 0; transition: opacity 0.25s ease-out; pointer-events: none; z-index: 2; }
+.rb-wait__left[data-measure]::after { opacity: 1; }
+.rb-wait__haru { position: absolute; inset: 0; }
+/* 그림 높이 = 칸의 76%, 바닥에 붙임. 그림 맨 아래 연회색이 칸 색과 이어지게 끝만 살짝 흐리게 */
+.rb-wait__haru-img {
+  position: absolute; left: 50%; bottom: 0; height: 76%; aspect-ratio: 3 / 4; transform: translateX(-50%);
+  background: url('/haru/haru.jpg') center / cover no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, #000 76%, transparent 97%); mask-image: linear-gradient(to bottom, #000 76%, transparent 97%);
+}
+.rb-wait__go {
+  position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); border: 0; border-radius: 999px; padding: 13px 26px;
+  background: #3b6b4c; color: #fff; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(44, 84, 59, 0.25); transition: background-color 0.15s ease;
+}
+.rb-wait__go:hover:not(:disabled) { background: #2c543b; }
+.rb-wait__go:disabled { background: rgba(255, 255, 255, 0.9); color: #68706b; box-shadow: none; cursor: default; }
+/* 다크 모드: 하루 칸은 그림 배경이 밝은 라벤더라 밝은 창처럼 두되, 눈부시지 않게 조금 낮춘다 */
+:root[data-theme='dark'] .rb-wait__left { filter: brightness(0.86); }
+.rb-wait__ticket { margin-top: 0; display: flex; flex-direction: column; background: var(--rb-surface); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05); }
+.rb-wait__stamp {
+  display: flex; flex-direction: column; align-items: center; flex: none; border: 2px solid var(--rb-primary); color: var(--rb-primary-strong);
+  font-weight: 800; font-size: 14px; line-height: 1.2; padding: 6px 10px; border-radius: 8px; transform: rotate(-4deg); white-space: nowrap;
+}
+.rb-wait__stamp small { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+/* 접수증 뜯는 줄 — 머리 아래 점선 양 끝에 반원 홈 */
+.rb-wait__ticket > header { position: relative; overflow: visible; }
+.rb-wait__ticket > header::before, .rb-wait__ticket > header::after {
+  content: ''; position: absolute; bottom: -11px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--rb-bg); border: 1px solid var(--rb-line-strong);
+}
+.rb-wait__ticket > header::before { left: -11px; }
+.rb-wait__ticket > header::after { right: -11px; }
+.rb-wait__calm {
+  margin: 6px 24px 0; padding: 12px 14px; border-radius: 12px; background: var(--rb-primary-tint);
+  color: var(--rb-ink); font-size: 15px; line-height: 1.7; word-break: keep-all;
+}
+.rb-wait__calm > span { display: block; text-wrap: pretty; }
+.rb-wait__pill {
+  display: inline-block; margin: 0 2px; padding: 1px 10px; border-radius: 999px; background: #fff; color: #4a5059;
+  border: 1px solid #e6e8eb; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.rb-wait__go-wrap { display: inline-flex; align-items: center; gap: 12px; }
+.rb-wait__hint { font-size: 13px; color: var(--rb-ink-soft); }
+.rb-wait__check { display: flex; align-items: center; gap: 16px; }
+.rb-wait__check .rb-prep3__ready { flex-direction: column; gap: 6px; }
+/* 내 얼굴은 잡히는지 볼 만큼만 작게, 거울처럼 */
+.rb-wait__self {
+  flex: none; width: 112px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; background: #2a2f34;
+  transform: scaleX(-1); outline: 2px solid transparent; outline-offset: 2px; transition: outline-color 0.2s ease;
+}
+.rb-wait__self[data-face] { outline-color: #34d27b; }
+.rb-wait__ticket .rb-prep3__foot { padding: 0 24px 24px; margin-top: auto; }
+.rb-wait__privacy { margin: 14px 24px 0; font-size: 13px; color: var(--rb-ink-soft); }
+.rb-wait__privacy summary { cursor: pointer; display: flex; align-items: center; gap: 6px; min-height: 24px; list-style: none; }
+.rb-wait__privacy summary span { color: var(--rb-primary-strong); font-weight: 600; }
+.rb-wait__privacy p { margin: 6px 0 0; padding-left: 22px; line-height: 1.6; word-break: keep-all; }
+@media (max-width: 860px) { .rb-wait { grid-template-columns: 1fr; } .rb-wait__left { max-width: 400px; width: 100%; margin: 0 auto; aspect-ratio: 3 / 4; } }
+/* 3단계 호명(CallView) — 그림 없이 소리와 빛으로. 하루 배웅 → 노크 → "네, 들어오세요." → 문 여는 소리와 함께
+   가운데 빛줄기가 열리고, 면접실이 서서히 밝아진다(실사 복도 영상이 생기면 빛줄기 자리를 바꾼다) */
+html:has(.rb-call3) { background: #16191c; }
+html:has(.rb-call3) .rb-theme-toggle { display: none !important; }
+.rb-call3 {
+  position: relative; min-height: 100dvh; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(60% 60% at 50% 45%, #2a2e31, #16191c); color: #fff; padding: 72px 16px;
+}
+.rb-call3__quit { position: absolute; top: 20px; right: 28px; z-index: 3; font-size: 14px; }
+.rb-call3__text { position: relative; z-index: 2; text-align: center; transition: opacity 0.5s ease; }
+.rb-call3__text h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
+/* 문 너머 소리 자막 — 소리를 못 듣는 사람도 알게 */
+.rb-call3__cc { display: inline-block; margin-top: 14px; min-height: 1.6em; font-size: 16px; color: #c9d0d6; }
+.rb-call3__cc[data-voice] { padding: 6px 16px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: #e8edf0; }
+/* 문이 열리는 빛 — 가운데 세로 줄이 넓어진다 */
+.rb-call3__light {
+  position: absolute; top: 0; bottom: 0; left: 50%; width: 0; transform: translateX(-50%); z-index: 1;
+  background: linear-gradient(180deg, #fff3dc, #f2dcb4); box-shadow: 0 0 120px 40px rgba(255, 236, 200, 0.3); opacity: 0;
+  transition: width 1.1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out;
+}
+.rb-call3[data-beat='open'] .rb-call3__light { width: 44vw; opacity: 1; }
+/* 들어서면 빛이 사그라들고, 어두운 데서 면접실이 서서히 나타난다 */
+.rb-call3[data-beat='enter'] .rb-call3__light { width: 44vw; opacity: 0; transition: opacity 0.45s ease-in; }
+.rb-call3[data-beat='open'] .rb-call3__text, .rb-call3[data-beat='open'] .rb-call3__haru,
+.rb-call3[data-beat='enter'] .rb-call3__text, .rb-call3[data-beat='enter'] .rb-call3__haru { opacity: 0; }
+.rb-call3__haru { position: absolute; left: 40px; bottom: 40px; z-index: 2; display: flex; align-items: center; gap: 14px; transition: opacity 0.5s ease; }
+.rb-call3__haru i { flex: none; width: 64px; height: 64px; border-radius: 50%; background: #e3defc url('/haru/haru.jpg') center 22% / 150% no-repeat; box-shadow: 0 0 0 3px #3b6b4c; }
+.rb-call3__haru p { margin: 0; max-width: 320px; background: #fff; color: #232826; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
+.rb-call3__haru small { display: block; font-size: 12px; font-weight: 700; color: #3b6b4c; }
+/* 면접실은 문 빛에서 이어지게 서서히 나타난다 */
+.rb-s3 { animation: rb-room-in 0.9s ease-out; }
+@keyframes rb-room-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rb-call3__light { transition: opacity 0.6s ease; }
+  .rb-call3[data-beat='open'] .rb-call3__light { width: 100vw; opacity: 0.35; }
+  .rb-call3[data-beat='enter'] .rb-call3__light { width: 100vw; opacity: 0; }
+}
+/* 3단계 면접 화면(QuestionView) — 경량 웹 Talk3: 글 없이 어두운 면접실 가운데 면접관 사진 + 흰 버튼 줄 */
+/* 3단계 면접실: 스크롤바 자리(html 배경)도 어둡게, 다크모드 버튼은 숨김 */
+html:has(.rb-s3) { background: #1d2126; }
+html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인라인 display:flex를 이기려고 !important */
+.rb-s3 {
+  position: relative; min-height: 100dvh; background: radial-gradient(60% 55% at 50% 45%, #4a4f52 0%, #2a2e31 55%, #16191c 100%); color: #cfd5db;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 72px 16px 40px;
+}
+.rb-s3__top {
+  position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 28px; font-size: 14px; color: #cfd5db;
+}
+.rb-s3__top b { color: #fff; font-weight: 700; }
+.rb-s3__progress, .rb-s3__progress > span { display: inline-flex; align-items: center; gap: 12px; }
+.rb-s3__progress > span { gap: 6px; }
+.rb-s3__progress i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+.rb-s3__progress i[data-on] { background: #fff; }
+.rb-s3__quit { border: none; background: none; padding: 0; cursor: pointer; font: inherit; color: #cfd5db; }
+/* 면접실 R5n — 창 테두리 없이 가장자리가 어둠으로 번져, 화면 속 사람이 아니라 책상 건너편에 앉은 거리로 보이게.
+   큰 화면은 너비 74%, 낮은 화면은 아래 버튼 줄이 밀리지 않게 높이에 맞춘다 */
+.rb-s3__win {
+  width: min(74vw, calc((100dvh - 250px) * 16 / 9)); aspect-ratio: 16 / 9;
+  background: #2a2e31 url('/interviewer/talking-poster.jpg') center / cover no-repeat;
+  position: relative; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14%, #000 86%, transparent 100%), linear-gradient(180deg, transparent 0, #000 10%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+  mask-image: linear-gradient(90deg, transparent 0, #000 14%, #000 86%, transparent 100%), linear-gradient(180deg, transparent 0, #000 10%, #000 84%, transparent 100%);
+}
+/* 첫인사 동안 시선 기준을 잴 때만 — 자리는 늘 차지해서 나타날 때 화면이 밀리지 않게 */
+.rb-s3__look { display: block; min-height: 43px; text-align: center; opacity: 0; transition: opacity 0.4s ease; }
+.rb-s3__look[data-on] { opacity: 1; }
+.rb-s3__look p { margin: 0; font-size: 20px; font-weight: 700; color: #f3f6f8; letter-spacing: -0.01em; }
+.rb-s3__look b { display: block; width: 200px; height: 3px; margin: 10px auto 0; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+.rb-s3__look i { display: block; height: 100%; width: 0; background: #34d27b; border-radius: 2px; }
+.rb-s3__look[data-on] i { animation: rbLookFill 5s linear forwards; }
+@keyframes rbLookFill { to { width: 100%; } }
+/* 시선 기준을 재는 동안 사진 가장자리만 어둡게 — 얼굴 쪽은 그대로 */
+.rb-s3__dim {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
+  background: radial-gradient(ellipse 34% 48% at 50% 36%, rgba(10, 12, 14, 0) 40%, rgba(10, 12, 14, 0.5) 100%);
+}
+.rb-s3__dim[data-on] { opacity: 1; }
+.rb-s3__talk { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.25s ease; }
+@media (prefers-reduced-motion: reduce) { .rb-s3__talk { display: none; } }
+.rb-s3__bar {
+  display: flex; align-items: center; gap: 20px; background: #fff; color: var(--rb-ink, #15181c);
+  border-radius: 999px; padding: 10px 12px 10px 24px; white-space: nowrap;
+}
+.rb-s3__bars { display: flex; gap: 4px; align-items: center; height: 24px; }
+.rb-s3__bars i { width: 4px; height: 100%; border-radius: 4px; background: #0e7c74; animation: rbWave 1.2s ease-in-out infinite; }
+.rb-s3__bars i:nth-child(1) { height: 30%; animation-delay: -0.2s; }
+.rb-s3__bars i:nth-child(2) { height: 70%; animation-delay: -0.5s; }
+.rb-s3__bars i:nth-child(3) { height: 100%; animation-delay: -0.1s; }
+.rb-s3__bars i:nth-child(4) { height: 60%; animation-delay: -0.7s; }
+.rb-s3__bars i:nth-child(5) { height: 35%; animation-delay: -0.4s; }
+.rb-s3__bars[data-still] i { animation: none; opacity: 0.35; }
+.rb-s3__st { font-size: 15px; font-weight: 600; min-width: 90px; color: #15181c; }
+.rb-s3__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer;
+  border-radius: 999px; padding: 10px 18px; font: inherit; font-size: 14px; font-weight: 600;
+  background: #0e7c74; color: #fff; transition: background-color 0.15s ease;
+}
+.rb-s3__btn[data-ghost] { background: #fff; color: #4a5059; border: 1px solid #e6e8eb; }
+.rb-s3__btn[data-dark] { background: #15181c; color: #fff; }
+.rb-s3__btn[data-dark]:hover:not(:disabled) { background: #000; }
+.rb-s3__btn:disabled { background: #e6e8eb; color: #5c626b; cursor: default; border-color: transparent; }
+.rb-s3__skip { border: none; background: none; cursor: pointer; font: inherit; font-size: 13px; color: #aab1b8; text-decoration: underline; text-underline-offset: 3px; }
+.rb-s3__end {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  width: min(62vw, 1000px); background: #fff; color: #15181c; border-radius: 18px; padding: 22px 26px;
+}
+.rb-s3__endl { display: flex; gap: 16px; align-items: center; }
+.rb-s3__endl b { display: block; font-size: 17px; }
+.rb-s3__endl span { font-size: 14px; color: #5c626b; }
+.rb-s3__ok { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #0e7c74; display: grid; place-items: center; }
+.rb-s3 .rb-s3__end .rb-s3__btn { padding: 14px 24px; font-size: 15px; border-radius: 12px; }
+@media (max-width: 760px) {
+  .rb-s3__win, .rb-s3__end { width: 100%; }
+  .rb-s3__bar { flex-wrap: wrap; justify-content: center; white-space: normal; border-radius: 20px; padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-s3__bars i { animation: none; }
+}
+.rb-s3__facecam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; top: 0; }
+/* ── 1단계 대화: 카톡에서 메시지가 오는 느낌(HaruChat) ── */
+/* 채팅방 위 이름 줄 */
+.rb-chat__head {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex: none;
+  padding: 14px 24px; border-bottom: 1px solid var(--rb-line); background: var(--rb-surface);
+}
+.rb-chat__head strong { font-size: 16px; color: var(--rb-ink); }
+/* 새 말풍선은 아래에서 살짝 올라오며 나타난다 */
+.rb-chat__row { animation: rbChatIn 0.28s ease-out both; }
+@keyframes rbChatIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+/* 말풍선 옆 시간·읽음 표시 — 하루 말풍선은 오른쪽 아래, 내 말풍선은 왼쪽 아래 */
+.rb-chat__line { display: flex; align-items: flex-end; gap: 6px; max-width: 100%; }
+.rb-chat__line .rb-chat__bubble { min-width: 0; }
+.rb-chat__row--me { align-items: flex-end; gap: 6px; }
+.rb-chat__meta { display: flex; flex-direction: column; align-items: flex-end; flex: none; line-height: 1.2; padding-bottom: 2px; }
+.rb-chat__line .rb-chat__meta { align-items: flex-start; }
+.rb-chat__time { font-size: 11px; color: var(--rb-ink-faint); white-space: nowrap; }
+.rb-chat__unread { font-size: 11px; font-weight: 700; color: #e0b400; }
+/* "입력 중" 점 세 개 */
+.rb-chat__typing { display: inline-flex; align-items: center; gap: 4px; height: 1.6em; }
+.rb-chat__typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--rb-ink-faint); animation: rbTyping 1.1s ease-in-out infinite; }
+.rb-chat__typing i:nth-child(2) { animation-delay: 0.15s; }
+.rb-chat__typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes rbTyping {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-chat__row, .rb-chat__typing i { animation: none; }
+}
+@media (max-width: 760px) {
+  .rb-chat__head { padding: 12px 16px; }
+}
+/* 화면에는 안 보이고 화면 읽기 프로그램만 읽는 글 */
+.rb-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* 2단계 대기실 "하루와 통화하기" — 동그란 초록 전화 버튼 + 아래 작은 글씨(통화 화면 빨간 끊기 버튼과 짝) */
+.rb-call__dial {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  border: none; background: none; padding: 4px; cursor: pointer; font: inherit;
+}
+.rb-call__dial-btn {
+  width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center;
+  background: #30c25f; color: #fff; box-shadow: 0 8px 24px rgba(48, 194, 95, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.rb-call__dial:hover:not(:disabled) .rb-call__dial-btn { transform: scale(1.06); box-shadow: 0 10px 28px rgba(48, 194, 95, 0.45); }
+.rb-call__dial:focus-visible { outline: none; }
+.rb-call__dial:focus-visible .rb-call__dial-btn { outline: 3px solid var(--rb-primary); outline-offset: 4px; }
+.rb-call__dial-label { font-size: 15px; font-weight: 600; color: var(--rb-ink); }
+.rb-call__dial:disabled { cursor: not-allowed; }
+.rb-call__dial:disabled .rb-call__dial-btn { background: var(--rb-line-strong); box-shadow: none; }
+.rb-call__dial:disabled .rb-call__dial-label { color: var(--rb-ink-faint); }
+@media (prefers-reduced-motion: reduce) {
+  .rb-call__dial-btn { transition: none; }
+}
+/* 2단계 정확도 기록(?debug=1) 안내 — 화면 왼쪽 아래에 작게, 통화 화면 위에 떠 있게 */
+.rb-debugrec {
+  position: fixed; left: 12px; bottom: 12px; z-index: 50; max-width: 320px;
+  background: rgba(21, 24, 28, 0.85); color: #fff; font-size: 12px; line-height: 1.5;
+  border-radius: 10px; padding: 10px 12px;
+}
+.rb-debugrec button {
+  display: block; margin-top: 6px; border: 1px solid rgba(255, 255, 255, 0.5); background: none; color: #fff;
+  border-radius: 6px; padding: 3px 8px; font: inherit; cursor: pointer;
+}
+
+/* 마이페이지 '연습 발자국' (Dashboard.tsx, streak.ts) */
+.rb-plant {
+  flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 30px;
+  background: var(--rb-primary-tint); animation: rbPlantSway 3.2s ease-in-out infinite alternate; transform-origin: 50% 90%;
+}
+@keyframes rbPlantSway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+.rb-week { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.rb-week li { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--rb-ink-faint); }
+.rb-week li i {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 14px;
+  background: var(--rb-bg); border: 1px dashed var(--rb-line-strong);
+}
+.rb-week li[data-visited] i { background: var(--rb-primary-tint); border: 1px solid var(--rb-primary); }
+.rb-week li[data-today] span { color: var(--rb-primary-strong); font-weight: 700; }
+.rb-week li[data-today] i { box-shadow: 0 0 0 2px var(--rb-surface), 0 0 0 4px var(--rb-primary); }
+@media (prefers-reduced-motion: reduce) { .rb-plant { animation: none; } }
+
+/* 맨 위 머리줄(SiteHeader) — 모든 화면 같은 높이·여백·로고 자리 */
+html { scrollbar-gutter: stable; background: var(--rb-bg); } /* 긴 화면↔짧은 화면을 오갈 때 스크롤바가 생기고 사라지며 가로가 밀리지 않게 */
+.rb-siteheader {
+  position: relative; z-index: 5; box-sizing: border-box; height: 80px; padding: 0 40px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--rb-surface);
+}
+.rb-siteheader[data-bordered] { border-bottom: 1px solid var(--rb-line); }
+.rb-siteheader__left, .rb-siteheader__right { display: flex; align-items: center; }
+.rb-siteheader__left { gap: 14px; }
+.rb-siteheader__left > a { display: flex; }
+.rb-siteheader__right { gap: 32px; }
+@media (max-width: 760px) { .rb-siteheader { padding: 0 16px; height: 64px; } }
+
+/* 공용 버튼(ui/Button) hover — 진한 초록으로 바뀌지 않고, 커서가 올라갔다는 걸 알아챌 정도로만(라이트는 4% 어둡게, 다크는 12% 밝게) */
+.rb-btn:hover:not(:disabled) { filter: brightness(0.96); }
+:root[data-theme='dark'] .rb-btn:hover:not(:disabled) { filter: brightness(1.12); }

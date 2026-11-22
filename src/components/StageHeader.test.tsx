@@ -19,7 +19,7 @@ describe('StageHeader — 경량 웹 단계 표시 상단바', () => {
     renderAt(2);
     const steps = within(screen.getByRole('navigation', { name: '훈련 단계' })).getAllByRole('listitem');
     const labeled = steps.filter((li) => li.textContent);
-    expect(labeled.map((li) => li.textContent)).toEqual(['목소리 대화 (마침)', '2영상 통화', '3실전 면접', '4결과']);
+    expect(labeled.map((li) => li.textContent)).toEqual(['목소리 대화 (마침)', '2영상 통화', '3실전 면접', '4리포트']);
     expect(labeled[1]).toHaveAttribute('aria-current', 'step');
     expect(labeled[0]).not.toHaveAttribute('aria-current');
   });

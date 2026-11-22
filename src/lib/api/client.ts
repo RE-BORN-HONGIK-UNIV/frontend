@@ -7,6 +7,8 @@ import type {
   FeedbackResponse,
   GazeBlinkLatest,
   CoachNoteResponse,
+  ReportCoachRequest,
+  ReportCoachResponse,
   HaruProfileResponse,
   HaruReplyRequest,
   HaruReplyResponse,
@@ -68,6 +70,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+/**
+ * 배포 백엔드(Render 무료)는 15분 동안 안 쓰면 잠들고 깨는 데 1분쯤 걸린다. 사이트를 열자마자 /health를
+ * 한 번 불러 미리 깨워 두면, 메인·대시보드를 보는 사이에 깨어나서 1단계 마이크 확인이 덜 기다린다.
+ * 응답은 쓰지 않고 실패해도 무시한다. 목업 모드·개발 서버(같은 주소 프록시)에서는 부르지 않는다.
+ */
+export function wakeBackend() {
+  if (USE_MOCK || !BASE) return;
+  fetch(`${BASE}/health`, { method: 'GET' }).catch(() => {});
+}
+
 export const api = {
   login: (email: string, password: string) =>
     USE_MOCK
@@ -97,15 +109,17 @@ export const api = {
 
     /** calibration을 넘기면 그 사람 목소리 기준으로 filler 판정을 보정해서 분석.
    * 넘기지 않으면 백엔드가 이 녹음 자체에서 기준값을 추정 (하위 호환). */
-  analyze: (file: File, calibration?: CalibrationResult | null) => {
+  /** stage: 어느 단계 녹음인지 — 서버는 1단계일 때만 1단계 최신 점수(3단계 난이도·대시보드 기준)로 저장한다 */
+  analyze: (file: File, calibration?: CalibrationResult | null, stage: 1 | 2 | 3 = 1) => {
     if (USE_MOCK) return mockApi.analyze();
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('stage', String(stage));
     if (calibration) fd.append('calibration', JSON.stringify(calibration));
     return request<AnalyzeResult>('/analyze', { method: 'POST', body: fd });
   },
 
-  /** POST /api/stage1/calibrate — 5초 무음 + 10초 낭독 + 자유발화 녹음 분석.
+  /** POST /api/stage1/calibrate — 5초 무음 + 짧은 문장 낭독 녹음 분석.
    * 결과는 오각형 차트/점수에 안 들어가고, analyze()에 넘겨서 filler 임계값 보정에만 쓰임. */
   calibrate: (file: File) => {
     if (USE_MOCK) {
@@ -193,6 +207,15 @@ export const api = {
       ? mockApi.createCoachNote()
       : request<CoachNoteResponse>(`/interview/sessions/${sessionId}/coach-note`, { method: 'POST' }),
 
+  /** 리포트 3·4번 칸 AI — 이미 있으면 그대로, 없으면 서버가 다듬을 대답을 골라 만든다(수 초~수십 초). */
+  createReportCoach: (sessionId: number, body: ReportCoachRequest) =>
+    USE_MOCK
+      ? mockApi.createReportCoach()
+      : request<ReportCoachResponse>(`/interview/sessions/${sessionId}/report-coach`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+
   /** 맞춤 연습 힌트 — 질문 하나를 다시 답할 때의 시작 문장 틀·말하는 순서. 이전 답변을 보내면 그걸 바탕으로 맞춤. */
   getPracticeHint: (question: string, previousAnswer: string) =>
     USE_MOCK
@@ -231,6 +254,12 @@ export const api = {
     USE_MOCK
       ? mockApi.latestGazeBlink()
       : request<LatestResponse<GazeBlinkLatest>>('/analyze/stage2/latest'),
+
+  /** 1·2단계 최신 결과로 서버가 정한 3단계 난이도(backend GET /interview/anxiety, PR #17). score는 불안도(높을수록 긴장, 화면에 안 보임) */
+  interviewAnxiety: () =>
+    USE_MOCK
+      ? mockApi.interviewAnxiety()
+      : request<{ score: number | null; tier: string; items: Record<string, number> }>('/interview/anxiety'),
 
   // ── '이야기' 자유 게시판 ──────────────────────────────────────
   listPosts: () =>

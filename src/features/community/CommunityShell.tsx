@@ -1,9 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Anchor, Box, Group, IconPanelLeft, Text, Title } from '@/components/ui';
-import { RebornWordmark } from '@/components/RebornWordmark';
-import { SiteNavLinks } from '@/components/SiteNavLinks';
-import { auth } from '@/lib/auth';
+import { Box, Group, IconPanelLeft, Text, Title } from '@/components/ui';
+import { SiteHeader } from '@/components/SiteHeader';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { CommunitySidebar } from './CommunitySidebar';
 
@@ -45,7 +42,6 @@ export function CommunityShell({
   headerRight?: ReactNode;
   children: ReactNode;
 }) {
-  const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 48em)');
   const [sidebarOpen, setSidebarOpen] = useState(getStoredSidebarOpen);
 
@@ -60,9 +56,12 @@ export function CommunityShell({
   return (
     <Box style={{ minHeight: '100dvh', background: 'var(--rb-bg)', paddingBottom: 60 }}>
       <Box style={{ background: 'var(--rb-surface)', borderBottom: '1px solid var(--rb-line)' }}>
-        <Group justify="space-between" style={{ padding: '20px 40px' }}>
-          <Group gap={16}>
-            {!isMobile && (
+        <SiteHeader
+          bordered={false}
+          active="community"
+          // 사이드바 버튼은 로고 뒤에 — 예전엔 로고 앞에 있어 이 화면만 로고가 46px 오른쪽에 놓였다
+          afterLogo={
+            !isMobile && (
               <button
                 type="button"
                 onClick={toggleSidebar}
@@ -72,29 +71,9 @@ export function CommunityShell({
               >
                 <IconPanelLeft />
               </button>
-            )}
-            <Link to="/">
-              <RebornWordmark size={36} animate={false} />
-            </Link>
-          </Group>
-          <SiteNavLinks active="community" />
-          <Group gap={14}>
-            <Text fz={14} c="var(--rb-ink-soft)">
-              {auth.name || '회원'}님
-            </Text>
-            {/* 게스트는 다시 로그인할 방법이 없어 로그아웃하면 기록을 잃는다 — 로그아웃 대신 로그인으로 */}
-            <Anchor
-              fz={14}
-              c="var(--rb-ink-soft)"
-              onClick={() => {
-                if (!auth.isGuest) auth.signOut();
-                navigate('/login');
-              }}
-            >
-              {auth.isGuest ? '로그인' : '로그아웃'}
-            </Anchor>
-          </Group>
-        </Group>
+            )
+          }
+        />
       </Box>
 
       <Box style={{ padding: '28px 28px 0' }}>

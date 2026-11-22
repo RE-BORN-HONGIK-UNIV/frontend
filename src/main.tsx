@@ -7,6 +7,10 @@ import './index.css';
 
 import { Toaster } from '@/components/ui/Toaster';
 import { router } from './app/router';
+import { wakeBackend } from '@/lib/api/client';
+
+// 잠든 배포 백엔드를 미리 깨운다(client.ts wakeBackend 참고)
+wakeBackend();
 
 const queryClient = new QueryClient({
   defaultOptions: {

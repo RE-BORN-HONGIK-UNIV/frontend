@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Anchor, Group } from '@/components/ui';
 
 export type SiteNavActive = 'training' | 'community';
@@ -10,18 +10,12 @@ export type SiteNavActive = 'training' | 'community';
  * active로 지금 있는 화면을 굵은 브랜드 그린으로 표시.
  */
 export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
+  const { pathname } = useLocation();
+  const onMyPage = pathname === '/dashboard';
+  // 자주 묻는 질문 화면에서도 메뉴를 굵은 초록으로(예전엔 마이페이지·이야기만 표시돼 FAQ만 빠져 보였다)
+  const onFaq = pathname === '/faq';
   return (
     <Group gap={32} visibleFrom="sm">
-      <Anchor
-        component={Link}
-        to="/dashboard"
-        fz={14}
-        underline="never"
-        c={active === 'training' ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}
-        fw={active === 'training' ? 700 : 400}
-      >
-        훈련
-      </Anchor>
       <Anchor
         component={Link}
         to="/community"
@@ -34,8 +28,26 @@ export function SiteNavLinks({ active }: { active?: SiteNavActive }) {
       </Anchor>
       {/* 절대경로 + 해시로 둬서 다른 페이지에서 눌러도 랜딩의 #contact로 이동 —
        * 기존엔 "#contact"만 있어서 랜딩이 아닌 페이지에선 아무 데도 안 움직였음 */}
-      <Anchor href="/#contact" c="var(--rb-ink-soft)" fz={14} underline="never">
-        문의
+      <Anchor
+        component={Link}
+        to="/faq"
+        fz={14}
+        underline="never"
+        c={onFaq ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}
+        fw={onFaq ? 700 : 400}
+      >
+        자주 묻는 질문
+      </Anchor>
+      {/* 마이페이지(대시보드) — 진행 단계·지난 기록·이어서 하기. 로그인 안 했으면 PrivateRoute가 게스트로 들여보낸다 */}
+      <Anchor
+        component={Link}
+        to="/dashboard"
+        fz={14}
+        underline="never"
+        c={onMyPage ? 'var(--rb-primary-strong)' : 'var(--rb-ink-soft)'}
+        fw={onMyPage ? 700 : 400}
+      >
+        마이페이지
       </Anchor>
     </Group>
   );

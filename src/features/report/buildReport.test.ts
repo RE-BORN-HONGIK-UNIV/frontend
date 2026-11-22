@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalyzeResult, GazeBlinkResult } from '@/lib/api/types';
 import { TRAINING_TIPS } from '@/features/voice/constants';
-import { buildFaceReport, buildSummary, buildVoiceReport, FIRST_WORDS_SEC } from './buildReport';
+import { buildFaceReport, buildPlan, buildStage3FaceLines, buildSummary, buildVoiceReport, FIRST_WORDS_SEC } from './buildReport';
 
 const analyze = (over: Partial<AnalyzeResult> = {}): AnalyzeResult => ({
   scores: { stability: 80, fluency: 60, pause_ctrl: 40, continuity: 90, calm: 76 },
@@ -79,12 +79,15 @@ describe('말하기 습관 (1단계)', () => {
     expect(r.fillers).toBeNull();
     expect(r.spokenSec).toBeNull();
     expect(r.habits[4].chip.tone).toBe('p');
-    expect(r.tip).toBeTruthy(); // 가장 연습할 축(에너지)의 연습 제안
+    expect(buildPlan(r, null)[0].how).toBe(TRAINING_TIPS.calm); // 가장 연습할 축(에너지)의 연습 제안
+    // 리포트 AI가 고른 습관이 앞에 오고 방법 문장만 AI 것, 모자라면 후보로 채운다. 후보에 없는 key는 무시
+    const ai = buildPlan(r, null, [{ key: 'gaze', how: 'x' }, { key: 'calm', how: '첫 문장을 한 톤 높여 시작해 봐요.' }]);
+    expect(ai).toEqual([{ ...buildPlan(r, null)[0], how: '첫 문장을 한 톤 높여 시작해 봐요.' }]);
   });
 
   it('모든 축이 좋으면 연습 제안을 따로 띄우지 않는다', () => {
     const r = buildVoiceReport({ at: 'x', result: analyze({ scores: { stability: 90, fluency: 90, pause_ctrl: 90, continuity: 90, calm: 90 } }) });
-    expect(r.tip).toBeNull();
+    expect(buildPlan(r, null)).toEqual([]);
   });
   it('분석 모델이 아직 없는 축(서버가 null)은 0점이 아니라 "준비 중"으로 둔다', () => {
     // 떨림(stability)·에너지(calm) 모델이 없는 경우 — 0점으로 읽으면 "자주 흔들렸어요"가 된다
@@ -98,12 +101,12 @@ describe('말하기 습관 (1단계)', () => {
     expect(r.v[0]).toBeNull();
     expect(r.v[4]).toBeNull();
     expect(r.v[1]).toBe(0.9);
-    // 연습 팁은 값이 있는 축 중 가장 낮은 침묵 조절에서 고른다
-    expect(r.tip).toBe(TRAINING_TIPS.pause_ctrl);
+    // 연습 계획은 값이 있는 축 중 연습 포인트인 침묵 조절에서 고른다
+    expect(buildPlan(r, null).map((p) => p.how)).toEqual([TRAINING_TIPS.pause_ctrl]);
     // 정리에도 '준비 중' 축은 들어가지 않는다
     const { good, next } = buildSummary(r, null);
     expect(good).toEqual(['"음, 어"가 적어요', '또박또박']);
-    expect(next).toEqual(['오래 멈추기']);
+    expect(next).toEqual(['긴 멈춤 줄이기']);
   });
 
   it('참고용 모델(시험 미통과) 판정은 참고용이라고 붙이고 정리·연습 팁에는 쓰지 않는다', () => {
@@ -117,7 +120,7 @@ describe('말하기 습관 (1단계)', () => {
     expect(r.habits[0].chip).toEqual({ tone: 'p', text: '자주 흔들렸어요 · 참고용' });
     expect(r.habits[0].line).toContain('참고만');
     expect(r.habits[3].reference).toBe(false);
-    expect(r.tip).toBeNull();
+    expect(buildPlan(r, null)).toEqual([]);
     expect(buildSummary(r, null).next).toEqual([]);
   });
 });
@@ -157,7 +160,7 @@ describe('이번 연습 정리', () => {
   it('좋은 구간은 "잘하고 있어요", 낮은 구간만 "연습하면 좋아져요"에 넣는다(중간은 어디에도 안 넣음)', () => {
     const s = buildSummary(buildVoiceReport({ at: 'x', result: analyze() }), buildFaceReport({ at: 'x', result: gaze() }));
     expect(s.good).toEqual(['고른 목소리', '또박또박', '끝까지 또렷하게', '편안한 깜빡임']);
-    expect(s.next).toEqual(['오래 멈추기', '표정 풀기']);
+    expect(s.next).toEqual(['긴 멈춤 줄이기', '표정 풀기']);
   });
 });
 
@@ -196,5 +199,28 @@ describe('아직 값이 없는 칸 (값이 오면 그려짐)', () => {
     expect(f.blink.perQ).toEqual([20, 25]);
     expect(f.gaze.perQ).toEqual([3, 4]);
     expect(f.expr.emo).toEqual({ smile: 12, neutral: 82, tension: 6 });
+  });
+});
+
+describe('실전 면접(3단계) 시선과 표정 줄', () => {
+  const face = (blink: number, gaze: number, smile: number, tension: number) =>
+    ({
+      blink: { rate_per_min: blink, status: '정상', score: 100, events: [], highlight: null },
+      gaze: { avg_fixation_sec: gaze, score: 80, segments: [], highlight: null },
+      expression: { smile_score: 0, tension_score: 0, score: 0, status: '보통', smile_ratio: smile, tension_ratio: tension, frame_count: 1, segments: [], highlight: null },
+      previous: null,
+    }) as unknown as GazeBlinkResult;
+
+  it('2단계에서 실전 면접으로 어느 쪽으로 달라졌는지만 적는다', () => {
+    const lines = buildStage3FaceLines(face(17, 4.1, 0.12, 0.02), face(22, 3.6, 0.18, 0.06));
+    expect(lines.blink).toBe('실전 면접에서는 조금 덜 깜빡였어요.');
+    expect(lines.gaze).toBe('실전 면접에서는 한 번 볼 때 조금 더 오래 바라봤어요.');
+    expect(lines.expr).toBe('실전 면접에서는 미소가 조금 줄고, 굳은 순간이 줄었어요.');
+  });
+
+  it('차이가 작으면 비슷했다고만', () => {
+    const lines = buildStage3FaceLines(face(21, 3.7, 0.17, 0.05), face(22, 3.6, 0.18, 0.06));
+    expect(lines.blink).toBe('깜빡임은 2단계와 실전 면접이 비슷했어요.');
+    expect(lines.expr).toBe('표정은 2단계와 실전 면접이 비슷했어요.');
   });
 });
