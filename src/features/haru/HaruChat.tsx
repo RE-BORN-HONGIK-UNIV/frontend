@@ -197,9 +197,8 @@ export function HaruChat({ talk: t, doneBar }: { talk: Talk; doneBar?: DoneBar }
 
       {/* 오른쪽: 대화 칸 */}
       <section className="rb-haru-talk__chat" aria-label="하루와 나눈 대화">
-        {/* 카톡 채팅방처럼 위에 대화 상대 이름 줄 */}
+        {/* 카톡 채팅방처럼 위에 대화 상대 이름 줄 — 카톡처럼 이름만(사진은 말풍선 묶음마다 한 번) */}
         <header className="rb-chat__head">
-          <span className="rb-chat__head-avatar" aria-hidden />
           <strong>하루</strong>
         </header>
         <div ref={box} className="rb-haru-talk__log">

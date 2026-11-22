@@ -1480,10 +1480,6 @@ html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인
   padding: 14px 24px; border-bottom: 1px solid var(--rb-line); background: var(--rb-surface);
 }
 .rb-chat__head strong { font-size: 16px; color: var(--rb-ink); }
-.rb-chat__head-avatar {
-  width: 30px; height: 30px; border-radius: 11px; flex: none;
-  background: #ece8f8 url('/haru/haru.jpg') center 15% / cover no-repeat; box-shadow: 0 0 0 1px var(--rb-line);
-}
 /* 새 말풍선은 아래에서 살짝 올라오며 나타난다 */
 .rb-chat__row { animation: rbChatIn 0.28s ease-out both; }
 @keyframes rbChatIn {
