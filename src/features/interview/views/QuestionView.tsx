@@ -159,6 +159,20 @@ export function QuestionView({
     });
   };
 
+  // 대답을 마치면 면접관이 짧게 받는다("네." 등 3개를 돌려 씀). 다음 질문 소리는 이게 끝난 뒤에 나온다
+  const ackCountRef = useRef(0);
+  const ackDoneRef = useRef<Promise<void>>(Promise.resolve());
+  const playAck = () => {
+    const a = new Audio(`/audio/lines/iv-ack-${(ackCountRef.current++ % 3) + 1}.mp3`);
+    ackDoneRef.current = new Promise<void>((done) => {
+      a.onended = a.onerror = () => done();
+      setTimeout(done, 3000); // 소리가 안 나도 흐름이 멈추지 않게
+      const p = a.play?.(); // 재생을 못 하는 환경(테스트)은 Promise가 없어 바로 넘어간다
+      if (p) p.catch(() => done());
+      else done();
+    });
+  };
+
   /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 브라우저 목소리로 읽고, 그것도 안 되면 답변 대기로 넘어감 */
   const ask = async (text: string, kind: 'main' | 'follow_up') => {
     recorder.ask(kind, text); // 질문이 화면에 뜨는 시점에 서버에 저장
@@ -168,6 +182,7 @@ export function QuestionView({
     askedRef.current = [...askedRef.current, text];
     setQuestion(text);
     const url = await getSpeechAudioUrl(text, tier);
+    await ackDoneRef.current;
     setAudio(url);
     if (url) return setPhase('asking');
     // Typecast가 안 되면 브라우저 목소리로 읽고, 면접관 목소리처럼 다 읽은 뒤 듣기 시작
@@ -269,6 +284,7 @@ export function QuestionView({
 
   const handleDoneSpeaking = async () => {
     blobRef.current = await stop();
+    playAck();
     // 받아쓴 그대로 넘긴다. 음성 인식이 안 되는 브라우저(빈 글)는 서버 STT로 대체(submitAnswer)
     submitAnswer(live.supported ? live.transcript : '');
   };
@@ -308,6 +324,7 @@ export function QuestionView({
       endedAtRef.current = Date.now();
       setQuestion('');
       const url = await getSpeechAudioUrl(CLOSING_LINE, tier);
+      await ackDoneRef.current;
       setAudio(url);
       if (!url) void browserSpeak(CLOSING_LINE);
       setPhase('finished');
@@ -389,14 +406,18 @@ export function QuestionView({
         </span>
       </div>
 
-      {/* 시선 기준을 재는 동안만 보인다 — 글을 읽은 눈이 바로 아래 면접관 얼굴로 가게 사진 위에 둔다(버튼 줄에 두면 아래를 보게 됨) */}
-      <p className="rb-s3__look" hidden={face.phase !== 'calibrating'} aria-live="polite">
-        <i aria-hidden />
-        면접관을 바라봐 주세요
-      </p>
+      {/* 시선 기준을 재는 동안만 보인다 — 글을 읽은 눈이 바로 아래 면접관 얼굴로 가게 사진 위에 둔다(버튼 줄에 두면 아래를 보게 됨).
+          선은 재는 시간 동안 차오르고, 사진 가장자리는 어두워져 눈이 얼굴로 모인다 */}
+      <div className="rb-s3__look" data-on={face.phase === 'calibrating' || undefined} aria-live="polite">
+        {face.phase === 'calibrating' && <p>면접관의 눈을 편하게 바라봐 주세요</p>}
+        <b aria-hidden>
+          <i style={{ animationDuration: `${face.calibrationSec}s` }} />
+        </b>
+      </div>
       {/* 면접관 영상: 질문할 때만 재생, 들을 때는 첫 장면에 멈춤(소리는 audio가 낸다). 영상이 안 뜨면 뒤의 사진이 보인다 */}
       <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`}>
         <video ref={talkRef} className="rb-s3__talk" src="/interviewer/talking.mp4" muted loop playsInline preload="auto" aria-hidden />
+        <span className="rb-s3__dim" data-on={face.phase === 'calibrating' || undefined} aria-hidden />
       </div>
       <audio ref={audioRef} src={audioUrl ?? undefined} onEnded={handleAudioEnded} hidden />
       {/* 얼굴 분석용 카메라 — 화면에는 내 얼굴을 띄우지 않는다(경량 웹처럼). display:none이면 프레임이 안 들어와서 1px로 숨김 */}
