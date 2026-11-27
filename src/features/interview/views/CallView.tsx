@@ -4,28 +4,43 @@ import { getSpeechAudioUrl } from '../api';
 
 /**
  * 3단계 호명 — 대기실에서 면접실로 넘어가는 짧은 장면(버튼 없이 자동으로 넘어간다).
- * 닫힌 면접실 문 앞에서 하루 배웅(말풍선) → 노크 → 문 너머 면접관 "네, 들어오세요." → 문을 열고 들어가는 영상(public/interviewer/door.mp4) → 면접실.
- * 영상을 못 틀거나 움직임 줄이기를 켠 사람에게는 예전처럼 가운데 빛이 열리며 넘어간다.
+ * 복도를 걸어 면접실 문 앞에 선다(door-walk.mp4) → 하루 응원 메시지가 알림처럼 도착한다 → 글 없이 숨 고르기 →
+ * "들어갈 차례예요"와 노크 → 문 너머 면접관 "네, 들어오세요." →
+ * 문이 열리며 안쪽에 앉은 면접관이 보인다(door.mp4) → 눈을 감았다 뜨듯 어두워졌다가 면접실이 밝아진다.
+ * 영상을 못 틀거나 움직임 줄이기를 켠 사람에게는 닫힌 문 사진에서 시작해 가운데 빛이 열리며 넘어간다.
  * 실제 면접 대기실에서 가장 흔한 순간이라 실전 느낌을 주고, 면접관 목소리를 문 너머로 먼저 들어서
  * 갑자기 얼굴을 마주하는 부담을 줄인다. 이름은 미리 녹음할 수 없어서 글로만 부른다.
  */
-export const SENDOFF = '천천히 해도 괜찮아요. 끝나고 다시 만나요!';
+export const SENDOFF = '연습한 만큼이면 충분해요. 끝나고 만나요!';
 export const COME_IN = '네, 들어오세요.';
 
-type Beat = 'sendoff' | 'knock' | 'reply' | 'open' | 'enter';
+type Beat = 'walk' | 'sendoff' | 'breath' | 'knock' | 'reply' | 'open' | 'enter';
 
 export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () => void }) {
-  const [beat, setBeat] = useState<Beat>('sendoff');
+  const [beat, setBeat] = useState<Beat>('walk');
   const name = auth.name;
+  const walkRef = useRef<HTMLVideoElement>(null);
   const doorRef = useRef<HTMLVideoElement>(null);
   const [lit, setLit] = useState(false); // 문 영상 대신 빛으로 넘어가는 중
+  const [sent, setSent] = useState(false); // 하루 메시지: 쓰는 중(점 세 개) → 도착
 
   useEffect(() => {
     let alive = true;
     void (async () => {
-      await wait(2400); // 하루 배웅은 말풍선으로만 — 읽을 만큼 기다린다(노크·면접관 목소리와 겹치지 않게)
+      await playDoor(walkRef.current); // 못 틀면 바로 닫힌 문 앞으로
+      if (!alive) return;
+      setBeat('sendoff'); // 문 앞에 서면 하루 메시지 알림이 내려오고, 잠깐 쓰는 중이다가 글이 도착한다
+      await wait(1200);
+      if (!alive) return;
+      setSent(true);
+      await wait(3200); // 읽을 만큼 둔다
+      if (!alive) return;
+      setBeat('breath'); // 문 앞에서 글 없이 숨 한번 고를 틈
+      await wait(3000);
       if (!alive) return;
       setBeat('knock');
+      await wait(1300); // "들어갈 차례예요"를 먼저 읽고 노크
+      if (!alive) return;
       await knock();
       await wait(350);
       if (!alive) return;
@@ -52,11 +67,20 @@ export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () =>
   }, []);
 
   return (
-    <div className="rb-call3" data-beat={beat} data-lit={lit || undefined}>
-      {/* 닫힌 문 앞에 서 있다가, 열리는 순간 문 영상이 재생된다 — 글이 잘 읽히게 그동안은 어둡게 덮는다 */}
+    <div className="rb-call3" data-beat={beat} data-lit={lit || undefined} data-sent={sent || undefined}>
+      {/* 문 여는 영상(첫 장면 = 닫힌 문) 위에 복도 걷는 영상(끝 장면 = 닫힌 문)을 겹쳐 두고, 다 걸으면 걷는 영상만 치운다.
+          문 앞에 서 있는 동안은 글이 잘 읽히게 어둡게 덮는다 */}
       <video ref={doorRef} className="rb-call3__door" src="/interviewer/door.mp4" poster="/interviewer/door-poster.jpg" playsInline preload="auto" aria-hidden />
+      <video
+        ref={walkRef}
+        className="rb-call3__door rb-call3__walk"
+        src="/interviewer/door-walk.mp4"
+        poster="/interviewer/door-walk-poster.jpg"
+        playsInline
+        preload="auto"
+        aria-hidden
+      />
       <span className="rb-call3__shade" aria-hidden />
-      <span className="rb-call3__glow" aria-hidden />
       <button type="button" className="rb-s3__quit rb-call3__quit" onClick={onQuit}>
         그만하기
       </button>
@@ -72,11 +96,23 @@ export function CallView({ onDone, onQuit }: { onDone: () => void; onQuit: () =>
       </div>
 
       <div className="rb-call3__haru">
-        <i aria-hidden />
-        <p>
-          <small>하루</small>
-          {SENDOFF}
-        </p>
+        <div className="rb-call3__note">
+          <i aria-hidden />
+          <div>
+            <p className="rb-call3__from">
+              <b>하루</b>
+              <span>지금</span>
+            </p>
+            <div className="rb-call3__body">
+              <span className="rb-call3__typing" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              <p className="rb-call3__msg">{SENDOFF}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
