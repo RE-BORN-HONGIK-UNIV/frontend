@@ -27,11 +27,14 @@ export function HaruAvatar({
   style,
   children,
   glow = phase === 'speak' || phase === 'listen',
+  wide = false,
 }: {
   phase: TalkPhase;
   style?: CSSProperties;
   children?: ReactNode;
   glow?: boolean;
+  /** 가로 칸에 상반신이 다 보이게(경량 웹 .tile과 같은 배치) — 랜딩 예시 카드용 */
+  wide?: boolean;
 }) {
   return (
     <div
@@ -42,7 +45,9 @@ export function HaruAvatar({
         aspectRatio: '4 / 3',
         borderRadius: 16,
         overflow: 'hidden',
-        background: `#ece8f8 url(${IMAGE[phase]}) center / cover no-repeat`,
+        background: wide
+          ? `#e2ddfb url(${IMAGE[phase]}) center 8% / auto 132% no-repeat`
+          : `#ece8f8 url(${IMAGE[phase]}) center / cover no-repeat`,
         // 말하는 중(하루 또는 나)은 테두리 빛으로만 보여 준다 — 그림은 움직이지 않는다
         boxShadow: glow ? '0 0 0 3px var(--rb-primary)' : '0 0 0 1px var(--rb-line)',
         transition: 'box-shadow .2s',
