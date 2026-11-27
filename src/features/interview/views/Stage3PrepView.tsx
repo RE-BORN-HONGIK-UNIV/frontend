@@ -160,7 +160,7 @@ function WaitingRoom({
         </div>
         <div className="rb-wait__haru" role="img" aria-label="하루">
           {/* 하루 그림은 칸 높이에 맞춘 상자에 — 초록 점을 그림 안 눈 자리(위에서 34.5%)에 붙여서 칸 크기가 달라도 어긋나지 않게 */}
-          <div className="rb-wait__haru-img">
+          <div className="rb-wait__haru-img" style={beat ? { backgroundImage: `url(/haru/haru-calib-${beat.stage}.jpg)` } : undefined}>
             {beat?.stage === 'face' && <span className="rb-calib-dot" data-step="face" style={{ top: '34.5%' }} aria-hidden />}
           </div>
           {!expr && !calibrating && !noCamera && (
@@ -263,6 +263,8 @@ const CALIB_STEPS = [
 // 단계마다 앞 3초(하루 목소리 약 2초 + 준비 1초)와 뒤 0.6초(확인)는 값을 모으지 않는다 — 재는 시간(3·2·2초)은 2단계와 같다
 const PACING = { lead: 3, tail: 0.6 };
 const SHOW_SEC = 2;
+// 단계마다 하루가 그 표정을 먼저 지어 보인다 — 바뀔 때 빈 화면이 깜빡이지 않게 미리 불러 둠
+if (typeof window !== 'undefined') CALIB_STEPS.forEach(({ key }) => (new Image().src = `/haru/haru-calib-${key}.jpg`));
 
 const HARU_WAIT = '여기까지 같이 왔네요! 들어가기 전에 저랑 표정 한번 풀어 볼까요?';
 const HARU_READY = '좋아요, 표정이 풀렸어요. 부르면 들어가요.';
