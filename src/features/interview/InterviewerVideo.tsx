@@ -92,7 +92,7 @@ export function InterviewerVideo({
           className="rb-s3__talk"
           data-front={front === i || undefined}
           data-prev={prev === i || undefined}
-          style={front === i && slow ? { animationDuration: '0.5s' } : undefined}
+          style={front === i && slow ? { animationDuration: '0.2s' } : undefined}
           playsInline
           preload="auto"
           aria-hidden

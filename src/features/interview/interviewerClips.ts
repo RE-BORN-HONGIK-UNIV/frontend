@@ -8,8 +8,7 @@ const LIPSYNC = new Set([
   'iv-f-standard-1', 'iv-f-standard-2', 'iv-f-standard-3', 'iv-f-standard-4', 'iv-f-warmup-1', 'iv-f-warmup-2', 'iv-f-warmup-3',
   'iv-f-warmup-4', 'iv-f-practice-1', 'iv-f-practice-2', 'iv-f-practice-3', 'iv-f-practice-4',
 ]);
-// 말하기 반복은 입을 작게 움직이는 두 가지를 질문마다 번갈아 — 같은 동작이 되풀이돼 보이지 않게
-const LOOPS = ['loop-listen', 'loop-think', 'loop-talk', 'loop-talk-2'];
+const LOOPS = ['loop-listen', 'loop-think', 'loop-talk'];
 
 export type Clip = string;
 export const ALL_CLIPS: Clip[] = [...LOOPS, ...LIPSYNC];

@@ -144,12 +144,11 @@ export function QuestionView({
   const [lip, setLip] = useState<Clip | null>(null);
   const [ackClip, setAckClip] = useState<Clip | null>(null);
   const [playKey, setPlayKey] = useState(0);
-  const talk = askedRef.current.length % 2 ? 'loop-talk' : 'loop-talk-2';
   const clip =
     ackClip ??
     lip ??
     (phase === 'asking' || (voicePlaying && (phase === 'greeting' || phase === 'finished'))
-      ? talk
+      ? 'loop-talk'
       : phase === 'finished'
         ? (lipsyncClip(CLOSING_LINE) ?? 'loop-listen') // 끝인사 영상의 마지막 장면에 멈춰 있는다(끝난 뒤에도 끄덕이지 않게)
         : phase === 'loading' || phase === 'reviewing'
