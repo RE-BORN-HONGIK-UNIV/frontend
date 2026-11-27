@@ -66,6 +66,9 @@ const LINES: Record<string, string> = {
 
 const url = (id: string) => `/audio/lines/${id}.mp3`;
 
+/** 문장 하나에 붙은 대사 이름(iv-hello 등). 없으면 null */
+export const lineId = (text: string): string | null => LINES[text.trim()] ?? null;
+
 /** 문장에 맞는 mp3 주소들. 통째로 있으면 1개, "공감 한마디 + 다음 질문"처럼 두 문장을 붙인 거면 2개, 없으면 null */
 export function prerecordedUrls(text: string): string[] | null {
   const t = text.trim();

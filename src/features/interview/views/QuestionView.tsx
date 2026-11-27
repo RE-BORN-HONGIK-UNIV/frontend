@@ -3,7 +3,7 @@ import { Text } from '@/components/ui';
 import { useRecorder } from '@/features/interview/useRecorder';
 import { useLiveTranscript } from '@/features/interview/useLiveTranscript';
 import { getNextQuestion, getSpeechAudioUrl, transcribeAnswer } from '@/features/interview/api';
-import { FOLLOW_UP_BANK, pickUnused, QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
+import { FOLLOW_UP_BANK, INTRO_FOLLOW_UPS, pickUnused, QUESTION_BANK, type DifficultyTier } from '@/features/interview/difficulty';
 import { CLOSING_LINE, getInterviewer, GREETING_LINE, totalQuestions } from '@/features/interview/interviewers';
 import { createInterviewRecorder } from '@/features/interview/recorder';
 import type { InterviewResult, InterviewTranscriptTurn } from '@/features/interview/resultSummary';
@@ -13,6 +13,8 @@ import { useLiveFaceSession, type ExpressionThresholds } from '@/features/face/l
 import { useAnswerRecorder } from '@/features/haru/useAnswerRecorder';
 import { browserSpeak, stopSpeak } from '@/features/haru/speech';
 import { buildStage3Marks } from '@/features/report/stage3Marks';
+import { InterviewerVideo } from '@/features/interview/InterviewerVideo';
+import { lipsyncClip, type Clip } from '@/features/interview/interviewerClips';
 import { failStage3Voice, saveStage3Face, saveStage3Voice, skipStage3Voice, startStage3Details } from '@/features/report/stageDetails';
 
 /**
@@ -72,6 +74,7 @@ export function QuestionView({
   const [turn, setTurn] = useState<Turn>({ main: 0, sub: 0 });
   const [phase, setPhase] = useState<Phase>('greeting');
   const [question, setQuestion] = useState('');
+  const questionRef = useRef('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -135,21 +138,26 @@ export function QuestionView({
   const phaseRef = useRef<Phase>(phase);
   phaseRef.current = phase;
 
-  // 면접관이 질문할 때만 말하는 영상을 튼다. 멈출 땐 서서히 투명하게 한 뒤 첫 장면으로 되돌린다 —
-  // 뒤 배경이 영상 첫 장면(talking-poster.jpg)이라 말하던 입 모양에서 툭 끊겨 보이지 않는다
-  const talkRef = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const v = talkRef.current;
-    if (!v) return;
-    if (phase === 'asking' || phase === 'greeting') {
-      v.style.opacity = '1';
-      void v.play()?.catch(() => {}); // 테스트 환경(jsdom)은 play()가 Promise를 안 돌려준다
-      return;
-    }
-    v.style.opacity = '0';
-    const t = setTimeout(() => { v.pause(); v.currentTime = 0; v.style.opacity = '1'; }, 250);
-    return () => clearTimeout(t);
-  }, [phase]);
+  // 면접관 영상(InterviewerVideo.tsx): 입 모양 영상이 있는 대사는 그 영상이 소리까지 내고(lip),
+  // 없는 대사는 mp3·Typecast 소리에 말하기 반복 영상, 말하지 않을 때는 상황에 맞는 반복 영상
+  const [voicePlaying, setVoicePlaying] = useState(false);
+  const [lip, setLip] = useState<Clip | null>(null);
+  const [ackClip, setAckClip] = useState<Clip | null>(null);
+  const [playKey, setPlayKey] = useState(0);
+  const clip =
+    ackClip ??
+    lip ??
+    (phase === 'asking' || (voicePlaying && (phase === 'greeting' || phase === 'finished'))
+      ? 'loop-talk'
+      : phase === 'finished'
+        ? (lipsyncClip(CLOSING_LINE) ?? 'loop-listen') // 끝인사 영상의 마지막 장면에 멈춰 있는다(끝난 뒤에도 끄덕이지 않게)
+        : phase === 'loading' || phase === 'reviewing'
+        ? 'loop-think'
+        : 'loop-listen');
+  const playLip = (c: Clip) => {
+    setLip(c);
+    setPlayKey((k) => k + 1);
+  };
 
   // 이전 음성 URL은 정리해서 메모리 누수 방지
   const setAudio = (url: string | null) => {
@@ -159,18 +167,42 @@ export function QuestionView({
     });
   };
 
-  // 대답을 마치면 면접관이 짧게 받는다("네." 등 3개를 돌려 씀). 다음 질문 소리는 이게 끝난 뒤에 나온다
+  // 대답을 마치면 면접관이 짧게 받는다(두 문장을 번갈아). "네." 하나만은 힘이 실려 대답처럼 들려서 뺐다. 다음 질문 소리는 이게 끝난 뒤에 나온다
   const ackCountRef = useRef(0);
   const ackDoneRef = useRef<Promise<void>>(Promise.resolve());
+  const ackResolveRef = useRef<() => void>(() => {});
   const playAck = () => {
-    const a = new Audio(`/audio/lines/iv-ack-${(ackCountRef.current++ % 3) + 1}.mp3`);
-    ackDoneRef.current = new Promise<void>((done) => {
-      a.onended = a.onerror = () => done();
-      setTimeout(done, 3000); // 소리가 안 나도 흐름이 멈추지 않게
-      const p = a.play?.(); // 재생을 못 하는 환경(테스트)은 Promise가 없어 바로 넘어간다
-      if (p) p.catch(() => done());
-      else done();
-    });
+    const id = `iv-ack-${(ackCountRef.current++ % 2) + 2}`;
+    setAckClip(id);
+    setPlayKey((k) => k + 1);
+    ackDoneRef.current = new Promise<void>((resolve) => {
+      ackResolveRef.current = resolve;
+      setTimeout(resolve, 3500); // 영상이 안 돌아도 흐름이 멈추지 않게
+    }).then(() => setAckClip(null));
+  };
+
+  /** 입 모양 영상이 없는(또는 못 튼) 대사: mp3·Typecast로 읽고, 그것도 안 되면 브라우저 목소리 → 그것도 안 되면 글로 */
+  const speakAudio = async (text: string) => {
+    const url = await getSpeechAudioUrl(text, tier);
+    setAudio(url);
+    if (url) return;
+    const spoke = await browserSpeak(text);
+    if (phaseRef.current === 'asking') {
+      if (!spoke) setPhase('waiting');
+      else handleStartAnswer();
+    } else if (phaseRef.current === 'greeting') void afterGreeting();
+  };
+
+  // 입 모양 영상이 끝나면 mp3가 끝난 것과 같게, 못 틀면 mp3로 다시
+  const handleVideoEnded = (c: Clip) => {
+    if (c.startsWith('iv-ack')) return ackResolveRef.current();
+    setLip(null);
+    handleAudioEnded();
+  };
+  const handleVideoBlocked = (c: Clip) => {
+    if (c.startsWith('iv-ack')) return ackResolveRef.current();
+    setLip(null);
+    void speakAudio(phaseRef.current === 'greeting' ? GREETING_LINE : phaseRef.current === 'finished' ? CLOSING_LINE : questionRef.current);
   };
 
   /** 질문을 화면에 띄우고 면접관 목소리로 읽어줌. 음성 실패 시 브라우저 목소리로 읽고, 그것도 안 되면 답변 대기로 넘어감 */
@@ -181,15 +213,13 @@ export function QuestionView({
     transcriptRef.current.push({ kind, question: text, answer: '' });
     askedRef.current = [...askedRef.current, text];
     setQuestion(text);
-    const url = await getSpeechAudioUrl(text, tier);
+    questionRef.current = text;
     await ackDoneRef.current;
-    setAudio(url);
-    if (url) return setPhase('asking');
-    // Typecast가 안 되면 브라우저 목소리로 읽고, 면접관 목소리처럼 다 읽은 뒤 듣기 시작
     setPhase('asking');
-    const spoke = await browserSpeak(text);
-    if (!spoke) setPhase((p) => (p === 'asking' ? 'waiting' : p));
-    else if (phaseRef.current === 'asking') handleStartAnswer();
+    phaseRef.current = 'asking';
+    const c = lipsyncClip(text);
+    if (c) playLip(c);
+    else await speakAudio(text);
   };
 
   /** 해당 차례의 질문을 준비. 첫 질문은 고정, 나머지는 백엔드에서 생성 (실패 시 고정 질문으로 대체) */
@@ -210,7 +240,7 @@ export function QuestionView({
       );
       await ask(q, isFollowUp ? 'follow_up' : 'main');
     } catch {
-      const bank = isFollowUp ? FOLLOW_UP_BANK[tier] : QUESTION_BANK[tier];
+      const bank = !isFollowUp ? QUESTION_BANK[tier] : next.main === 0 ? INTRO_FOLLOW_UPS[tier] : FOLLOW_UP_BANK[tier];
       await ask(pickUnused(bank, askedRef.current), isFollowUp ? 'follow_up' : 'main');
     }
   };
@@ -223,10 +253,9 @@ export function QuestionView({
     startedRef.current = true;
     startStage3Details(); // 지난 면접의 3단계 분석값이 새 리포트에 섞이지 않게
     recorder.start();
-    void getSpeechAudioUrl(GREETING_LINE, tier).then((url) => {
-      if (url) setAudio(url);
-      else void browserSpeak(GREETING_LINE).then(afterGreeting);
-    });
+    const c = lipsyncClip(GREETING_LINE);
+    if (c) playLip(c);
+    else void speakAudio(GREETING_LINE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -272,6 +301,11 @@ export function QuestionView({
       if (last) last.discarded = true; // 다시 듣기 전에 하던 대답은 표시에서 뺀다
     }
     live.reset();
+    const c = lipsyncClip(question);
+    if (c) {
+      setPhase('asking');
+      return playLip(c);
+    }
     const a = audioRef.current;
     if (!a || !audioUrl) {
       setPhase('waiting');
@@ -323,11 +357,12 @@ export function QuestionView({
       recorder.complete(); // 끝까지 마친 면접만 완료로 기록
       endedAtRef.current = Date.now();
       setQuestion('');
-      const url = await getSpeechAudioUrl(CLOSING_LINE, tier);
       await ackDoneRef.current;
-      setAudio(url);
-      if (!url) void browserSpeak(CLOSING_LINE);
       setPhase('finished');
+      phaseRef.current = 'finished';
+      const c = lipsyncClip(CLOSING_LINE);
+      if (c) playLip(c);
+      else void speakAudio(CLOSING_LINE);
       void finishAnalysis();
       return;
     }
@@ -416,10 +451,23 @@ export function QuestionView({
       </div>
       {/* 면접관 영상: 질문할 때만 재생, 들을 때는 첫 장면에 멈춤(소리는 audio가 낸다). 영상이 안 뜨면 뒤의 사진이 보인다 */}
       <div className="rb-s3__win" role="img" aria-label={`${interviewer.name} 면접관${phase === 'asking' ? ', 말하는 중' : ''}`}>
-        <video ref={talkRef} className="rb-s3__talk" src="/interviewer/talking.mp4" muted loop playsInline preload="auto" aria-hidden />
+        <InterviewerVideo clip={clip} playKey={playKey} onEnded={handleVideoEnded} onBlocked={handleVideoBlocked} />
         <span className="rb-s3__dim" data-on={face.phase === 'calibrating' || undefined} aria-hidden />
       </div>
-      <audio ref={audioRef} src={audioUrl ?? undefined} onEnded={handleAudioEnded} hidden />
+      <audio
+        ref={audioRef}
+        src={audioUrl ?? undefined}
+        onPlay={() => {
+          setVoicePlaying(true);
+          setPlayKey((k) => k + 1);
+        }}
+        onPause={() => setVoicePlaying(false)}
+        onEnded={() => {
+          setVoicePlaying(false);
+          handleAudioEnded();
+        }}
+        hidden
+      />
       {/* 얼굴 분석용 카메라 — 화면에는 내 얼굴을 띄우지 않는다(경량 웹처럼). display:none이면 프레임이 안 들어와서 1px로 숨김 */}
       <video ref={faceVideoRef} muted playsInline aria-hidden className="rb-s3__facecam" />
 

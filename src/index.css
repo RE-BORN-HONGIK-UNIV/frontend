@@ -1421,7 +1421,7 @@ html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인
    큰 화면은 너비 74%, 낮은 화면은 아래 버튼 줄이 밀리지 않게 높이에 맞춘다 */
 .rb-s3__win {
   width: min(74vw, calc((100dvh - 250px) * 16 / 9)); aspect-ratio: 16 / 9;
-  background: #2a2e31 url('/interviewer/talking-poster.jpg') center / cover no-repeat;
+  background: #2a2e31 url('/interviewer/clips/poster.jpg') center / cover no-repeat;
   position: relative; overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14%, #000 86%, transparent 100%), linear-gradient(180deg, transparent 0, #000 10%, #000 84%, transparent 100%);
   -webkit-mask-composite: source-in; mask-composite: intersect;
@@ -1441,7 +1441,12 @@ html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인
   background: radial-gradient(ellipse 34% 48% at 50% 36%, rgba(10, 12, 14, 0) 40%, rgba(10, 12, 14, 0.5) 100%);
 }
 .rb-s3__dim[data-on] { opacity: 1; }
-.rb-s3__talk { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.25s ease; }
+/* 면접관 영상 두 장 — 새 영상(front)이 앞 영상(prev) 위에서 서서히 드러나고, 앞 영상은 다 가려진 뒤에 사라진다.
+   둘 다 반투명해지는 순간이 없어서 뒤 배경이 비치지 않는다 */
+.rb-s3__talk { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+.rb-s3__talk[data-prev] { opacity: 1; z-index: 1; }
+.rb-s3__talk[data-front] { opacity: 1; z-index: 2; animation: rb-talk-in 0.25s ease-out; }
+@keyframes rb-talk-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .rb-s3__talk { display: none; } }
 .rb-s3__bar {
   display: flex; align-items: center; gap: 20px; background: #fff; color: var(--rb-ink, #15181c);
