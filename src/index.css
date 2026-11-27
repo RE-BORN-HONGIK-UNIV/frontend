@@ -1588,7 +1588,9 @@ html:has(.rb-s3) .rb-theme-toggle { display: none !important; } /* 버튼의 인
 @media (prefers-reduced-motion: reduce) { .rb-plant { animation: none; } }
 
 /* 맨 위 머리줄(SiteHeader) — 모든 화면 같은 높이·여백·로고 자리 */
-html { scrollbar-gutter: stable; background: var(--rb-bg); } /* 긴 화면↔짧은 화면을 오갈 때 스크롤바가 생기고 사라지며 가로가 밀리지 않게 */
+/* 스크롤바 자리를 미리 비워 두면(scrollbar-gutter) 흰 머리줄 오른쪽 끝이 끊겨 보여서 비워 두지 않는다.
+   대신 스크롤바를 얇게, 앱 색으로 — 긴 화면으로 넘어갈 때 내용이 밀리는 폭과 눈에 띄는 정도를 줄인다 */
+html { background: var(--rb-bg); scrollbar-width: thin; scrollbar-color: var(--rb-line-strong) transparent; }
 .rb-siteheader {
   position: relative; z-index: 5; box-sizing: border-box; height: 80px; padding: 0 40px;
   display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--rb-surface);
