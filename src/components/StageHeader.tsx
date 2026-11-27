@@ -72,7 +72,8 @@ export function StageHeader({ current }: { current: StageNo }) {
       <nav aria-label="훈련 단계" className="rb-stagebar__nav">
         <ol className="rb-stagebar__steps">
           {STEPS.map((s, i) => {
-            const state = s.no === current ? 'current' : isDone(s.no) ? 'done' : 'todo';
+            // 지금 단계보다 뒤 단계는 지난 기록이 있어도 ✓하지 않는다 — 이번 진행에서 아직 안 한 단계처럼 보여야 한다
+            const state = s.no === current ? 'current' : s.no < current && isDone(s.no) ? 'done' : 'todo';
             return (
               <Fragment key={s.no}>
                 {i > 0 && (

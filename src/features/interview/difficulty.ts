@@ -143,5 +143,12 @@ export const FOLLOW_UP_BANK: Record<DifficultyTier, string[]> = {
   ],
 };
 
+/** 자기소개 바로 뒤의 예비 꼬리질문 — 위 목록은 경험 이야기를 전제로 해서 자기소개 뒤에는 뜬금없다(백엔드 INTRO_FOLLOW_UPS와 같게) */
+export const INTRO_FOLLOW_UPS: Record<DifficultyTier, string[]> = {
+  warmup: ['방금 이야기 좋았어요. 그 부분을 조금만 더 들려주실 수 있을까요?'],
+  standard: ['방금 이야기 좋았어요. 그 부분을 조금만 더 들려주실 수 있을까요?'],
+  practice: ['방금 말씀하신 내용에서, 그렇게 판단한 구체적인 근거를 말씀해 주시겠어요?', '그 경험을 앞으로 일할 때 어떻게 살릴 수 있을까요?'],
+};
+
 /** 예비 목록에서 이번 면접에 아직 안 나온 첫 문장(다 나왔으면 처음부터 다시) */
 export const pickUnused = (bank: string[], asked: string[]) => bank.find((q) => !asked.includes(q)) ?? bank[asked.length % bank.length];
