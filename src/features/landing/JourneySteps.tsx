@@ -146,7 +146,7 @@ function ChatMock() {
 function CallMock() {
   return (
     <div style={{ ...mockCard, padding: '20px 20px 18px' }}>
-      <HaruAvatar phase="ready" glow={false}>
+      <HaruAvatar phase="ready" glow={false} wide>
         <TileTag top>● 연결됨 · 01:12</TileTag>
         <TileTag>하루</TileTag>
       </HaruAvatar>
