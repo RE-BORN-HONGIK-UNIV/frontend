@@ -33,7 +33,8 @@ export function NeedStagesView({
 
   return (
     <Stack align="center" gap={20} style={{ paddingTop: 60, paddingInline: 16 }}>
-      <Stack gap={8} ta="center" style={{ maxWidth: 420 }}>
+      {/* 낱말 중간("두 단|계")에서 줄이 끊기지 않게 */}
+      <Stack gap={8} ta="center" style={{ maxWidth: 420, wordBreak: 'keep-all', textWrap: 'balance' }}>
         <Text fz={20} fw={700}>
           {title}
         </Text>

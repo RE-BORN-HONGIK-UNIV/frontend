@@ -7,6 +7,6 @@ export const linkStyle: CSSProperties = {
   padding: 4,
   cursor: 'pointer',
   fontSize: 13,
-  color: 'var(--rb-ink-faint)',
+  color: 'var(--rb-ink-soft)', // ink-faint는 대비 2.2~2.5라 누르는 글씨에 못 씀
   textDecoration: 'underline',
 };

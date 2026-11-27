@@ -3,7 +3,7 @@
 .rb-report {
   --rp-ink: var(--rb-ink);
   --rp-ink-2: var(--rb-ink-soft);
-  --rp-ink-3: var(--rb-ink-faint);
+  --rp-ink-3: var(--rb-ink-soft); /* 읽어야 하는 설명 글이라 ink-faint(대비 2.5)는 쓰지 않는다 */
   --rp-line: var(--rb-line);
   --rp-line-2: var(--rb-line-strong);
   --rp-bg: var(--rb-bg);

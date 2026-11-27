@@ -75,7 +75,7 @@ function HeroPreview({ compact }: { compact: boolean }) {
             <i key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--rb-line-strong)' }} />
           ))}
         </div>
-        <HaruAvatar phase="ready" glow={false} style={{ boxShadow: '0 0 0 4px #cfc4f3' }}>
+        <HaruAvatar phase="ready" glow={false} wide style={{ boxShadow: '0 0 0 4px #cfc4f3' }}>
           <TileTag top>● 연결됨 · 01:12</TileTag>
           <TileTag>하루</TileTag>
         </HaruAvatar>
