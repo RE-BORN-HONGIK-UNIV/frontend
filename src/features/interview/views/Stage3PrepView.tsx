@@ -108,10 +108,10 @@ function WaitingRoom({
     face.startCalibration();
   };
 
-  // 하루 목소리: 들어오자마자 한 번, 표정을 다 풀면 한 번. 2단계에서 바로 왔으면 표정 얘기 없이 들어갈 준비만
+  // 하루 말은 말풍선으로 — 목소리는 화면 글을 읽을 수 없는 순간(표정 따라 하기, 얼굴 위치 다시 잡기)에만. 다음 순서는 버튼이 빛나서 알려 준다
   const line = carried ? HARU_CARRY : expr ? HARU_READY : retry ? HARU_RETRY : HARU_WAIT;
   useEffect(() => {
-    if (tier) void speak(line);
+    if (tier && line === HARU_RETRY) void speak(line);
   }, [line, tier]);
   useEffect(() => stopSpeak, []);
 
@@ -163,8 +163,9 @@ function WaitingRoom({
           <div className="rb-wait__haru-img" style={beat ? { backgroundImage: `url(/haru/haru-calib-${beat.stage}.jpg)` } : undefined}>
             {beat?.stage === 'face' && <span className="rb-calib-dot" data-step="face" style={{ top: '34.5%' }} aria-hidden />}
           </div>
-          {!expr && !calibrating && !noCamera && (
-            <button type="button" className="rb-wait__go" disabled={!canCalibrate} onClick={guide || retry ? beginCalibration : () => setGuide(true)}>
+          {/* 맞추기가 막 끝난 순간(ready)에는 결과를 반영하기 전이라 숨긴다 — 앞 버튼이 찰나에 다시 보이지 않게 */}
+          {!expr && !calibrating && !noCamera && (face.phase !== 'ready' || retry) && (
+            <button type="button" className="rb-wait__go" data-cue={canCalibrate || undefined} disabled={!canCalibrate} onClick={guide || retry ? beginCalibration : () => setGuide(true)}>
               {!canCalibrate
                 ? face.phase === 'idle' || face.phase === 'loading'
                   ? '카메라를 켜고 있어요…'
@@ -244,7 +245,7 @@ function WaitingRoom({
           </button>
           <span className="rb-wait__go-wrap">
             {!ready && hint && <span className="rb-wait__hint">{hint}</span>}
-            <button type="button" className="rb-prep3__start" disabled={!ready} onClick={() => tier && onStart(tier, expr)}>
+            <button type="button" className="rb-prep3__start" data-cue={ready || undefined} disabled={!ready} onClick={() => tier && onStart(tier, expr)}>
               준비됐어요
             </button>
           </span>
@@ -267,8 +268,9 @@ const SHOW_SEC = 2;
 if (typeof window !== 'undefined') CALIB_STEPS.forEach(({ key }) => (new Image().src = `/haru/haru-calib-${key}.jpg`));
 
 const HARU_WAIT = '여기까지 같이 왔네요! 들어가기 전에 저랑 표정 한번 풀어 볼까요?';
-const HARU_READY = '좋아요, 표정이 풀렸어요. 부르면 들어가요.';
-const HARU_CARRY = '여기까지 같이 왔네요! 숨 한번 고르고, 부르면 들어가요.';
+// 표정 맞추기 단계마다 '좋아요!'가 나오므로 여기서는 다른 말로 시작한다
+const HARU_READY = '표정이 한결 풀렸어요. 준비되면 들어가요.';
+const HARU_CARRY = '여기까지 같이 왔네요! 숨 한번 고르고, 준비되면 들어가요.';
 const HARU_RETRY = '얼굴이 잘 안 보였어요. 화면 가운데에 얼굴이 오게 하고 한 번 더 해 볼까요?';
 
 /** 점검 줄 하나: 점 + 이름 + 상태 */
