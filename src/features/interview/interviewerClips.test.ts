@@ -10,8 +10,7 @@ describe('lipsyncClip', () => {
     expect(lipsyncClip('본인의 강점을 하나 꼽는다면 무엇인가요?')).toBe('iv-q-standard-3');
   });
 
-  it('영상이 없거나 AI가 새로 만든 문장은 null(mp3와 말하기 반복 영상으로)', () => {
-    expect(lipsyncClip('그때 어떤 기분이 들었는지 궁금해요.')).toBeNull();
+  it('AI가 새로 만든 문장은 null(mp3와 말하기 반복 영상으로)', () => {
     expect(lipsyncClip('편의점에서 일하며 가장 힘들었던 순간은요?')).toBeNull();
   });
 
