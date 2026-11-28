@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { prerecordedUrls } from './prerecorded';
 import { FOLLOW_UP_BANK, QUESTION_BANK } from './difficulty';
 import { CLOSING_LINE, GREETING_LINE, INTERVIEWERS } from './interviewers';
-import { COME_IN, SENDOFF } from './views/CallView';
+import { COME_IN } from './views/CallView';
 import { fallbackLine, NODS, STAGE1_QUESTIONS, STAGE2_QUESTIONS } from '@/features/haru/script';
 
 describe('미리 녹음한 대사', () => {
@@ -10,7 +10,6 @@ describe('미리 녹음한 대사', () => {
     const fixed = [
       GREETING_LINE,
       COME_IN,
-      SENDOFF,
       CLOSING_LINE,
       ...INTERVIEWERS.map((i) => i.firstQuestion),
       ...Object.values(QUESTION_BANK).flat(),

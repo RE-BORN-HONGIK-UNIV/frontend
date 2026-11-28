@@ -57,7 +57,6 @@ const LINES: Record<string, string> = {
   '좋아요, 표정이 풀렸어요. 부르면 들어가요.': 'haru-ready',
   '여기까지 같이 왔네요! 숨 한번 고르고, 부르면 들어가요.': 'haru-ready-carry',
   '얼굴이 잘 안 보였어요. 화면 가운데에 얼굴이 오게 하고 한 번 더 해 볼까요?': 'haru-retry',
-  '천천히 해도 괜찮아요. 끝나고 다시 만나요!': 'haru-sendoff',
   '수고했어요! 끝까지 해냈네요.': 'haru-welcome',
   '제 눈을 편하게 봐 주세요.': 'haru-calib-face',
   '미간을 살짝 찡그려 봐요.': 'haru-calib-frown',
