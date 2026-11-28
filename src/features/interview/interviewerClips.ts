@@ -5,7 +5,7 @@ import { lineId } from './prerecorded';
 const LIPSYNC = new Set([
   'iv-hello', 'iv-bye', 'iv-first-warmup', 'iv-first-standard', 'iv-first-practice', 'iv-ack-2', 'iv-ack-3',
   ...[1, 2, 3, 4, 5, 6].flatMap((i) => [`iv-q-standard-${i}`, `iv-q-warmup-${i}`]),
-  'iv-q-practice-1', 'iv-q-practice-2', 'iv-q-practice-3', 'iv-q-practice-4',
+  ...[1, 2, 3, 4, 5, 6].map((i) => `iv-q-practice-${i}`),
   'iv-f-standard-1', 'iv-f-standard-2', 'iv-f-standard-3', 'iv-f-standard-4', 'iv-f-warmup-1', 'iv-f-warmup-2', 'iv-f-warmup-3',
   'iv-f-warmup-4', 'iv-f-practice-1', 'iv-f-practice-2', 'iv-f-practice-3', 'iv-f-practice-4',
 ]);
